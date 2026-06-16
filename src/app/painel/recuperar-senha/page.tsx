@@ -16,7 +16,7 @@ export default function RecuperarSenhaPage() {
     setLoading(true)
     const supabase = createClient()
     await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-      redirectTo: 'https://nailbook-eta.vercel.app/painel/nova-senha',
+      redirectTo: 'https://nailbook-eta.vercel.app/api/auth/callback?next=/painel/nova-senha',
     })
     // Sempre mostra sucesso para não revelar se o email existe
     setEnviado(true)

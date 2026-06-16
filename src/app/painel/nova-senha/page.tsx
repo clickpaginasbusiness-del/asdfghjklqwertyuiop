@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -13,31 +13,23 @@ export default function NovaSenhaPage() {
   const [loading, setLoading] = useState(false)
   const [ready, setReady] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
-  const exchanged = useRef(false)
 
   useEffect(() => {
-    if (exchanged.current) return
-    exchanged.current = true
-
     const params = new URLSearchParams(window.location.search)
-    const code = params.get('code')
-    const tokenHash = params.get('token_hash')
-    const supabase = createClient()
+    const errorParam = params.get('error')
+    if (errorParam) {
+      setErro('Link inválido ou expirado. Solicite um novo.')
+      return
+    }
 
-    async function exchange() {
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code)
-        if (error) { setErro('Link inválido ou expirado. Solicite um novo.'); return }
-        setReady(true)
-      } else if (tokenHash) {
-        const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' })
-        if (error) { setErro('Link inválido ou expirado. Solicite um novo.'); return }
+    const supabase = createClient()
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
         setReady(true)
       } else {
-        setErro('Link inválido. Solicite um novo link de recuperação.')
+        setErro('Link inválido ou expirado. Solicite um novo.')
       }
-    }
-    exchange()
+    })
   }, [])
 
   async function handleSubmit(e: React.FormEvent) {
