@@ -49,7 +49,7 @@ export default async function ClientesPage() {
       id: a.id,
       data_hora: a.data_hora,
       status: a.status,
-      servicos: a.servicos as { nome: string; preco: number } | null,
+      servicos: (a.servicos as { nome: string; preco: number }[] | null)?.[0] ?? null,
     }
 
     const existing = clienteMap.get(c.id)

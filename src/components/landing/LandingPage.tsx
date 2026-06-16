@@ -8,7 +8,7 @@ import {
   Phone, Mail, Home, Scissors, User, CreditCard,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import Lenis from '@studio-freight/lenis'
+import Lenis from 'lenis'
 
 /* ─── Types ─────────────────────────────────── */
 type NavId = 'hero' | 'como-funciona' | 'funcionalidades' | 'depoimentos' | 'precos'
