@@ -1,7 +1,14 @@
 import { stripe } from '@/lib/stripe'
+import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
+  }
+
   const { codigo } = await request.json()
   const code = (codigo ?? '').trim().toUpperCase()
 
