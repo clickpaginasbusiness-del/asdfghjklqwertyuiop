@@ -807,7 +807,7 @@ export default function LandingPage() {
               </ul>
 
               <Link
-                href={`/planos?ciclo=${cicloPrecos}`}
+                href={`/planos?ciclo=${cicloPrecos}&auto=pro`}
                 className="relative w-full text-center py-3.5 rounded-2xl bg-white text-rose-500 font-bold text-sm hover:bg-rose-50 transition-all shadow-lg"
               >
                 Assinar Pro

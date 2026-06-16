@@ -56,6 +56,11 @@ export default function LoginPage() {
             <Button type="submit" loading={loading} className="w-full mt-2" size="lg">
               Entrar
             </Button>
+            <div className="text-center">
+              <Link href="/painel/recuperar-senha" className="text-sm text-gray-400 hover:text-rose-500 transition-colors">
+                Esqueci minha senha
+              </Link>
+            </div>
           </form>
 
           <p className="text-center text-sm text-gray-500 mt-6">

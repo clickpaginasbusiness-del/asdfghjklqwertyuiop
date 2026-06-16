@@ -10,7 +10,7 @@ export const metadata = {
 export default async function PlanosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ ciclo?: string }>
+  searchParams: Promise<{ ciclo?: string; auto?: string }>
 }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -41,6 +41,7 @@ export default async function PlanosPage({
 
   const cicloInicial = params.ciclo === 'anual' ? 'anual' : 'mensal'
   const eTrial = Boolean(prestadora?.e_trial && !prestadora?.stripe_subscription_id)
+  const auto = params.auto === 'pro' || params.auto === 'basico' ? params.auto : undefined
 
   return (
     <PlanosClient
@@ -48,6 +49,7 @@ export default async function PlanosPage({
       planoAtual={(prestadora?.plano as 'basico' | 'pro' | null) ?? null}
       cicloInicial={cicloInicial}
       eTrial={eTrial}
+      auto={auto}
     />
   )
 }

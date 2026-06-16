@@ -66,6 +66,7 @@ export default function AssinaturaClient({
   cancelAtPeriodEnd,
   temCustomer,
   cicloAtual,
+  eTrial,
 }: {
   plano: 'basico' | 'pro' | null
   assinaturaAtiva: boolean
@@ -75,6 +76,7 @@ export default function AssinaturaClient({
   cancelAtPeriodEnd: boolean
   temCustomer: boolean
   cicloAtual: Ciclo
+  eTrial: boolean
 }) {
   const [loadingPortal, setLoadingPortal] = useState(false)
   const [loadingUpgrade, setLoadingUpgrade] = useState(false)
@@ -100,6 +102,18 @@ export default function AssinaturaClient({
   async function fazerUpgrade() {
     setLoadingUpgrade(true)
     try {
+      if (!stripeStatus) {
+        // Sem assinatura Stripe ativa: cria checkout Pro direto sem trial
+        const res = await fetch('/api/stripe/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ plano: 'pro', ciclo: cicloAtual }),
+        })
+        const data = await res.json()
+        if (!res.ok) { toast.error(data.error ?? 'Erro ao iniciar pagamento'); setLoadingUpgrade(false); return }
+        window.location.href = data.url
+        return
+      }
       const res = await fetch('/api/stripe/upgrade', { method: 'POST' })
       const data = await res.json()
       if (!res.ok) { toast.error(data.error ?? 'Erro ao fazer upgrade'); setLoadingUpgrade(false); return }
@@ -194,17 +208,28 @@ export default function AssinaturaClient({
           {/* Ações */}
           {temCustomer && (
             <div className="pt-2 border-t border-gray-100 flex flex-wrap gap-3">
-              <Button
-                variant="outline"
-                onClick={abrirPortal}
-                loading={loadingPortal}
-                className="gap-2"
-              >
-                <ArrowUpRight className="w-4 h-4" />
-                Gerenciar assinatura
-              </Button>
+              {(eTrial || !stripeStatus) ? (
+                <Button
+                  variant="outline"
+                  onClick={() => { window.location.href = '/planos' }}
+                  className="gap-2"
+                >
+                  <ArrowUpRight className="w-4 h-4" />
+                  Escolher plano
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={abrirPortal}
+                  loading={loadingPortal}
+                  className="gap-2"
+                >
+                  <ArrowUpRight className="w-4 h-4" />
+                  Gerenciar assinatura
+                </Button>
+              )}
               <p className="text-xs text-gray-400 self-center">
-                Ver faturas, atualizar cartão e cancelar
+                {(eTrial || !stripeStatus) ? 'Inicie sua assinatura' : 'Ver faturas, atualizar cartão e cancelar'}
               </p>
             </div>
           )}

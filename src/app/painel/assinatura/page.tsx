@@ -12,7 +12,7 @@ export default async function AssinaturaPage() {
 
   const { data: prestadora } = await supabase
     .from('prestadoras')
-    .select('id, plano, assinatura_ativa, trial_fim, stripe_subscription_id, stripe_customer_id')
+    .select('id, plano, assinatura_ativa, trial_fim, stripe_subscription_id, stripe_customer_id, e_trial')
     .eq('user_id', user.id)
     .single()
 
@@ -47,6 +47,7 @@ export default async function AssinaturaPage() {
       cancelAtPeriodEnd={cancelAtPeriodEnd}
       temCustomer={!!prestadora.stripe_customer_id}
       cicloAtual={cicloAtual}
+      eTrial={Boolean(prestadora.e_trial)}
     />
   )
 }

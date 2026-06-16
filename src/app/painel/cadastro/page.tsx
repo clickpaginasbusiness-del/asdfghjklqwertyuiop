@@ -139,8 +139,8 @@ export default function CadastroPage() {
       }
 
       toast.success('Conta criada! Bem-vinda ao NailBook 🎉')
-      // Full reload so middleware reads the new session cookies
-      window.location.href = '/painel'
+      const planIntent = new URLSearchParams(window.location.search).get('plano')
+      window.location.href = planIntent === 'pro' ? '/planos?auto=pro' : '/painel'
     } finally {
       setLoadingCreate(false)
     }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { Check, X, Sparkles, Zap, Tag } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -54,14 +54,28 @@ export default function PlanosClient({
   planoAtual,
   cicloInicial = 'mensal',
   eTrial = false,
+  auto,
 }: {
   isLoggedIn: boolean
   planoAtual: 'basico' | 'pro' | null
   cicloInicial?: Ciclo
   eTrial?: boolean
+  auto?: 'basico' | 'pro'
 }) {
   const [ciclo, setCiclo] = useState<Ciclo>(cicloInicial)
   const [loading, setLoading] = useState<'basico' | 'pro' | null>(null)
+
+  const autoFired = useRef(false)
+  useEffect(() => {
+    if (!auto || autoFired.current) return
+    autoFired.current = true
+    if (!isLoggedIn) {
+      window.location.href = `/painel/cadastro?plano=${auto}`
+      return
+    }
+    assinar(auto)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auto, isLoggedIn])
 
   const [cupomAberto, setCupomAberto] = useState(false)
   const [cupomInput, setCupomInput] = useState('')
@@ -93,7 +107,7 @@ export default function PlanosClient({
 
   async function assinar(plano: 'basico' | 'pro') {
     if (!isLoggedIn) {
-      window.location.href = '/painel/cadastro'
+      window.location.href = `/painel/cadastro?plano=${plano}`
       return
     }
 
