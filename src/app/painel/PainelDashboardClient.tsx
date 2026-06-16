@@ -228,7 +228,9 @@ export default function PainelDashboardClient({
           )
         }
       })
-      .subscribe()
+      .subscribe((status, err) => {
+        if (err) console.error('[Realtime ag-painel] erro:', status, err)
+      })
 
     return () => { supabase.removeChannel(channel) }
   }, [prestadoraId])

@@ -3,7 +3,7 @@ import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import PainelLayoutClient from './PainelLayoutClient'
 
-const PUBLIC_PATHS = ['/painel/login', '/painel/cadastro']
+const PUBLIC_PATHS = ['/painel/login', '/painel/cadastro', '/painel/recuperar-senha', '/painel/nova-senha']
 
 export default async function PainelLayout({ children }: { children: React.ReactNode }) {
   const headersList = await headers()

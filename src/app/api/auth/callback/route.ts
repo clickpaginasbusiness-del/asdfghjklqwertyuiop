@@ -9,6 +9,11 @@ export async function GET(request: NextRequest) {
 
   if (code) {
     const cookieStore = await cookies()
+    // Collect cookies that exchangeCodeForSession wants to set so we can
+    // copy them onto the redirect response — NextResponse.redirect() does
+    // not automatically inherit cookies written via cookieStore.set().
+    const pendingCookies: Array<Parameters<typeof cookieStore.set>> = []
+
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -18,9 +23,10 @@ export async function GET(request: NextRequest) {
             return cookieStore.getAll()
           },
           setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) =>
+            cookiesToSet.forEach(({ name, value, options }) => {
               cookieStore.set(name, value, options)
-            )
+              pendingCookies.push([name, value, options])
+            })
           },
         },
       }
@@ -28,7 +34,9 @@ export async function GET(request: NextRequest) {
 
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`)
+      const response = NextResponse.redirect(`${origin}${next}`)
+      pendingCookies.forEach(([name, value, options]) => response.cookies.set(name, value, options))
+      return response
     }
   }
 

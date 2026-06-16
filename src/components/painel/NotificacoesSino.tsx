@@ -49,7 +49,9 @@ export function NotificacoesSino({ prestadoraId }: Props) {
           setNotificacoes((prev) => [payload.new as Notificacao, ...prev])
         },
       )
-      .subscribe()
+      .subscribe((status, err) => {
+        if (err) console.error('[Realtime notif-sino] erro:', status, err)
+      })
 
     return () => { supabase.removeChannel(channel) }
   }, [prestadoraId])
