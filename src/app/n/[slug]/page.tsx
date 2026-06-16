@@ -1,0 +1,52 @@
+import { createClient } from '@/lib/supabase/server'
+import { notFound } from 'next/navigation'
+import PerfilPublicoClient from './PerfilPublicoClient'
+
+export default async function PerfilPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
+  const supabase = await createClient()
+
+  const { data: prestadora } = await supabase
+    .from('prestadoras')
+    .select('*')
+    .eq('slug', slug)
+    .single()
+
+  if (!prestadora) notFound()
+
+  const [
+    { data: servicos },
+    { data: galeria },
+    { data: diasBloqueados },
+    { data: profissionais },
+    { data: horariosFuncionamento },
+  ] = await Promise.all([
+    supabase.from('servicos').select('*').eq('prestadora_id', prestadora.id).eq('ativo', true).order('nome'),
+    supabase.from('galeria').select('*').eq('prestadora_id', prestadora.id).order('created_at', { ascending: false }),
+    supabase.from('dias_bloqueados').select('data').eq('prestadora_id', prestadora.id),
+    supabase.from('profissionais').select('*').eq('prestadora_id', prestadora.id).eq('ativa', true).order('nome'),
+    supabase.from('horarios_funcionamento').select('*').eq('prestadora_id', prestadora.id).order('dia_semana'),
+  ])
+
+  return (
+    <PerfilPublicoClient
+      prestadora={prestadora}
+      servicos={servicos ?? []}
+      galeria={galeria ?? []}
+      diasBloqueados={(diasBloqueados ?? []).map((d) => d.data)}
+      profissionais={profissionais ?? []}
+      horariosFuncionamento={horariosFuncionamento ?? []}
+    />
+  )
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
+  const supabase = await createClient()
+  const { data } = await supabase.from('prestadoras').select('nome, bio').eq('slug', slug).single()
+  if (!data) return {}
+  return {
+    title: `${data.nome} — NailBook`,
+    description: data.bio ?? `Agende seu horário com ${data.nome}`,
+  }
+}
