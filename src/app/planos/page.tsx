@@ -3,8 +3,8 @@ import { redirect } from 'next/navigation'
 import PlanosClient from './PlanosClient'
 
 export const metadata = {
-  title: 'Planos — NailBook',
-  description: 'Escolha o plano ideal para o seu estúdio de nail design',
+  title: 'Planos — BelleBook',
+  description: 'Escolha o plano ideal para o seu negócio de beleza',
 }
 
 export default async function PlanosPage({

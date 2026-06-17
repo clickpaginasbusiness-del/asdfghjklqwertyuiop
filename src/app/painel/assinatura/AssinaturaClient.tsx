@@ -286,7 +286,7 @@ export default function AssinaturaClient({
               <div>
                 <p className="text-sm font-medium text-gray-900">Sem assinatura ativa</p>
                 <p className="text-sm text-gray-500 mt-1">
-                  Escolha um plano para continuar usando o NailBook.
+                  Escolha um plano para continuar usando o BelleBook.
                 </p>
                 <Link
                   href="/planos"

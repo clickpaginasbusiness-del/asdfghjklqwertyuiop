@@ -88,7 +88,7 @@ const TESTIMONIALS = [
   {
     text: 'Antes eu perdia cliente por não responder rápido. Agora a agenda se organiza sozinha e eu foco só no trabalho.',
     name: 'Amanda Silva',
-    role: 'Nail designer · Rio de Janeiro',
+    role: 'Profissional de beleza · Rio de Janeiro',
     rating: 5,
   },
   {
@@ -100,7 +100,7 @@ const TESTIMONIALS = [
   {
     text: 'Não fico mais no WhatsApp confirmando horário. As clientes agendam sozinhas e eu só apareço para atender.',
     name: 'Juliana Costa',
-    role: 'Nail designer · Belo Horizonte',
+    role: 'Profissional de beleza · Belo Horizonte',
     rating: 5,
   },
 ]
@@ -129,7 +129,7 @@ function Navbar({
             href="/"
             className="font-serif text-base font-bold text-rose-400 px-4 py-2 rounded-full shrink-0"
           >
-            NailBook
+            BelleBook
           </Link>
 
           {/* Divider — desktop only */}
@@ -325,7 +325,7 @@ export default function LandingPage() {
             className="inline-flex items-center gap-2 bg-rose-50 border border-rose-100 text-rose-500 px-4 py-1.5 rounded-full text-sm font-medium mb-10"
           >
             <span>💅</span>
-            <span>A plataforma para nail designers</span>
+            <span>A plataforma para profissionais de beleza</span>
           </div>
 
           <h1
@@ -469,14 +469,14 @@ export default function LandingPage() {
           {/* Header */}
           <div className="text-center mb-16">
             <p data-animate className="text-rose-400 text-sm font-semibold uppercase tracking-widest mb-4">
-              Painel NailBook
+              Painel BelleBook
             </p>
             <h2 data-animate data-delay="100" className="font-serif text-[clamp(2rem,5vw,3.5rem)] font-bold text-gray-900 leading-tight">
               Tudo que você precisa,
               <br />em um só lugar
             </h2>
             <p data-animate data-delay="200" className="text-gray-500 mt-4 max-w-xl mx-auto">
-              Painel completo e fácil de usar, feito para nail designers
+              Painel completo e fácil de usar, feito para profissionais de beleza
             </p>
           </div>
 
@@ -495,7 +495,7 @@ export default function LandingPage() {
                     <div className="w-3 h-3 rounded-full bg-emerald-400/80" />
                   </div>
                   <div className="flex-1 bg-white rounded-full px-4 py-1 text-[11px] text-gray-400 text-center shadow-sm">
-                    nailbook.com.br/painel
+                    bellebook.com.br/painel
                   </div>
                   <div className="w-14 shrink-0" />
                 </div>
@@ -506,7 +506,7 @@ export default function LandingPage() {
                   {/* Sidebar */}
                   <div className="bg-white border-r border-gray-100 flex flex-col pt-4 pb-4 shrink-0" style={{ width: 148 }}>
                     <div className="px-4 mb-4">
-                      <span className="font-serif text-sm font-bold text-rose-400">NailBook</span>
+                      <span className="font-serif text-sm font-bold text-rose-400">BelleBook</span>
                     </div>
                     <div className="px-2 space-y-0.5">
                       {SIDEBAR_ITEMS.map((item) => (
@@ -833,7 +833,7 @@ export default function LandingPage() {
               começa agora
             </h2>
             <p data-animate data-delay="200" className="text-gray-500 text-lg mb-12 max-w-xl mx-auto">
-              Junte-se a nail designers que já economizam horas toda semana com agendamentos automáticos.
+              Junte-se a profissionais de beleza que já economizam horas toda semana com agendamentos automáticos.
             </p>
             <div data-animate data-delay="300" className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
@@ -859,7 +859,7 @@ export default function LandingPage() {
         {/* ── FOOTER ── */}
         <footer className="max-w-5xl mx-auto mt-32 pt-12 border-t border-gray-100">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-            <span className="font-serif text-xl font-bold text-rose-400">NailBook</span>
+            <span className="font-serif text-xl font-bold text-rose-400">BelleBook</span>
             <div className="flex items-center gap-6 text-sm text-gray-400">
               <Link href="/planos" className="hover:text-gray-600 transition-colors">Planos</Link>
               <Link href="/n/demo" className="hover:text-gray-600 transition-colors">Demo</Link>
@@ -888,7 +888,7 @@ export default function LandingPage() {
           </div>
 
           <p className="text-center text-xs text-gray-300 mt-8">
-            © 2026 NailBook · Feito com amor para nail designers
+            © 2026 BelleBook · Feito com amor para profissionais de beleza
           </p>
         </footer>
       </section>

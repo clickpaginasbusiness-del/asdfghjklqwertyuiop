@@ -45,12 +45,12 @@ const QUICK_BUTTONS: { value: Exclude<QuickSel, null>; label: string }[] = [
 function buildMsgConfirmar(a: Ag): string {
   const prof = a.profissionais?.nome ? ` com ${a.profissionais.nome}` : ''
   const dt = formatDateShort(a.data_hora)
-  return `Olá ${a.clientes?.nome}! Confirmando seu agendamento de ${a.servicos?.nome}${prof} no dia ${dt}. Te esperamos! 💅 - NailBook`
+  return `Olá ${a.clientes?.nome}! Confirmando seu agendamento de ${a.servicos?.nome}${prof} no dia ${dt}. Te esperamos! 💅 - BelleBook`
 }
 
 function buildMsgCancelar(a: Ag): string {
   const dt = formatDateShort(a.data_hora)
-  return `Olá ${a.clientes?.nome}, infelizmente precisamos cancelar seu agendamento de ${a.servicos?.nome} no dia ${dt}. Entre em contato para remarcar. - NailBook`
+  return `Olá ${a.clientes?.nome}, infelizmente precisamos cancelar seu agendamento de ${a.servicos?.nome} no dia ${dt}. Entre em contato para remarcar. - BelleBook`
 }
 
 function formatHorario(h: string) { return h.slice(0, 5) }

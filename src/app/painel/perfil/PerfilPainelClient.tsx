@@ -193,7 +193,7 @@ export default function PerfilPainelClient({ prestadora: initial }: { prestadora
         <CardContent>
           <div className="flex items-center gap-3 bg-rose-50 rounded-xl p-4">
             <div className="flex-1">
-              <p className="text-sm font-medium text-gray-700">nailbook.com/n/{prestadora.slug}</p>
+              <p className="text-sm font-medium text-gray-700">bellebook.com/n/{prestadora.slug}</p>
               <p className="text-xs text-gray-400 mt-0.5">Compartilhe com suas clientes</p>
             </div>
             <Button

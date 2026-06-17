@@ -133,7 +133,7 @@ function ClienteCard({ cliente, total, gasto, ultimaVisita, ultimaVisitaAtiva, h
                     <a
                       href={buildWhatsappUrl(
                         cliente.telefone,
-                        `Olá ${cliente.nome}! Temos horários disponíveis. Gostaria de agendar? 💅 - NailBook`
+                        `Olá ${cliente.nome}! Temos horários disponíveis. Gostaria de agendar? 💅 - BelleBook`
                       )}
                       target="_blank"
                       rel="noopener noreferrer"

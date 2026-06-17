@@ -3,8 +3,8 @@ import './globals.css'
 import { Toaster } from 'react-hot-toast'
 
 export const metadata: Metadata = {
-  title: 'NailBook — Agendamento para Nail Designers',
-  description: 'A plataforma mais elegante para nail designers gerenciarem seus agendamentos',
+  title: 'BelleBook — Agendamento para Profissionais de Beleza',
+  description: 'A plataforma mais elegante para profissionais de beleza gerenciarem seus agendamentos',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

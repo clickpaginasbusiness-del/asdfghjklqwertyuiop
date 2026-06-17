@@ -46,7 +46,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { data } = await supabase.from('prestadoras').select('nome, bio').eq('slug', slug).single()
   if (!data) return {}
   return {
-    title: `${data.nome} — NailBook`,
+    title: `${data.nome} — BelleBook`,
     description: data.bio ?? `Agende seu horário com ${data.nome}`,
   }
 }

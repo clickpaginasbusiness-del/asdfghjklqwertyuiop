@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { stripe, isAnualByPrice } from '@/lib/stripe'
 import AssinaturaClient from './AssinaturaClient'
 
-export const metadata = { title: 'Assinatura — NailBook' }
+export const metadata = { title: 'Assinatura — BelleBook' }
 
 export default async function AssinaturaPage() {
   const supabase = await createClient()

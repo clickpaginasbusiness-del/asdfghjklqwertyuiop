@@ -138,7 +138,7 @@ export default function CadastroPage() {
         return
       }
 
-      toast.success('Conta criada! Bem-vinda ao NailBook 🎉')
+      toast.success('Conta criada! Bem-vinda ao BelleBook 🎉')
       const planIntent = new URLSearchParams(window.location.search).get('plano')
       window.location.href = planIntent === 'pro' ? '/planos?auto=pro' : '/painel'
     } finally {
@@ -152,7 +152,7 @@ export default function CadastroPage() {
       <div className="min-h-screen bg-gradient-to-br from-white via-pink-50 to-rose-50 flex items-center justify-center p-4">
         <div className="w-full max-w-sm">
           <div className="text-center mb-8">
-            <Link href="/" className="font-serif text-3xl font-bold text-rose-400">NailBook</Link>
+            <Link href="/" className="font-serif text-3xl font-bold text-rose-400">BelleBook</Link>
             <p className="text-gray-500 mt-2 text-sm">Verificação por SMS</p>
           </div>
 
@@ -215,7 +215,7 @@ export default function CadastroPage() {
     <div className="min-h-screen bg-gradient-to-br from-white via-pink-50 to-rose-50 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <Link href="/" className="font-serif text-3xl font-bold text-rose-400">NailBook</Link>
+          <Link href="/" className="font-serif text-3xl font-bold text-rose-400">BelleBook</Link>
           <p className="text-gray-500 mt-2 text-sm">30 dias grátis · Sem cartão de crédito</p>
         </div>
 

@@ -20,12 +20,12 @@ type Ordenacao = 'recente' | 'antigo' | 'proximo'
 function buildMsgConfirmar(a: Agendamento): string {
   const prof = a.profissionais?.nome ? ` com ${a.profissionais.nome}` : ''
   const dt = formatDateShort(a.data_hora)
-  return `Olá ${a.clientes?.nome}! Confirmando seu agendamento de ${a.servicos?.nome}${prof} no dia ${dt}. Te esperamos! 💅 - NailBook`
+  return `Olá ${a.clientes?.nome}! Confirmando seu agendamento de ${a.servicos?.nome}${prof} no dia ${dt}. Te esperamos! 💅 - BelleBook`
 }
 
 function buildMsgCancelar(a: Agendamento): string {
   const dt = formatDateShort(a.data_hora)
-  return `Olá ${a.clientes?.nome}, infelizmente precisamos cancelar seu agendamento de ${a.servicos?.nome} no dia ${dt}. Entre em contato para remarcar. - NailBook`
+  return `Olá ${a.clientes?.nome}, infelizmente precisamos cancelar seu agendamento de ${a.servicos?.nome} no dia ${dt}. Entre em contato para remarcar. - BelleBook`
 }
 
 const FILTROS_STATUS: { value: FiltroStatus; label: string }[] = [

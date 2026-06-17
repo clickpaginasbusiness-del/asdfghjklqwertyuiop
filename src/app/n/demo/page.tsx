@@ -132,8 +132,8 @@ const DEMO_GALERIA: GaleriaItem[] = [
 ]
 
 export const metadata = {
-  title: 'Ana Nails Studio — Exemplo NailBook',
-  description: 'Veja como fica sua página de agendamento no NailBook',
+  title: 'Ana Nails Studio — Exemplo BelleBook',
+  description: 'Veja como fica sua página de agendamento no BelleBook',
 }
 
 export default function DemoPage() {

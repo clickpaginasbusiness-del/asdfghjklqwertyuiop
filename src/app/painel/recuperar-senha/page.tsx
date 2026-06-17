@@ -27,7 +27,7 @@ export default function RecuperarSenhaPage() {
     <div className="min-h-screen bg-gradient-to-br from-white via-pink-50 to-rose-50 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <Link href="/" className="font-serif text-3xl font-bold text-rose-400">NailBook</Link>
+          <Link href="/" className="font-serif text-3xl font-bold text-rose-400">BelleBook</Link>
           <p className="text-gray-500 mt-2 text-sm">Recuperar senha</p>
         </div>
 

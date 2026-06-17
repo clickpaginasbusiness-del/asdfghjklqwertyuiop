@@ -1,53 +1,58 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
+import type { EmailOtpType } from '@supabase/supabase-js'
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
-  const code = searchParams.get('code')
   const next = searchParams.get('next') ?? '/painel'
 
-  console.log('[auth/callback] code:', code ? `${code.slice(0, 8)}…` : 'AUSENTE')
-  console.log('[auth/callback] next:', next)
-  console.log('[auth/callback] origin:', origin)
-  console.log('[auth/callback] url completa:', request.url)
+  // token_hash flow (cross-device, sem PKCE verifier) — gerado pelo template de email
+  const token_hash = searchParams.get('token_hash')
+  const type = searchParams.get('type') as EmailOtpType | null
 
-  if (code) {
-    const cookieStore = await cookies()
-    type PendingCookie = { name: string; value: string; options: Parameters<typeof cookieStore.set>[2] }
-    const pendingCookies: PendingCookie[] = []
+  // code flow (PKCE — requer verifier no mesmo browser que gerou o link)
+  const code = searchParams.get('code')
 
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options)
-              pendingCookies.push({ name, value, options })
-            })
-          },
+  const cookieStore = await cookies()
+  type PendingCookie = { name: string; value: string; options: Parameters<typeof cookieStore.set>[2] }
+  const pendingCookies: PendingCookie[] = []
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
         },
-      }
-    )
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options)
+            pendingCookies.push({ name, value, options })
+          })
+        },
+      },
+    }
+  )
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
-    console.log('[auth/callback] exchangeCodeForSession error:', error ?? 'nenhum')
-    console.log('[auth/callback] cookies gerados:', pendingCookies.map(c => c.name))
-
+  if (token_hash && type) {
+    const { error } = await supabase.auth.verifyOtp({ token_hash, type })
     if (!error) {
-      const destino = `${origin}${next}`
-      console.log('[auth/callback] redirecionando para:', destino)
-      const response = NextResponse.redirect(destino)
+      const response = NextResponse.redirect(`${origin}${next}`)
       pendingCookies.forEach(({ name, value, options }) => response.cookies.set(name, value, options))
       return response
     }
   }
 
-  console.log('[auth/callback] FALLBACK — redirecionando para recuperar-senha')
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code)
+    if (!error) {
+      const response = NextResponse.redirect(`${origin}${next}`)
+      pendingCookies.forEach(({ name, value, options }) => response.cookies.set(name, value, options))
+      return response
+    }
+  }
+
   return NextResponse.redirect(`${origin}/painel/recuperar-senha?error=link-invalido`)
 }

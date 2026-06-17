@@ -128,7 +128,7 @@ export default function PainelLayoutClient({
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       )}>
         <div className="p-6 border-b border-gray-100">
-          <span className="font-serif text-2xl font-bold text-rose-400">NailBook</span>
+          <span className="font-serif text-2xl font-bold text-rose-400">BelleBook</span>
         </div>
 
         <nav className="flex-1 p-4 space-y-1">
@@ -184,7 +184,7 @@ export default function PainelLayoutClient({
           </button>
 
           <div className="flex-1 lg:flex-none mx-3 lg:mx-0">
-            <span className="font-serif text-lg font-bold text-rose-400 lg:hidden">NailBook</span>
+            <span className="font-serif text-lg font-bold text-rose-400 lg:hidden">BelleBook</span>
             <p className="hidden lg:block text-sm text-gray-500">Olá, <span className="font-medium text-gray-900">{prestadora.nome}</span> 👋</p>
           </div>
 

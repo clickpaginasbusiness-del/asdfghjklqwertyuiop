@@ -403,7 +403,7 @@ export default function PerfilPublicoClient({
         <div className="max-w-2xl mx-auto px-4 pt-8">
           {/* Top bar */}
           <div className="flex items-center justify-between mb-10">
-            <span className="font-serif text-xl font-bold text-rose-400">NailBook</span>
+            <span className="font-serif text-xl font-bold text-rose-400">BelleBook</span>
             <div className="flex gap-2">
               {clienteLogado && (
                 <Button variant="outline" size="sm" onClick={() => setMeusAgendamentosModal(true)}>

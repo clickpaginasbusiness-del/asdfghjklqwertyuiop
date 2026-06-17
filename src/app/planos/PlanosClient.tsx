@@ -143,7 +143,7 @@ export default function PlanosClient({
     <div className="min-h-screen bg-gradient-to-br from-white via-pink-50 to-rose-50">
       {/* Header */}
       <header className="py-6 px-4 flex items-center justify-between max-w-5xl mx-auto">
-        <Link href="/" className="font-serif text-2xl font-bold text-rose-400">NailBook</Link>
+        <Link href="/" className="font-serif text-2xl font-bold text-rose-400">BelleBook</Link>
         {isLoggedIn ? (
           <Link href="/painel" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
             Ir para o painel →
