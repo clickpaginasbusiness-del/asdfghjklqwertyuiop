@@ -7,11 +7,13 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code')
   const next = searchParams.get('next') ?? '/painel'
 
+  console.log('[auth/callback] code:', code ? `${code.slice(0, 8)}…` : 'AUSENTE')
+  console.log('[auth/callback] next:', next)
+  console.log('[auth/callback] origin:', origin)
+  console.log('[auth/callback] url completa:', request.url)
+
   if (code) {
     const cookieStore = await cookies()
-    // Collect cookies that exchangeCodeForSession wants to set so we can
-    // copy them onto the redirect response — NextResponse.redirect() does
-    // not automatically inherit cookies written via cookieStore.set().
     type PendingCookie = { name: string; value: string; options: Parameters<typeof cookieStore.set>[2] }
     const pendingCookies: PendingCookie[] = []
 
@@ -34,12 +36,18 @@ export async function GET(request: NextRequest) {
     )
 
     const { error } = await supabase.auth.exchangeCodeForSession(code)
+    console.log('[auth/callback] exchangeCodeForSession error:', error ?? 'nenhum')
+    console.log('[auth/callback] cookies gerados:', pendingCookies.map(c => c.name))
+
     if (!error) {
-      const response = NextResponse.redirect(`${origin}${next}`)
+      const destino = `${origin}${next}`
+      console.log('[auth/callback] redirecionando para:', destino)
+      const response = NextResponse.redirect(destino)
       pendingCookies.forEach(({ name, value, options }) => response.cookies.set(name, value, options))
       return response
     }
   }
 
+  console.log('[auth/callback] FALLBACK — redirecionando para recuperar-senha')
   return NextResponse.redirect(`${origin}/painel/recuperar-senha?error=link-invalido`)
 }
