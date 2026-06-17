@@ -46,7 +46,10 @@ export function NotificacoesSino({ prestadoraId }: Props) {
           filter: `prestadora_id=eq.${prestadoraId}`,
         },
         (payload) => {
-          setNotificacoes((prev) => [payload.new as Notificacao, ...prev])
+          // Garante lida:false explicitamente — payload.new pode omitir o campo
+          // se a tabela não tiver REPLICA IDENTITY FULL, fazendo o badge não incrementar
+          const nova: Notificacao = { ...(payload.new as Notificacao), lida: false }
+          setNotificacoes((prev) => [nova, ...prev])
         },
       )
       .subscribe((status, err) => {
