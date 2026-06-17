@@ -38,6 +38,7 @@ export default function CadastroPage() {
   const [phoneFormatted, setPhoneFormatted] = useState('')
 
   const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle')
+  const [phoneError, setPhoneError] = useState<'taken' | null>(null)
   const [loadingOtp, setLoadingOtp] = useState(false)
   const [loadingCreate, setLoadingCreate] = useState(false)
 
@@ -72,9 +73,22 @@ export default function CadastroPage() {
 
     const phone = formatPhone(telefone)
     setPhoneFormatted(phone)
+    setPhoneError(null)
     setLoadingOtp(true)
     try {
       const supabase = createClient()
+
+      const { data: existing } = await supabase
+        .from('prestadoras')
+        .select('id')
+        .eq('telefone', phone)
+        .maybeSingle()
+
+      if (existing) {
+        setPhoneError('taken')
+        return
+      }
+
       const { error } = await supabase.auth.signInWithOtp({ phone })
       if (error) { toast.error(error.message ?? 'Erro ao enviar SMS'); return }
       setStep('otp')
@@ -238,7 +252,7 @@ export default function CadastroPage() {
                   : 'border-gray-200 focus-within:ring-rose-300 focus-within:border-rose-300'
               }`}>
                 <span className="bg-gray-50 px-3 py-2.5 text-sm text-gray-400 border-r border-gray-200 whitespace-nowrap">
-                  nailbook.com/n/
+                  bellebook.com/n/
                 </span>
                 <input
                   type="text"
@@ -290,18 +304,32 @@ export default function CadastroPage() {
               <input
                 type="tel"
                 value={telefone}
-                onChange={(e) => setTelefone(applyPhoneMask(e.target.value))}
+                onChange={(e) => { setTelefone(applyPhoneMask(e.target.value)); setPhoneError(null) }}
                 placeholder="(11) 99999-9999"
-                className="border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-300 transition-all"
+                className={`border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 transition-all ${
+                  phoneError === 'taken'
+                    ? 'border-red-300 focus:ring-red-200'
+                    : 'border-gray-200 focus:ring-rose-300 focus:border-rose-300'
+                }`}
                 required
               />
-              <p className="text-xs text-gray-400">Receberá um SMS para verificar sua conta</p>
+              {phoneError === 'taken' ? (
+                <p className="text-xs text-red-500">
+                  Este telefone já está cadastrado.{' '}
+                  <Link href="/painel/login" className="font-medium underline">Faça login</Link>
+                  {' '}ou{' '}
+                  <Link href="/painel/recuperar-senha" className="font-medium underline">recupere sua senha</Link>
+                  .
+                </p>
+              ) : (
+                <p className="text-xs text-gray-400">Receberá um SMS para verificar sua conta</p>
+              )}
             </div>
 
             <Button
               type="submit"
               loading={loadingOtp}
-              disabled={loadingOtp || slugStatus === 'taken' || slugStatus === 'checking'}
+              disabled={loadingOtp || slugStatus === 'taken' || slugStatus === 'checking' || phoneError === 'taken'}
               className="w-full mt-2"
               size="lg"
             >
