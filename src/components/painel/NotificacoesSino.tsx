@@ -46,14 +46,23 @@ export function NotificacoesSino({ prestadoraId }: Props) {
           filter: `prestadora_id=eq.${prestadoraId}`,
         },
         (payload) => {
-          // Garante lida:false explicitamente — payload.new pode omitir o campo
-          // se a tabela não tiver REPLICA IDENTITY FULL, fazendo o badge não incrementar
+          console.log('[notif-sino] INSERT recebido:', payload)
+          console.log('[notif-sino] payload.new:', payload.new)
+
           const nova: Notificacao = { ...(payload.new as Notificacao), lida: false }
-          setNotificacoes((prev) => [nova, ...prev])
+
+          setNotificacoes((prev) => {
+            const anterior = prev.filter((n) => !n.lida).length
+            const proxima = [nova, ...prev]
+            const posterior = proxima.filter((n) => !n.lida).length
+            console.log('[notif-sino] naoLidas antes:', anterior, '→ depois:', posterior)
+            return proxima
+          })
         },
       )
       .subscribe((status, err) => {
-        if (err) console.error('[Realtime notif-sino] erro:', status, err)
+        console.log('[notif-sino] status do canal:', status)
+        if (err) console.error('[notif-sino] erro:', status, err)
       })
 
     return () => { supabase.removeChannel(channel) }
