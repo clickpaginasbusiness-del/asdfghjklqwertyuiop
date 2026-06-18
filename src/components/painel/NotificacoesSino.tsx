@@ -55,13 +55,20 @@ export function NotificacoesSino({ prestadoraId }: Props) {
           'broadcast',
           { event: 'INSERT' },
           (payload) => {
-            console.log('[notif-sino] INSERT recebido (broadcast):', payload)
+            // Log completo com JSON.stringify para revelar campos aninhados
+            console.log('[notif-sino] payload bruto JSON:', JSON.stringify(payload, null, 2))
+            console.log('[notif-sino] payload.payload keys:', Object.keys(payload?.payload ?? {}))
+            console.log('[notif-sino] payload.payload.new:', JSON.stringify(payload?.payload?.new, null, 2))
+            console.log('[notif-sino] payload.payload (direto):', JSON.stringify(payload?.payload, null, 2))
 
             // realtime.broadcast_changes() entrega o row em payload.payload.new
             // Fallback para payload.payload caso a estrutura seja diferente
             const novaRow = (
               payload.payload?.new ?? payload.payload
             ) as Notificacao | undefined
+
+            console.log('[notif-sino] novaRow extraído:', JSON.stringify(novaRow, null, 2))
+            console.log('[notif-sino] novaRow.id:', novaRow?.id, '| novaRow.mensagem:', novaRow?.mensagem)
 
             if (!novaRow?.id) {
               console.warn('[notif-sino] payload sem campo .new — estrutura completa:', payload)
