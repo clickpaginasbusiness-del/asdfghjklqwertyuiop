@@ -68,7 +68,11 @@ export function NotificacoesSino({ prestadoraId }: Props) {
               return
             }
 
-            const nova: Notificacao = { ...novaRow, lida: false }
+            const nova: Notificacao = {
+              ...novaRow,
+              lida: false,
+              created_at: novaRow.created_at ?? new Date().toISOString(),
+            }
             setNotificacoes((prev) => {
               const naoLidasAntes = prev.filter((n) => !n.lida).length
               const proxima = [nova, ...prev]

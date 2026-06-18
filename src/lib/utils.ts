@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
-import { format, parseISO } from 'date-fns'
+import { format, parseISO, isValid } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
 export function cn(...inputs: ClassValue[]) {
@@ -14,24 +14,30 @@ export function formatCurrency(value: number): string {
   }).format(value)
 }
 
-export function formatDate(date: string | Date): string {
+function parseDate(date: string | Date | null | undefined): Date | null {
+  if (!date) return null
   const d = typeof date === 'string' ? parseISO(date) : date
-  return format(d, "dd/MM/yyyy", { locale: ptBR })
+  return isValid(d) ? d : null
 }
 
-export function formatDateTime(date: string | Date): string {
-  const d = typeof date === 'string' ? parseISO(date) : date
-  return format(d, "dd/MM/yyyy 'às' HH'h'mm", { locale: ptBR })
+export function formatDate(date: string | Date | null | undefined): string {
+  const d = parseDate(date)
+  return d ? format(d, 'dd/MM/yyyy', { locale: ptBR }) : '—'
 }
 
-export function formatDateShort(date: string | Date): string {
-  const d = typeof date === 'string' ? parseISO(date) : date
-  return format(d, "dd/MM 'às' HH'h'mm", { locale: ptBR })
+export function formatDateTime(date: string | Date | null | undefined): string {
+  const d = parseDate(date)
+  return d ? format(d, "dd/MM/yyyy 'às' HH'h'mm", { locale: ptBR }) : '—'
 }
 
-export function formatTime(date: string | Date): string {
-  const d = typeof date === 'string' ? parseISO(date) : date
-  return format(d, "HH:mm", { locale: ptBR })
+export function formatDateShort(date: string | Date | null | undefined): string {
+  const d = parseDate(date)
+  return d ? format(d, "dd/MM 'às' HH'h'mm", { locale: ptBR }) : '—'
+}
+
+export function formatTime(date: string | Date | null | undefined): string {
+  const d = parseDate(date)
+  return d ? format(d, 'HH:mm', { locale: ptBR }) : '—'
 }
 
 export function generateTimeSlots(
