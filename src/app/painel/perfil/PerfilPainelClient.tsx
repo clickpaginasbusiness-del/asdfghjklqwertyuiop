@@ -1,12 +1,14 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { User, Link2, Upload, Phone, AtSign, MapPin } from 'lucide-react'
+import { Modal } from '@/components/ui/modal'
+import { User, Link2, Upload, Phone, AtSign, MapPin, AlertTriangle } from 'lucide-react'
 import Image from 'next/image'
 import type { Prestadora } from '@/lib/types'
 import { maskTelefone, cleanTelefone } from '@/lib/utils'
@@ -22,6 +24,31 @@ export default function PerfilPainelClient({ prestadora: initial }: { prestadora
   const [saving, setSaving] = useState(false)
   const [uploadingFoto, setUploadingFoto] = useState(false)
   const fotoRef = useRef<HTMLInputElement>(null)
+  const router = useRouter()
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [confirmText, setConfirmText] = useState('')
+  const [deleting, setDeleting] = useState(false)
+
+  async function excluirConta() {
+    setDeleting(true)
+    try {
+      const res = await fetch('/api/auth/delete-account', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error || 'Erro ao excluir conta')
+        setDeleting(false)
+        return
+      }
+      const supabase = createClient()
+      await supabase.auth.signOut()
+      toast.success('Conta excluída com sucesso')
+      router.push('/painel/login')
+    } catch {
+      toast.error('Erro ao excluir conta')
+      setDeleting(false)
+    }
+  }
 
   async function salvarPerfil() {
     setSaving(true)
@@ -209,6 +236,57 @@ export default function PerfilPainelClient({ prestadora: initial }: { prestadora
           </div>
         </CardContent>
       </Card>
+
+      {/* Excluir conta */}
+      <Card className="border-red-100">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-red-400" />
+            <CardTitle>Excluir minha conta</CardTitle>
+          </div>
+          <p className="text-sm text-gray-400">
+            Esta ação é permanente. Todos os seus dados (agendamentos, serviços, profissionais, galeria e clientes) serão apagados e sua assinatura será cancelada.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <Button variant="danger" onClick={() => setShowDeleteModal(true)}>
+            Excluir minha conta
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Modal
+        open={showDeleteModal}
+        onClose={() => { setShowDeleteModal(false); setConfirmText('') }}
+        title="Excluir conta permanentemente"
+      >
+        <div className="p-6 space-y-4">
+          <p className="text-sm text-gray-600">
+            Esta ação não pode ser desfeita. Sua assinatura será cancelada e todos os seus dados serão excluídos definitivamente.
+          </p>
+          <p className="text-sm text-gray-600">
+            Digite <span className="font-semibold text-gray-900">EXCLUIR</span> para confirmar:
+          </p>
+          <Input
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            placeholder="EXCLUIR"
+          />
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="outline" onClick={() => { setShowDeleteModal(false); setConfirmText('') }}>
+              Cancelar
+            </Button>
+            <Button
+              variant="danger"
+              disabled={confirmText !== 'EXCLUIR'}
+              loading={deleting}
+              onClick={excluirConta}
+            >
+              Excluir conta
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
