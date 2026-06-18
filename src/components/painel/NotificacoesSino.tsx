@@ -128,26 +128,6 @@ export function NotificacoesSino({ prestadoraId }: Props) {
     setNotificacoes([])
   }
 
-  /* ── DEBUG TEMPORÁRIO — remover após investigação ── */
-  async function debugInsertRealtime() {
-    const supabase = createClient()
-    console.log('[notif-debug] disparando INSERT pelo cliente browser...')
-    const { data, error } = await supabase
-      .from('notificacoes')
-      .insert({
-        prestadora_id: prestadoraId,
-        tipo: 'agendamento',
-        mensagem: '[DEBUG] Teste Broadcast — ' + new Date().toISOString(),
-      })
-      .select()
-    if (error) {
-      console.error('[notif-debug] ERRO no INSERT:', error.code, error.message, error.details)
-    } else {
-      console.log('[notif-debug] INSERT feito. Row:', data)
-      console.log('[notif-debug] aguardando "[notif-sino] INSERT recebido (broadcast)" no console...')
-    }
-  }
-
   return (
     <div ref={ref} className="relative">
       <button
@@ -206,15 +186,7 @@ export function NotificacoesSino({ prestadoraId }: Props) {
             )}
           </div>
 
-          {/* DEBUG TEMPORÁRIO — remover após investigação */}
-          <div className="px-4 py-2 border-t border-dashed border-amber-200 bg-amber-50">
-            <button
-              onClick={debugInsertRealtime}
-              className="w-full text-xs text-amber-700 hover:text-amber-900 font-medium py-1 text-center"
-            >
-              🔬 Testar Broadcast (ver console)
-            </button>
-          </div>
+
         </div>
       )}
     </div>
