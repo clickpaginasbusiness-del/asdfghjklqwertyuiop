@@ -342,7 +342,7 @@ export default function AgendamentosClient({
                         {a.profissionais && (
                           <span className="text-gray-400"> · {a.profissionais.nome}</span>
                         )}
-                        <span className="text-gray-400"> · {formatDateTime(a.data_hora)}</span>
+                        <span className="text-gray-400" suppressHydrationWarning> · {formatDateTime(a.data_hora)}</span>
                       </p>
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
                         {/* Telefone */}

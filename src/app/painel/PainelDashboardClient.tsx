@@ -71,7 +71,7 @@ function AgendamentoItem({
 
   return (
     <div className="flex items-start sm:items-center gap-3 p-3 hover:bg-gray-50/80 rounded-xl transition-colors">
-      <div className="shrink-0 bg-rose-100 text-rose-700 text-xs font-bold px-2.5 py-1.5 rounded-lg whitespace-nowrap">
+      <div className="shrink-0 bg-rose-100 text-rose-700 text-xs font-bold px-2.5 py-1.5 rounded-lg whitespace-nowrap" suppressHydrationWarning>
         {timeLabel}
       </div>
 
@@ -149,6 +149,7 @@ export default function PainelDashboardClient({
   const [confirmModalId, setConfirmModalId] = useState<string | null>(null)
   const [cancelando, setCancelando] = useState<string | null>(null)
   const [concluindoId, setConcluindoId] = useState<string | null>(null)
+  const [dataHoje, setDataHoje] = useState('')
 
   /* Horário sempre fresco — ignora cache do server render */
   const [horario, setHorario] = useState({ abertura: horarioAbertura, fechamento: horarioFechamento })
@@ -235,6 +236,11 @@ export default function PainelDashboardClient({
     return () => { supabase.removeChannel(channel) }
   }, [prestadoraId])
 
+  /* Evita hydration mismatch de fuso horário no nome do dia */
+  useEffect(() => {
+    setDataHoje(format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR }))
+  }, [])
+
   /* ── Filtro rápido ── */
   function handleQuick(q: Exclude<QuickSel, null>) {
     const today = new Date()
@@ -255,8 +261,6 @@ export default function PainelDashboardClient({
     : quickSel === '7d' ? 'Últimos 7 dias'
     : quickSel === '30d' ? 'Últimos 30 dias'
     : 'Personalizado'
-
-  const dataHoje = format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR })
 
   /* ── Métricas do intervalo selecionado ── */
   const agendamentosPeriodo = useMemo(() => {

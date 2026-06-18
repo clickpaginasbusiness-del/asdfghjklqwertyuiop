@@ -61,7 +61,7 @@ function TrialBanner({ trialFim }: { trialFim: string }) {
     )}>
       <div className="flex items-center gap-2 min-w-0">
         <AlertCircle className={cn('w-4 h-4 shrink-0', urgente ? 'text-amber-500' : 'text-rose-400')} />
-        <p className={cn('text-sm truncate', urgente ? 'text-amber-800' : 'text-rose-700')}>
+        <p className={cn('text-sm truncate', urgente ? 'text-amber-800' : 'text-rose-700')} suppressHydrationWarning>
           {dias === 0
             ? 'Seu trial gratuito encerra hoje! Assine para manter o acesso.'
             : `Seu trial gratuito encerra em ${dias} dia${dias > 1 ? 's' : ''}. Assine para continuar.`}
