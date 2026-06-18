@@ -43,10 +43,14 @@ export function NotificacoesSino({ prestadoraId }: Props) {
       const userId = session.user.id
       const topic = `notificacoes:${userId}`
 
+      // Necessário para canais privados: autentica o cliente Realtime
+      // com o access_token da sessão antes de criar o canal
+      supabase.realtime.setAuth(session.access_token)
+
       console.log('[notif-sino] subscrevendo broadcast topic:', topic)
 
       ch = supabase
-        .channel(topic)
+        .channel(topic, { config: { private: true } })
         .on(
           'broadcast',
           { event: 'INSERT' },
