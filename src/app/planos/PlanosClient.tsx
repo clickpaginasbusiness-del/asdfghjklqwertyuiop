@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { Check, X, Sparkles, Zap, Tag } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useCupom, precoComDesconto } from '@/hooks/use-cupom'
 import toast from 'react-hot-toast'
 
 type Ciclo = 'mensal' | 'anual'
@@ -77,33 +78,12 @@ export default function PlanosClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auto, isLoggedIn])
 
-  const [cupomAberto, setCupomAberto] = useState(false)
-  const [cupomInput, setCupomInput] = useState('')
-  const [cupomStatus, setCupomStatus] = useState<'idle' | 'loading' | 'ok' | 'erro'>('idle')
-  const [cupomAplicado, setCupomAplicado] = useState('')
-
-  async function aplicarCupom() {
-    const code = cupomInput.trim().toUpperCase()
-    if (!code) return
-    setCupomStatus('loading')
-    try {
-      const res = await fetch('/api/stripe/validate-coupon', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ codigo: code }),
-      })
-      if (res.ok) {
-        setCupomStatus('ok')
-        setCupomAplicado(code)
-      } else {
-        setCupomStatus('erro')
-        setCupomAplicado('')
-      }
-    } catch {
-      setCupomStatus('erro')
-      setCupomAplicado('')
-    }
-  }
+  const {
+    cupomAberto, setCupomAberto,
+    cupomInput, onCupomInputChange,
+    cupomStatus, cupomAplicado, desconto,
+    aplicarCupom, marcarCupomInvalido,
+  } = useCupom()
 
   async function assinar(plano: 'basico' | 'pro') {
     if (!isLoggedIn) {
@@ -122,8 +102,7 @@ export default function PlanosClient({
 
       if (!res.ok) {
         if (data.tipo === 'cupom') {
-          setCupomStatus('erro')
-          setCupomAplicado('')
+          marcarCupomInvalido()
           toast.error('Cupom inválido ou expirado')
         } else {
           toast.error(data.error ?? 'Erro ao iniciar pagamento')
@@ -232,16 +211,30 @@ export default function PlanosClient({
 
               {ciclo === 'mensal' ? (
                 <div>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-bold text-gray-900">{PRECOS.basico.mensal}</span>
+                  <div className="flex items-baseline gap-2">
+                    {cupomStatus === 'ok' ? (
+                      <>
+                        <span className="text-2xl font-bold text-gray-400 line-through">{PRECOS.basico.mensal}</span>
+                        <span className="text-4xl font-bold text-emerald-600">{precoComDesconto(PRECOS.basico.mensal, desconto)}</span>
+                      </>
+                    ) : (
+                      <span className="text-4xl font-bold text-gray-900">{PRECOS.basico.mensal}</span>
+                    )}
                     <span className="text-gray-400 text-sm">/mês</span>
                   </div>
                   <p className="text-sm text-emerald-600 font-medium mt-1">30 dias grátis, depois {PRECOS.basico.mensal}/mês</p>
                 </div>
               ) : (
                 <div>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-bold text-gray-900">{PRECOS.basico.anual}</span>
+                  <div className="flex items-baseline gap-2">
+                    {cupomStatus === 'ok' ? (
+                      <>
+                        <span className="text-2xl font-bold text-gray-400 line-through">{PRECOS.basico.anual}</span>
+                        <span className="text-4xl font-bold text-emerald-600">{precoComDesconto(PRECOS.basico.anual, desconto)}</span>
+                      </>
+                    ) : (
+                      <span className="text-4xl font-bold text-gray-900">{PRECOS.basico.anual}</span>
+                    )}
                     <span className="text-gray-400 text-sm">/ano</span>
                   </div>
                   <p className="text-sm text-emerald-600 font-medium mt-1">30 dias grátis, depois {PRECOS.basico.anual}/ano</p>
@@ -285,16 +278,30 @@ export default function PlanosClient({
 
               {ciclo === 'mensal' ? (
                 <div>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-bold text-white">{PRECOS.pro.mensal}</span>
+                  <div className="flex items-baseline gap-2">
+                    {cupomStatus === 'ok' ? (
+                      <>
+                        <span className="text-2xl font-bold text-white/50 line-through">{PRECOS.pro.mensal}</span>
+                        <span className="text-4xl font-bold text-white">{precoComDesconto(PRECOS.pro.mensal, desconto)}</span>
+                      </>
+                    ) : (
+                      <span className="text-4xl font-bold text-white">{PRECOS.pro.mensal}</span>
+                    )}
                     <span className="text-white/70 text-sm">/mês</span>
                   </div>
                   <p className="text-sm text-white/60 mt-1">Sem trial · {PRECOS.pro.mensal}/mês</p>
                 </div>
               ) : (
                 <div>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-4xl font-bold text-white">{PRECOS.pro.anual}</span>
+                  <div className="flex items-baseline gap-2">
+                    {cupomStatus === 'ok' ? (
+                      <>
+                        <span className="text-2xl font-bold text-white/50 line-through">{PRECOS.pro.anual}</span>
+                        <span className="text-4xl font-bold text-white">{precoComDesconto(PRECOS.pro.anual, desconto)}</span>
+                      </>
+                    ) : (
+                      <span className="text-4xl font-bold text-white">{PRECOS.pro.anual}</span>
+                    )}
                     <span className="text-white/70 text-sm">/ano</span>
                   </div>
                   <p className="text-sm text-white/60 mt-1">Sem trial · {PRECOS.pro.anual}/ano</p>
@@ -342,10 +349,7 @@ export default function PlanosClient({
                 <input
                   type="text"
                   value={cupomInput}
-                  onChange={(e) => {
-                    setCupomInput(e.target.value.toUpperCase())
-                    if (cupomStatus !== 'idle') { setCupomStatus('idle'); setCupomAplicado('') }
-                  }}
+                  onChange={(e) => onCupomInputChange(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && aplicarCupom()}
                   placeholder="CÓDIGO DO CUPOM"
                   className="border border-gray-200 rounded-xl px-3 py-2 text-sm text-center uppercase tracking-widest w-48 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-300 transition-all"

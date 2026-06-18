@@ -2,10 +2,11 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { CreditCard, Check, Zap, Sparkles, AlertCircle, RefreshCw, ArrowUpRight } from 'lucide-react'
+import { CreditCard, Check, X, Zap, Sparkles, AlertCircle, RefreshCw, ArrowUpRight, Tag } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { useCupom, precoComDesconto } from '@/hooks/use-cupom'
 import toast from 'react-hot-toast'
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -39,8 +40,8 @@ const PLANO_INFO = {
 } as const
 
 const UPGRADE_PRO = {
-  mensal: { preco: 'R$89/mês', label: 'Profissionais ilimitadas + Galeria de fotos e vídeos' },
-  anual:  { preco: 'R$855/ano · R$71/mês', label: 'Profissionais ilimitadas + Galeria — no ciclo anual' },
+  mensal: { valor: 'R$89', sufixo: '/mês', equivalente: null, label: 'Profissionais ilimitadas + Galeria de fotos e vídeos' },
+  anual:  { valor: 'R$855', sufixo: '/ano', equivalente: 'R$71/mês', label: 'Profissionais ilimitadas + Galeria — no ciclo anual' },
 }
 
 function formatData(iso: string | null): string {
@@ -81,6 +82,13 @@ export default function AssinaturaClient({
   const [loadingPortal, setLoadingPortal] = useState(false)
   const [loadingUpgrade, setLoadingUpgrade] = useState(false)
 
+  const {
+    cupomAberto, setCupomAberto,
+    cupomInput, onCupomInputChange,
+    cupomStatus, cupomAplicado, desconto,
+    aplicarCupom, marcarCupomInvalido,
+  } = useCupom()
+
   const info = plano ? PLANO_INFO[plano] : null
   const PlanIcon = info?.icon ?? CreditCard
   const emTrial = stripeStatus === 'trialing'
@@ -107,16 +115,30 @@ export default function AssinaturaClient({
         const res = await fetch('/api/stripe/checkout', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ plano: 'pro', ciclo: cicloAtual }),
+          body: JSON.stringify({ plano: 'pro', ciclo: cicloAtual, ...(cupomAplicado ? { cupom: cupomAplicado } : {}) }),
         })
         const data = await res.json()
-        if (!res.ok) { toast.error(data.error ?? 'Erro ao iniciar pagamento'); setLoadingUpgrade(false); return }
+        if (!res.ok) {
+          if (data.tipo === 'cupom') { marcarCupomInvalido(); toast.error('Cupom inválido ou expirado') }
+          else { toast.error(data.error ?? 'Erro ao iniciar pagamento') }
+          setLoadingUpgrade(false)
+          return
+        }
         window.location.href = data.url
         return
       }
-      const res = await fetch('/api/stripe/upgrade', { method: 'POST' })
+      const res = await fetch('/api/stripe/upgrade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(cupomAplicado ? { cupom: cupomAplicado } : {}),
+      })
       const data = await res.json()
-      if (!res.ok) { toast.error(data.error ?? 'Erro ao fazer upgrade'); setLoadingUpgrade(false); return }
+      if (!res.ok) {
+        if (data.tipo === 'cupom') { marcarCupomInvalido(); toast.error('Cupom inválido ou expirado') }
+        else { toast.error(data.error ?? 'Erro ao fazer upgrade') }
+        setLoadingUpgrade(false)
+        return
+      }
       toast.success('Upgrade realizado! Bem-vinda ao Plano Pro 🎉')
       window.location.reload()
     } catch {
@@ -248,8 +270,20 @@ export default function AssinaturaClient({
                 <h3 className="font-semibold text-gray-900 mb-1">
                   Faça upgrade para o Plano Pro{cicloAtual === 'anual' ? ' Anual' : ''}
                 </h3>
-                <p className="text-sm text-gray-500 mb-3">
-                  {UPGRADE_PRO[cicloAtual].preco} · {UPGRADE_PRO[cicloAtual].label}
+                <p className="text-sm text-gray-500 mb-1 flex items-baseline gap-1.5">
+                  {cupomStatus === 'ok' ? (
+                    <>
+                      <span className="line-through text-gray-400">{UPGRADE_PRO[cicloAtual].valor}</span>
+                      <span className="font-semibold text-emerald-600">{precoComDesconto(UPGRADE_PRO[cicloAtual].valor, desconto)}</span>
+                    </>
+                  ) : (
+                    <span>{UPGRADE_PRO[cicloAtual].valor}</span>
+                  )}
+                  <span>{UPGRADE_PRO[cicloAtual].sufixo}</span>
+                  {UPGRADE_PRO[cicloAtual].equivalente && cupomStatus !== 'ok' && (
+                    <span>· {UPGRADE_PRO[cicloAtual].equivalente}</span>
+                  )}
+                  <span>· {UPGRADE_PRO[cicloAtual].label}</span>
                 </p>
                 <ul className="space-y-1.5 mb-4">
                   {['Profissionais ilimitadas', 'Galeria de fotos e vídeos', 'Suporte prioritário'].map((f) => (
@@ -259,6 +293,54 @@ export default function AssinaturaClient({
                     </li>
                   ))}
                 </ul>
+
+                {/* Cupom de desconto */}
+                <div className="mb-4">
+                  {!cupomAberto ? (
+                    <button
+                      onClick={() => setCupomAberto(true)}
+                      className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      <Tag className="w-3.5 h-3.5" />
+                      Tem um cupom?
+                    </button>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={cupomInput}
+                          onChange={(e) => onCupomInputChange(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && aplicarCupom()}
+                          placeholder="CÓDIGO DO CUPOM"
+                          className="border border-gray-200 rounded-xl px-3 py-2 text-sm text-center uppercase tracking-widest w-48 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-300 transition-all"
+                          autoFocus
+                        />
+                        <button
+                          onClick={aplicarCupom}
+                          disabled={cupomStatus === 'loading' || !cupomInput.trim()}
+                          className="px-4 py-2 rounded-xl text-sm font-semibold bg-gray-900 text-white hover:bg-gray-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          {cupomStatus === 'loading' ? '...' : 'Aplicar'}
+                        </button>
+                      </div>
+
+                      {cupomStatus === 'ok' && (
+                        <p className="flex items-center gap-1.5 text-sm text-emerald-600 font-medium">
+                          <Check className="w-4 h-4" strokeWidth={2.5} />
+                          Cupom aplicado!
+                        </p>
+                      )}
+                      {cupomStatus === 'erro' && (
+                        <p className="flex items-center gap-1.5 text-sm text-red-500">
+                          <X className="w-4 h-4" strokeWidth={2.5} />
+                          Cupom inválido ou expirado
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <Button
                   onClick={fazerUpgrade}
                   loading={loadingUpgrade}

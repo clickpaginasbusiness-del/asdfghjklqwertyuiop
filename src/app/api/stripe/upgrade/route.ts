@@ -1,14 +1,17 @@
 import { stripe, PRICE_IDS, isAnualByPrice } from '@/lib/stripe'
 import { createClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
     return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
   }
+
+  const body = await request.json().catch(() => ({}))
+  const cupom = (body.cupom as string | undefined)?.trim() || undefined
 
   const { data: prestadora } = await supabase
     .from('prestadoras')
@@ -39,11 +42,20 @@ export async function POST() {
     ? PRICE_IDS.pro_anual
     : PRICE_IDS.pro
 
-  await stripe.subscriptions.update(prestadora.stripe_subscription_id, {
-    items: [{ id: itemId, price: targetPriceId }],
-    proration_behavior: 'always_invoice',
-    metadata: { ...sub.metadata, plano: 'pro' },
-  })
+  try {
+    await stripe.subscriptions.update(prestadora.stripe_subscription_id, {
+      items: [{ id: itemId, price: targetPriceId }],
+      proration_behavior: 'always_invoice',
+      metadata: { ...sub.metadata, plano: 'pro' },
+      ...(cupom ? { discounts: [{ coupon: cupom }] } : {}),
+    })
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : ''
+    if (msg.toLowerCase().includes('coupon') || msg.toLowerCase().includes('discount')) {
+      return NextResponse.json({ error: 'Cupom inválido ou expirado', tipo: 'cupom' }, { status: 400 })
+    }
+    return NextResponse.json({ error: 'Erro ao fazer upgrade' }, { status: 500 })
+  }
 
   // Atualiza no banco imediatamente (webhook também vai atualizar)
   await supabase

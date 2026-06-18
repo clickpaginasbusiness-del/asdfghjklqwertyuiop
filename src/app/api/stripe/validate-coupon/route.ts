@@ -21,7 +21,11 @@ export async function POST(request: NextRequest) {
     if (!coupon.valid) {
       return NextResponse.json({ error: 'Cupom inválido ou expirado' }, { status: 400 })
     }
-    return NextResponse.json({ ok: true })
+    return NextResponse.json({
+      ok: true,
+      percent_off: coupon.percent_off,
+      amount_off: coupon.amount_off,
+    })
   } catch {
     return NextResponse.json({ error: 'Cupom inválido ou expirado' }, { status: 400 })
   }
