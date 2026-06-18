@@ -55,39 +55,17 @@ export function NotificacoesSino({ prestadoraId }: Props) {
           'broadcast',
           { event: 'INSERT' },
           (payload) => {
-            // Log completo com JSON.stringify para revelar campos aninhados
-            console.log('[notif-sino] payload bruto JSON:', JSON.stringify(payload, null, 2))
-            console.log('[notif-sino] payload.payload keys:', Object.keys(payload?.payload ?? {}))
-            console.log('[notif-sino] payload.payload.new:', JSON.stringify(payload?.payload?.new, null, 2))
-            console.log('[notif-sino] payload.payload (direto):', JSON.stringify(payload?.payload, null, 2))
+            // realtime.broadcast_changes() entrega o row em payload.payload.record
+            const novaRow = payload.payload?.record as Notificacao | undefined
 
-            // realtime.broadcast_changes() entrega o row em payload.payload.new
-            // Fallback para payload.payload caso a estrutura seja diferente
-            const novaRow = (
-              payload.payload?.new ?? payload.payload
-            ) as Notificacao | undefined
-
-            console.log('[notif-sino] novaRow extraído:', JSON.stringify(novaRow, null, 2))
-            console.log('[notif-sino] novaRow.id:', novaRow?.id, '| novaRow.mensagem:', novaRow?.mensagem)
-
-            if (!novaRow?.id) {
-              console.warn('[notif-sino] payload sem campo .new — estrutura completa:', payload)
-              return
-            }
+            if (!novaRow?.id) return
 
             const nova: Notificacao = {
               ...novaRow,
               lida: false,
               created_at: novaRow.created_at ?? new Date().toISOString(),
             }
-            setNotificacoes((prev) => {
-              const naoLidasAntes = prev.filter((n) => !n.lida).length
-              const proxima = [nova, ...prev]
-              const novoValor = proxima.filter((n) => !n.lida).length
-              console.log('[notif-sino] naoLidas antes:', naoLidasAntes)
-              console.log('[notif-sino] naoLidas depois:', novoValor)
-              return proxima
-            })
+            setNotificacoes((prev) => [nova, ...prev])
           },
         )
         .subscribe((status, err) => {
