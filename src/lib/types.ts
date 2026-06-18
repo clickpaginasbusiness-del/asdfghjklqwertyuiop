@@ -21,6 +21,7 @@ export type Prestadora = {
   trial_fim: string | null
   e_trial: boolean
   downgrade_aviso: boolean
+  cor_tema: string | null
   created_at: string
 }
 

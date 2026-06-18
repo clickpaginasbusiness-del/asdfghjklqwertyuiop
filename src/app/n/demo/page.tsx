@@ -22,6 +22,7 @@ const DEMO_PRESTADORA: Prestadora = {
   trial_fim: null,
   e_trial: false,
   downgrade_aviso: false,
+  cor_tema: 'rosa',
   created_at: new Date().toISOString(),
 }
 
