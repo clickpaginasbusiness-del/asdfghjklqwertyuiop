@@ -407,10 +407,13 @@ export default function PerfilPublicoClient({
     <div className="min-h-screen bg-gray-50">
 
       {/* ── HEADER ─────────────────────────────── */}
-      <div className="relative overflow-hidden bg-gradient-to-b from-[#fce4ec] via-rose-50/70 to-gray-50 pb-14">
+      <div
+        className="relative overflow-hidden pb-14"
+        style={{ background: `linear-gradient(to bottom, ${tema.hexHeader}, white)` }}
+      >
         {/* Decorative blobs */}
-        <div aria-hidden className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-rose-200/30 blur-3xl pointer-events-none" />
-        <div aria-hidden className="absolute top-10 -left-16 w-56 h-56 rounded-full bg-pink-200/40 blur-3xl pointer-events-none" />
+        <div aria-hidden className="absolute -top-20 -right-20 w-72 h-72 rounded-full blur-3xl pointer-events-none" style={{ backgroundColor: tema.hex, opacity: 0.18 }} />
+        <div aria-hidden className="absolute top-10 -left-16 w-56 h-56 rounded-full blur-3xl pointer-events-none" style={{ backgroundColor: tema.hex, opacity: 0.12 }} />
 
         <div className="max-w-2xl mx-auto px-4 pt-8">
           {/* Top bar */}
