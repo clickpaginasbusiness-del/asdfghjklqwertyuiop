@@ -104,6 +104,15 @@ export default function PerfilPublicoClient({
     return () => obs.disconnect()
   }, [])
 
+  /* Registra uma visita por sessao (para relatorios de conversao) */
+  useEffect(() => {
+    if (isDemo) return
+    const key = `visita_${prestadora.id}`
+    if (sessionStorage.getItem(key)) return
+    sessionStorage.setItem(key, '1')
+    createClient().from('visitas_pagina').insert({ prestadora_id: prestadora.id })
+  }, [isDemo, prestadora.id])
+
   /* Today's opening hours */
   const diaHoje = getDay(new Date())
   const horarioHoje = horariosFuncionamento.find((h) => h.dia_semana === diaHoje)

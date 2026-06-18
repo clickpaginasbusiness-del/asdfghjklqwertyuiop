@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Calendar, Scissors, ImageIcon,
-  Clock, Users, LogOut, Menu, X, ExternalLink, UserCircle, UserCircle2, CreditCard, AlertCircle
+  Clock, Users, LogOut, Menu, X, ExternalLink, UserCircle, UserCircle2, CreditCard, AlertCircle, BarChart3
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { NotificacoesSino } from '@/components/painel/NotificacoesSino'
@@ -89,6 +89,7 @@ const navItems = [
   { href: '/painel/galeria', label: 'Galeria', icon: ImageIcon },
   { href: '/painel/horarios', label: 'Horários', icon: Clock },
   { href: '/painel/clientes', label: 'Clientes', icon: Users },
+  { href: '/painel/relatorios', label: 'Relatórios', icon: BarChart3 },
   { href: '/painel/profissionais', label: 'Profissionais', icon: UserCircle2 },
   { href: '/painel/perfil', label: 'Meu Perfil', icon: UserCircle },
   { href: '/painel/assinatura', label: 'Assinatura', icon: CreditCard },

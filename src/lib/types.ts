@@ -103,3 +103,9 @@ export type Notificacao = {
   tipo: 'agendamento' | 'cancelamento'
   created_at: string
 }
+
+export type VisitaPagina = {
+  id: string
+  prestadora_id: string
+  created_at: string
+}
