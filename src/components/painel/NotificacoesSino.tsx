@@ -46,22 +46,22 @@ export function NotificacoesSino({ prestadoraId }: Props) {
           filter: `prestadora_id=eq.${prestadoraId}`,
         },
         (payload) => {
-          console.log('[notif-sino] INSERT recebido:', payload)
-          console.log('[notif-sino] payload.new:', payload.new)
+          console.log('[notif-sino] INSERT recebido:', payload.new)
 
           const nova: Notificacao = { ...(payload.new as Notificacao), lida: false }
 
           setNotificacoes((prev) => {
-            const anterior = prev.filter((n) => !n.lida).length
+            const naoLidasAntes = prev.filter((n) => !n.lida).length
             const proxima = [nova, ...prev]
-            const posterior = proxima.filter((n) => !n.lida).length
-            console.log('[notif-sino] naoLidas antes:', anterior, '→ depois:', posterior)
+            const novoValor = proxima.filter((n) => !n.lida).length
+            console.log('[notif-sino] naoLidas antes:', naoLidasAntes)
+            console.log('[notif-sino] naoLidas depois:', novoValor)
             return proxima
           })
         },
       )
       .subscribe((status, err) => {
-        console.log('[notif-sino] status do canal:', status)
+        console.log('[notif-sino] status do canal:', status, '| prestadoraId:', prestadoraId)
         if (err) console.error('[notif-sino] erro:', status, err)
       })
 
