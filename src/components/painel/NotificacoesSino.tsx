@@ -18,54 +18,73 @@ export function NotificacoesSino({ prestadoraId }: Props) {
 
   const naoLidas = notificacoes.filter((n) => !n.lida).length
 
-  /* Carga inicial + realtime */
+  /* Carga inicial + realtime via Broadcast */
   useEffect(() => {
     const supabase = createClient()
+    let mounted = true
+    // Tipagem: ReturnType do método channel do cliente Supabase
+    let ch: ReturnType<(typeof supabase)['channel']> | null = null
 
-    async function load() {
-      const { data } = await supabase
-        .from('notificacoes')
-        .select('*')
-        .eq('prestadora_id', prestadoraId)
-        .order('created_at', { ascending: false })
-        .limit(30)
-      if (data) setNotificacoes(data)
-    }
-
-    load()
-
-    // Canal com nome único por prestadora para evitar conflito entre abas
-    const channel = supabase
-      .channel(`notif-sino-${prestadoraId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notificacoes',
-          filter: `prestadora_id=eq.${prestadoraId}`,
-        },
-        (payload) => {
-          console.log('[notif-sino] INSERT recebido:', payload.new)
-
-          const nova: Notificacao = { ...(payload.new as Notificacao), lida: false }
-
-          setNotificacoes((prev) => {
-            const naoLidasAntes = prev.filter((n) => !n.lida).length
-            const proxima = [nova, ...prev]
-            const novoValor = proxima.filter((n) => !n.lida).length
-            console.log('[notif-sino] naoLidas antes:', naoLidasAntes)
-            console.log('[notif-sino] naoLidas depois:', novoValor)
-            return proxima
-          })
-        },
-      )
-      .subscribe((status, err) => {
-        console.log('[notif-sino] status do canal:', status, '| prestadoraId:', prestadoraId)
-        if (err) console.error('[notif-sino] erro:', status, err)
+    // Carga inicial das notificações existentes
+    supabase
+      .from('notificacoes')
+      .select('*')
+      .eq('prestadora_id', prestadoraId)
+      .order('created_at', { ascending: false })
+      .limit(30)
+      .then(({ data }) => {
+        if (data && mounted) setNotificacoes(data)
       })
 
-    return () => { supabase.removeChannel(channel) }
+    // Pega o userId da sessão para montar o topic do broadcast
+    // O topic no trigger SQL é 'notificacoes:{user_id}'
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted || !session?.user?.id) return
+      const userId = session.user.id
+      const topic = `notificacoes:${userId}`
+
+      console.log('[notif-sino] subscrevendo broadcast topic:', topic)
+
+      ch = supabase
+        .channel(topic)
+        .on(
+          'broadcast',
+          { event: 'INSERT' },
+          (payload) => {
+            console.log('[notif-sino] INSERT recebido (broadcast):', payload)
+
+            // realtime.broadcast_changes() entrega o row em payload.payload.new
+            // Fallback para payload.payload caso a estrutura seja diferente
+            const novaRow = (
+              payload.payload?.new ?? payload.payload
+            ) as Notificacao | undefined
+
+            if (!novaRow?.id) {
+              console.warn('[notif-sino] payload sem campo .new — estrutura completa:', payload)
+              return
+            }
+
+            const nova: Notificacao = { ...novaRow, lida: false }
+            setNotificacoes((prev) => {
+              const naoLidasAntes = prev.filter((n) => !n.lida).length
+              const proxima = [nova, ...prev]
+              const novoValor = proxima.filter((n) => !n.lida).length
+              console.log('[notif-sino] naoLidas antes:', naoLidasAntes)
+              console.log('[notif-sino] naoLidas depois:', novoValor)
+              return proxima
+            })
+          },
+        )
+        .subscribe((status, err) => {
+          console.log('[notif-sino] status do canal:', status, '| topic:', topic)
+          if (err) console.error('[notif-sino] erro:', status, err)
+        })
+    })
+
+    return () => {
+      mounted = false
+      if (ch) supabase.removeChannel(ch)
+    }
   }, [prestadoraId])
 
   /* Fecha ao clicar fora */
@@ -84,9 +103,7 @@ export function NotificacoesSino({ prestadoraId }: Props) {
     const next = !open
     setOpen(next)
     if (next && naoLidas > 0) {
-      // Atualiza localmente imediato para zerar o badge
       setNotificacoes((prev) => prev.map((n) => ({ ...n, lida: true })))
-      // Persiste no banco em background
       const supabase = createClient()
       supabase
         .from('notificacoes')
@@ -112,15 +129,14 @@ export function NotificacoesSino({ prestadoraId }: Props) {
       .insert({
         prestadora_id: prestadoraId,
         tipo: 'agendamento',
-        mensagem: '[DEBUG] Teste Realtime cliente — ' + new Date().toISOString(),
+        mensagem: '[DEBUG] Teste Broadcast — ' + new Date().toISOString(),
       })
       .select()
     if (error) {
       console.error('[notif-debug] ERRO no INSERT:', error.code, error.message, error.details)
     } else {
-      console.log('[notif-debug] INSERT feito com sucesso, row:', data)
-      console.log('[notif-debug] aguardando evento Realtime no callback acima...')
-      console.log('[notif-debug] se "[notif-sino] INSERT recebido" não aparecer em ~2s, o problema é de entrega do Realtime')
+      console.log('[notif-debug] INSERT feito. Row:', data)
+      console.log('[notif-debug] aguardando "[notif-sino] INSERT recebido (broadcast)" no console...')
     }
   }
 
@@ -188,7 +204,7 @@ export function NotificacoesSino({ prestadoraId }: Props) {
               onClick={debugInsertRealtime}
               className="w-full text-xs text-amber-700 hover:text-amber-900 font-medium py-1 text-center"
             >
-              🔬 Testar Realtime (ver console)
+              🔬 Testar Broadcast (ver console)
             </button>
           </div>
         </div>
