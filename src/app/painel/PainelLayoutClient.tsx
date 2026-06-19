@@ -10,6 +10,7 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import { NotificacoesSino } from '@/components/painel/NotificacoesSino'
 import { OnboardingTour } from '@/components/painel/OnboardingTour'
+import { PushNotificationPrompt } from '@/components/painel/PushNotificationPrompt'
 import { cn } from '@/lib/utils'
 import type { Prestadora } from '@/lib/types'
 
@@ -227,6 +228,8 @@ export default function PainelLayoutClient({
           onCloseSidebar={() => setSidebarOpen(false)}
         />
       )}
+
+      <PushNotificationPrompt prestadoraId={prestadora.id} />
     </div>
   )
 }

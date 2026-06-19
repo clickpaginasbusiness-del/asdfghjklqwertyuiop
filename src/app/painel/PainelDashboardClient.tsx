@@ -273,6 +273,7 @@ export default function PainelDashboardClient({
     const start = startOfDay(parseISO(dataInicio))
     const end = endOfDay(parseISO(dataFim))
     return agendamentos.filter((a) => {
+      if (a.status === 'cancelado') return false
       const d = new Date(a.data_hora)
       return d >= start && d <= end
     })

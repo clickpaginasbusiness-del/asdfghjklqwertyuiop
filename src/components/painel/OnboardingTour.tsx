@@ -37,6 +37,7 @@ export function OnboardingTour({ prestadoraId, onOpenSidebar, onCloseSidebar }: 
         onDestroyed: () => {
           localStorage.setItem(tourKey(prestadoraId), '1')
           onCloseSidebar()
+          window.dispatchEvent(new Event('bb-onboarding-done'))
         },
         steps: [
           {

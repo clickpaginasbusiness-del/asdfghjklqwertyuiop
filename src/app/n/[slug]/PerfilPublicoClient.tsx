@@ -350,6 +350,11 @@ export default function PerfilPublicoClient({
       tipo: 'agendamento',
       mensagem: `Nova cliente! ${nomeCliente} agendou ${servicoSelecionado.nome}${profNome} para ${format(dataHora, "dd/MM 'às' HH'h'mm")}`,
     })
+    fetch('/api/push/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agendamentoId: ag.id }),
+    }).catch(() => {})
 
     setAgendamentoFeito(ag)
     setStep('confirmado')
@@ -368,6 +373,11 @@ export default function PerfilPublicoClient({
         tipo: 'cancelamento',
         mensagem: `${clienteLogado?.nome} cancelou o agendamento - ${ag.servicos?.nome}${profNome} em ${dt}`,
       })
+      fetch('/api/push/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agendamentoId: id }),
+      }).catch(() => {})
     }
     setMeusAgendamentos((prev) => prev.map((a) => a.id === id ? { ...a, status: 'cancelado' as const } : a))
     toast.success('Agendamento cancelado')

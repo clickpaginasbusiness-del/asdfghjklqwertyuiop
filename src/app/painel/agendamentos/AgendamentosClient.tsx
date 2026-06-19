@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import { addDays, startOfDay } from 'date-fns'
 import { createClient } from '@/lib/supabase/client'
@@ -85,6 +85,56 @@ export default function AgendamentosClient({
   const [confirmModalId, setConfirmModalId] = useState<string | null>(null)
   const [deleteModalId, setDeleteModalId] = useState<string | null>(null)
   const [waOpenId, setWaOpenId] = useState<string | null>(null)
+
+  /* Realtime: novos agendamentos aparecem na lista e cancelamentos/conclusões refletem sem precisar recarregar */
+  useEffect(() => {
+    const supabase = createClient()
+    const AG_SELECT = '*, servicos(*), clientes(*), profissionais(*)'
+
+    const channel = supabase
+      .channel(`ag-lista-${prestadoraId}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'agendamentos',
+        filter: `prestadora_id=eq.${prestadoraId}`,
+      }, async (payload) => {
+        const { data, error } = await supabase
+          .from('agendamentos')
+          .select(AG_SELECT)
+          .eq('id', (payload.new as Record<string, unknown>).id as string)
+          .single()
+
+        if (error || !data) return
+
+        const ag = data as unknown as Agendamento
+        setAgendamentos((prev) => prev.some((a) => a.id === ag.id) ? prev : [ag, ...prev])
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'agendamentos',
+        filter: `prestadora_id=eq.${prestadoraId}`,
+      }, async (payload) => {
+        const row = payload.new as Record<string, unknown>
+
+        const { data, error } = await supabase
+          .from('agendamentos')
+          .select(AG_SELECT)
+          .eq('id', row.id as string)
+          .single()
+
+        if (error || !data) return
+
+        const ag = data as unknown as Agendamento
+        setAgendamentos((prev) => prev.map((a) => a.id === ag.id ? ag : a))
+      })
+      .subscribe((status, err) => {
+        if (err) console.error('[Realtime ag-lista] erro:', status, err)
+      })
+
+    return () => { supabase.removeChannel(channel) }
+  }, [prestadoraId])
 
   const filtrados = sortAgendamentos(
     agendamentos.filter((a) => {
