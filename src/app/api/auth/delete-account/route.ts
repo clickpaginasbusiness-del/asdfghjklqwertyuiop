@@ -30,12 +30,23 @@ export async function POST() {
 
   const { data: prestadora } = await supabaseAdmin
     .from('prestadoras')
-    .select('id, stripe_subscription_id')
+    .select('id, stripe_subscription_id, telefone')
     .eq('user_id', user.id)
     .single()
 
   if (!prestadora) {
     return NextResponse.json({ error: 'Prestadora não encontrada' }, { status: 404 })
+  }
+
+  // Registra o telefone como "já usou o trial" antes de excluir a conta,
+  // para impedir reaproveitamento do período grátis em um novo cadastro.
+  if (prestadora.telefone) {
+    const { error: telefoneError } = await supabaseAdmin
+      .from('telefones_usados_trial')
+      .upsert({ telefone: prestadora.telefone }, { onConflict: 'telefone', ignoreDuplicates: true })
+    if (telefoneError) {
+      console.error('[delete-account] falha ao registrar telefone usado no trial', telefoneError)
+    }
   }
 
   // Cancela a assinatura na Stripe antes de excluir qualquer dado, para evitar

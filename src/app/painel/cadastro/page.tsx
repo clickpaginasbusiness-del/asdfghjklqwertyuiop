@@ -152,6 +152,12 @@ export default function CadastroPage() {
         return
       }
 
+      if (json.semTrial) {
+        toast.error('Você já utilizou o período gratuito anteriormente. Escolha um plano para continuar.')
+        window.location.href = '/planos'
+        return
+      }
+
       toast.success('Conta criada! Bem-vinda ao BelleBook 🎉')
       const planIntent = new URLSearchParams(window.location.search).get('plano')
       window.location.href = planIntent === 'pro' ? '/planos?auto=pro' : '/painel'

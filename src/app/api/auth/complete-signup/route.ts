@@ -83,7 +83,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: msg }, { status: 400 })
   }
 
-  // Create prestadora with 30-day free trial
+  // Bloqueia reaproveitamento do trial gratuito por números que já usaram
+  // antes (mesmo que a conta anterior tenha sido deletada).
+  const { data: telefoneJaUsado } = await supabaseAdmin
+    .from('telefones_usados_trial')
+    .select('id')
+    .eq('telefone', telefoneLimpo)
+    .maybeSingle()
+
+  const semTrial = Boolean(telefoneJaUsado)
+
+  // Create prestadora — com trial de 30 dias, exceto se o telefone já usou antes
   const trialFim = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
 
   const { error: insertError } = await supabaseAdmin.from('prestadoras').insert({
@@ -93,9 +103,9 @@ export async function POST(request: NextRequest) {
     slug: slugLimpo,
     telefone: telefoneLimpo,
     plano: 'basico',
-    assinatura_ativa: true,
-    trial_fim: trialFim,
-    e_trial: true,
+    assinatura_ativa: !semTrial,
+    trial_fim: semTrial ? null : trialFim,
+    e_trial: !semTrial,
   })
 
   if (insertError) {
@@ -105,5 +115,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: mensagem }, { status: 400 })
   }
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, semTrial })
 }
