@@ -5,7 +5,9 @@ import Link from 'next/link'
 import {
   Calendar, Globe, Users, Bell, Clock, MessageCircle,
   Check, Star, Zap, Sparkles, ArrowRight, ChevronRight,
-  Phone, Mail, Home, Scissors, User, CreditCard,
+  Phone, Mail, Scissors, CreditCard, LayoutDashboard, ImageIcon,
+  BarChart3, UserCircle2, UserCircle, Headset, CheckCheck,
+  DollarSign, Smartphone, Camera,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Lenis from 'lenis'
@@ -52,15 +54,17 @@ const FEATURES = [
 ]
 
 const SIDEBAR_ITEMS = [
-  { icon: Home,        label: 'Painel',          active: true },
-  { icon: Calendar,    label: 'Agendamentos',     active: false },
-  { icon: Scissors,    label: 'Serviços',         active: false },
-  { icon: Star,        label: 'Galeria',          active: false },
-  { icon: Clock,       label: 'Horários',         active: false },
-  { icon: Users,       label: 'Clientes',         active: false },
-  { icon: Globe,       label: 'Profissionais',    active: false },
-  { icon: User,        label: 'Meu Perfil',       active: false },
-  { icon: CreditCard,  label: 'Assinatura',       active: false },
+  { icon: LayoutDashboard, label: 'Painel',        active: true },
+  { icon: Calendar,        label: 'Agendamentos',  active: false },
+  { icon: Scissors,        label: 'Serviços',      active: false },
+  { icon: ImageIcon,       label: 'Galeria',       active: false },
+  { icon: Clock,           label: 'Horários',      active: false },
+  { icon: Users,           label: 'Clientes',      active: false },
+  { icon: BarChart3,       label: 'Relatórios',    active: false },
+  { icon: UserCircle2,     label: 'Profissionais', active: false },
+  { icon: UserCircle,      label: 'Meu Perfil',    active: false },
+  { icon: CreditCard,      label: 'Assinatura',    active: false },
+  { icon: Headset,         label: 'Suporte',       active: false },
 ]
 
 const MOCKUP_METRICS = [
@@ -76,12 +80,12 @@ const MOCKUP_APPOINTMENTS = [
 ]
 
 const DASHBOARD_FEATURES = [
-  { emoji: '📅', title: 'Agenda inteligente',       desc: 'Veja todos os agendamentos do dia em um único lugar' },
-  { emoji: '💰', title: 'Receita em tempo real',    desc: 'Acompanhe seus ganhos hoje, semana, mês ou ano' },
-  { emoji: '👩', title: 'Múltiplas profissionais',  desc: 'Cada profissional com agenda e disponibilidade independentes' },
-  { emoji: '🔔', title: 'Notificações instantâneas', desc: 'Saiba na hora quando alguém agendar ou cancelar' },
-  { emoji: '📱', title: 'WhatsApp integrado',        desc: 'Fale com a cliente direto pelo WhatsApp com um clique' },
-  { emoji: '📸', title: 'Galeria de trabalhos',      desc: 'Mostre seus melhores trabalhos na sua página pública' },
+  { icon: Calendar,   title: 'Agenda inteligente',        desc: 'Veja todos os agendamentos do dia em um único lugar' },
+  { icon: DollarSign, title: 'Receita em tempo real',     desc: 'Acompanhe seus ganhos hoje, semana, mês ou ano' },
+  { icon: Users,      title: 'Múltiplas profissionais',   desc: 'Cada profissional com agenda e disponibilidade independentes' },
+  { icon: Bell,       title: 'Notificações instantâneas', desc: 'Saiba na hora quando alguém agendar ou cancelar' },
+  { icon: Smartphone, title: 'WhatsApp integrado',        desc: 'Fale com a cliente direto pelo WhatsApp com um clique' },
+  { icon: Camera,     title: 'Galeria de trabalhos',      desc: 'Mostre seus melhores trabalhos na sua página pública' },
 ]
 
 const TESTIMONIALS = [
@@ -324,7 +328,7 @@ export default function LandingPage() {
             data-animate="fade"
             className="inline-flex items-center gap-2 bg-rose-50 border border-rose-100 text-rose-500 px-4 py-1.5 rounded-full text-sm font-medium mb-10"
           >
-            <span>💅</span>
+            <Sparkles className="w-4 h-4" />
             <span>A plataforma para profissionais de beleza</span>
           </div>
 
@@ -532,7 +536,7 @@ export default function LandingPage() {
                     <div className="flex items-center justify-between mb-5">
                       <div>
                         <p className="text-[10px] text-gray-400">Boa tarde</p>
-                        <p className="text-sm font-semibold text-gray-900">Olá, Ana 👋</p>
+                        <p className="text-sm font-semibold text-gray-900">Olá, Ana</p>
                       </div>
                       <div className="relative w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center shrink-0">
                         <Bell className="w-3.5 h-3.5 text-rose-400" />
@@ -576,6 +580,9 @@ export default function LandingPage() {
                               <MessageCircle className="w-2 h-2" />
                               <span>WA</span>
                             </div>
+                            <div className="flex items-center justify-center w-4 h-4 bg-emerald-50 border border-emerald-100 text-emerald-600 rounded-full">
+                              <CheckCheck className="w-2 h-2" />
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -594,8 +601,8 @@ export default function LandingPage() {
                   data-delay={String(i * 100)}
                   className="flex items-start gap-4"
                 >
-                  <div className="w-11 h-11 shrink-0 bg-white rounded-2xl flex items-center justify-center text-xl shadow-sm border border-gray-100">
-                    {f.emoji}
+                  <div className="w-11 h-11 shrink-0 bg-rose-50 rounded-2xl flex items-center justify-center shadow-sm border border-gray-100">
+                    <f.icon className="w-5 h-5 text-rose-400" />
                   </div>
                   <div className="pt-1">
                     <p className="font-semibold text-gray-900">{f.title}</p>
