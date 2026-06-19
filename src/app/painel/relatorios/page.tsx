@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import RelatoriosClient, { type Ag } from './RelatoriosClient'
+import RelatoriosClient, { type Ag, type AvaliacaoRel } from './RelatoriosClient'
 
 export default async function RelatoriosPage() {
   const supabase = await createClient()
@@ -24,6 +24,7 @@ export default async function RelatoriosPage() {
         agendamentos={[]}
         profissionais={[]}
         visitas={[]}
+        avaliacoes={[]}
         horaAbertura="09:00"
         horaFechamento="18:00"
       />
@@ -34,6 +35,7 @@ export default async function RelatoriosPage() {
     { data: agendamentos },
     { data: profissionais },
     { data: visitas },
+    { data: avaliacoes },
   ] = await Promise.all([
     supabase
       .from('agendamentos')
@@ -48,6 +50,11 @@ export default async function RelatoriosPage() {
       .from('visitas_pagina')
       .select('id, created_at')
       .eq('prestadora_id', prestadora.id),
+    supabase
+      .from('avaliacoes')
+      .select('id, nota, comentario, created_at, agendamentos(clientes(nome), servicos(nome))')
+      .eq('prestadora_id', prestadora.id)
+      .order('created_at', { ascending: false }),
   ])
 
   return (
@@ -56,6 +63,7 @@ export default async function RelatoriosPage() {
       agendamentos={(agendamentos ?? []) as unknown as Ag[]}
       profissionais={profissionais ?? []}
       visitas={visitas ?? []}
+      avaliacoes={(avaliacoes ?? []) as unknown as AvaliacaoRel[]}
       horaAbertura={prestadora.hora_abertura}
       horaFechamento={prestadora.hora_fechamento}
     />

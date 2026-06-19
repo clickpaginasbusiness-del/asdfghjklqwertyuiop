@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { formatCurrency, cn } from '@/lib/utils'
 import {
-  Lock, DollarSign, Percent, UserPlus, TrendingUp, Eye,
+  Lock, DollarSign, Percent, UserPlus, TrendingUp, Eye, Star, MessageSquareQuote,
 } from 'lucide-react'
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
@@ -32,16 +32,26 @@ export type Ag = {
 type ProfissionalLite = { id: string; nome: string }
 type VisitaLite = { id: string; created_at: string }
 
+export type AvaliacaoRel = {
+  id: string
+  nota: number
+  comentario: string | null
+  created_at: string
+  agendamentos: { clientes: { nome: string } | null; servicos: { nome: string } | null } | null
+}
+
 interface Props {
   plano: 'basico' | 'pro'
   agendamentos: Ag[]
   profissionais: ProfissionalLite[]
   visitas: VisitaLite[]
+  avaliacoes: AvaliacaoRel[]
   horaAbertura: string
   horaFechamento: string
 }
 
 type QuickSel = 'hoje' | '7d' | '30d' | null
+type Aba = 'geral' | 'avaliacoes'
 
 const QUICK_BUTTONS: { value: Exclude<QuickSel, null>; label: string }[] = [
   { value: 'hoje', label: 'Hoje' },
@@ -59,9 +69,10 @@ function heatColor(value: number, max: number) {
 }
 
 export default function RelatoriosClient({
-  plano, agendamentos, profissionais, visitas, horaAbertura, horaFechamento,
+  plano, agendamentos, profissionais, visitas, avaliacoes, horaAbertura, horaFechamento,
 }: Props) {
   const todayStr = format(new Date(), 'yyyy-MM-dd')
+  const [aba, setAba] = useState<Aba>('geral')
   const [quickSel, setQuickSel] = useState<QuickSel>('30d')
   const [dataInicio, setDataInicio] = useState(format(subDays(new Date(), 29), 'yyyy-MM-dd'))
   const [dataFim, setDataFim] = useState(todayStr)
@@ -217,6 +228,25 @@ export default function RelatoriosClient({
   ]
   const temClientesNoPeriodo = clientesNoPeriodo.novos + clientesNoPeriodo.recorrentes > 0
 
+  /* ── Avaliações no período ── */
+  const avaliacoesNoPeriodo = useMemo(() => avaliacoes.filter((a) => {
+    const d = new Date(a.created_at)
+    return d >= start && d <= end
+  }), [avaliacoes, start, end])
+
+  const mediaEstrelas = avaliacoesNoPeriodo.length > 0
+    ? avaliacoesNoPeriodo.reduce((acc, a) => acc + a.nota, 0) / avaliacoesNoPeriodo.length
+    : 0
+
+  const distribuicaoNotas = useMemo(() => {
+    const dist = [5, 4, 3, 2, 1].map((nota) => ({
+      nota,
+      qtd: avaliacoesNoPeriodo.filter((a) => a.nota === nota).length,
+    }))
+    const max = Math.max(1, ...dist.map((d) => d.qtd))
+    return dist.map((d) => ({ ...d, pct: (d.qtd / max) * 100 }))
+  }, [avaliacoesNoPeriodo])
+
   if (plano === 'basico') {
     return (
       <div className="space-y-6">
@@ -286,6 +316,119 @@ export default function RelatoriosClient({
         </div>
       </div>
 
+      {/* Abas */}
+      <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1 w-fit">
+        <button
+          onClick={() => setAba('geral')}
+          className={cn(
+            'px-4 py-1.5 rounded-lg text-sm font-medium transition-all',
+            aba === 'geral' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          )}
+        >
+          Visão geral
+        </button>
+        <button
+          onClick={() => setAba('avaliacoes')}
+          className={cn(
+            'px-4 py-1.5 rounded-lg text-sm font-medium transition-all',
+            aba === 'avaliacoes' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          )}
+        >
+          Avaliações
+        </button>
+      </div>
+
+      {aba === 'avaliacoes' ? (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Card>
+              <CardContent className="p-6">
+                <div className="bg-amber-50 p-2.5 rounded-xl w-fit mb-4">
+                  <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
+                </div>
+                <p className="text-3xl font-bold text-gray-900">
+                  {avaliacoesNoPeriodo.length > 0 ? mediaEstrelas.toFixed(1) : '—'}
+                </p>
+                <p className="text-sm text-gray-500 mt-1">
+                  Média geral ({avaliacoesNoPeriodo.length} avaliaç{avaliacoesNoPeriodo.length === 1 ? 'ão' : 'ões'} — {periodoLabel.toLowerCase()})
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Distribuição de notas</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {avaliacoesNoPeriodo.length === 0 ? (
+                  <p className="text-sm text-gray-400 text-center py-6">Sem avaliações no período</p>
+                ) : (
+                  <div className="space-y-2">
+                    {distribuicaoNotas.map((d) => (
+                      <div key={d.nota} className="flex items-center gap-2 text-xs">
+                        <span className="flex items-center gap-0.5 w-10 shrink-0 text-gray-600 font-medium">
+                          {d.nota} <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                        </span>
+                        <div className="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-amber-400"
+                            style={{ width: `${d.pct}%` }}
+                          />
+                        </div>
+                        <span className="w-6 text-right text-gray-500 shrink-0">{d.qtd}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Avaliações recebidas</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {avaliacoesNoPeriodo.length === 0 ? (
+                <div className="text-center py-12 text-gray-400">
+                  <MessageSquareQuote className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">Nenhuma avaliação no período selecionado</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-50">
+                  {avaliacoesNoPeriodo.map((av) => (
+                    <div key={av.id} className="p-4">
+                      <div className="flex items-center justify-between gap-3 flex-wrap mb-1.5">
+                        <p className="font-medium text-gray-900 text-sm">
+                          {av.agendamentos?.clientes?.nome ?? 'Cliente'}
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-0.5">
+                            {Array.from({ length: 5 }, (_, i) => (
+                              <Star
+                                key={i}
+                                className={cn('w-3.5 h-3.5', i < av.nota ? 'fill-amber-400 text-amber-400' : 'text-gray-200')}
+                              />
+                            ))}
+                          </div>
+                          <span className="text-xs text-gray-400">{format(new Date(av.created_at), 'dd/MM/yyyy')}</span>
+                        </div>
+                      </div>
+                      {av.agendamentos?.servicos?.nome && (
+                        <p className="text-xs text-gray-400 mb-1">{av.agendamentos.servicos.nome}</p>
+                      )}
+                      {av.comentario && (
+                        <p className="text-sm text-gray-600 leading-relaxed">{av.comentario}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+      <>
       {/* Cards de resumo */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
@@ -492,6 +635,8 @@ export default function RelatoriosClient({
           </CardContent>
         </Card>
       </div>
+      </>
+      )}
     </div>
   )
 }

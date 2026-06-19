@@ -130,5 +130,6 @@ export type Avaliacao = {
   prestadora_id: string
   nota: number
   comentario: string | null
+  destaque: boolean
   created_at: string
 }

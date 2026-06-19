@@ -18,11 +18,27 @@ import type { Prestadora } from '@/lib/types'
 import { maskTelefone, cleanTelefone, slugify } from '@/lib/utils'
 import { TEMAS, type CorTema } from '@/lib/theme'
 import { TEMPLATE_VARS, MSG_CONFIRMACAO_DEFAULT, MSG_CANCELAMENTO_DEFAULT, MSG_LEMBRETE_DEFAULT } from '@/lib/whatsappTemplates'
+import { AvaliacoesDestaqueSection } from './AvaliacoesDestaqueSection'
 import toast from 'react-hot-toast'
 
 type SlugStatus = 'idle' | 'checking' | 'available' | 'taken'
 
-export default function PerfilPainelClient({ prestadora: initial }: { prestadora: Prestadora }) {
+export type AvaliacaoComCliente = {
+  id: string
+  nota: number
+  comentario: string | null
+  destaque: boolean
+  created_at: string
+  agendamentos: { clientes: { nome: string } | null; servicos: { nome: string } | null } | null
+}
+
+export default function PerfilPainelClient({
+  prestadora: initial,
+  avaliacoes,
+}: {
+  prestadora: Prestadora
+  avaliacoes: AvaliacaoComCliente[]
+}) {
   const [prestadora, setPrestadora] = useState(initial)
   const [nome, setNome] = useState(initial.nome)
   const [bio, setBio] = useState(initial.bio ?? '')
@@ -468,6 +484,9 @@ export default function PerfilPainelClient({ prestadora: initial }: { prestadora
           <Button onClick={salvarMensagens} loading={savingMsgs}>Salvar mensagens</Button>
         </CardContent>
       </Card>
+
+      {/* Avaliações em destaque (exclusivo Pro) */}
+      <AvaliacoesDestaqueSection ehPro={ehPro} avaliacoesIniciais={avaliacoes} />
 
       {/* Excluir conta */}
       <Card className="border-red-100">

@@ -41,6 +41,9 @@ export default async function PlanosPage({
 
   const cicloInicial = params.ciclo === 'anual' ? 'anual' : 'mensal'
   const eTrial = Boolean(prestadora?.e_trial && !prestadora?.stripe_subscription_id)
+  const trialExpirado = Boolean(
+    eTrial && prestadora?.trial_fim && new Date(prestadora.trial_fim) < new Date()
+  )
   const auto = params.auto === 'pro' || params.auto === 'basico' ? params.auto : undefined
 
   return (
@@ -49,6 +52,7 @@ export default async function PlanosPage({
       planoAtual={(prestadora?.plano as 'basico' | 'pro' | null) ?? null}
       cicloInicial={cicloInicial}
       eTrial={eTrial}
+      trialExpirado={trialExpirado}
       auto={auto}
     />
   )

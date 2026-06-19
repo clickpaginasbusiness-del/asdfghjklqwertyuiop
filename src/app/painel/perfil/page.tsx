@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import PerfilPainelClient from './PerfilPainelClient'
+import PerfilPainelClient, { type AvaliacaoComCliente } from './PerfilPainelClient'
 
 export default async function PerfilPainelPage() {
   const supabase = await createClient()
@@ -15,5 +15,16 @@ export default async function PerfilPainelPage() {
 
   if (!prestadora) redirect('/painel/login')
 
-  return <PerfilPainelClient prestadora={prestadora} />
+  const { data: avaliacoes } = await supabase
+    .from('avaliacoes')
+    .select('id, nota, comentario, destaque, created_at, agendamentos(clientes(nome), servicos(nome))')
+    .eq('prestadora_id', prestadora.id)
+    .order('created_at', { ascending: false })
+
+  return (
+    <PerfilPainelClient
+      prestadora={prestadora}
+      avaliacoes={(avaliacoes ?? []) as unknown as AvaliacaoComCliente[]}
+    />
+  )
 }

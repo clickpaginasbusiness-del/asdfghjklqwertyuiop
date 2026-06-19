@@ -67,56 +67,58 @@ function AgendamentoItem({
   const amanha = startOfDay(addDays(new Date(), 1))
 
   return (
-    <div className="flex items-start sm:items-center gap-3 p-3 hover:bg-gray-50/80 rounded-xl transition-colors">
-      <div className="shrink-0 bg-rose-100 text-rose-700 text-xs font-bold px-2.5 py-1.5 rounded-lg whitespace-nowrap" suppressHydrationWarning>
-        {timeLabel}
-      </div>
+    <div className="flex flex-col sm:flex-row gap-3 p-3 hover:bg-gray-50/80 rounded-xl transition-colors">
+      <div className="flex items-start gap-3 min-w-0">
+        <div className="shrink-0 bg-rose-100 text-rose-700 text-xs font-bold px-2.5 py-1.5 rounded-lg whitespace-nowrap" suppressHydrationWarning>
+          {timeLabel}
+        </div>
 
-      <div className="flex-1 min-w-0">
-        <p className="font-medium text-gray-900 text-sm">{a.clientes?.nome}</p>
-        <p className="text-xs text-gray-500 truncate">
-          {a.servicos?.nome}
-          {a.servicos?.duracao_minutos && <span className="text-gray-400"> · {a.servicos.duracao_minutos} min</span>}
-          {a.profissionais && <span className="text-gray-400"> · {a.profissionais.nome}</span>}
-        </p>
+        <div className="flex-1 min-w-0">
+          <p className="font-medium text-gray-900 text-sm">{a.clientes?.nome}</p>
+          <p className="text-xs text-gray-500 truncate">
+            {a.servicos?.nome}
+            {a.servicos?.duracao_minutos && <span className="text-gray-400"> · {a.servicos.duracao_minutos} min</span>}
+            {a.profissionais && <span className="text-gray-400"> · {a.profissionais.nome}</span>}
+          </p>
 
-        {a.clientes?.telefone && (
-          <div className="relative mt-1 inline-block">
-            <button
-              onClick={(e) => { e.stopPropagation(); setWaOpenId(waOpenId === a.id ? null : a.id) }}
-              className="flex items-center gap-1 bg-green-50 hover:bg-green-100 border border-green-100 text-green-600 rounded-full px-2 py-0.5 text-xs font-medium transition-colors"
-            >
-              <MessageCircle className="w-3 h-3" />
-              WhatsApp
-            </button>
-            {waOpenId === a.id && (
-              <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-gray-100 rounded-xl shadow-xl p-1.5 space-y-0.5 w-52" onClick={(e) => e.stopPropagation()}>
-                <a href={buildWhatsappUrl(a.clientes!.telefone, renderTemplate(msgConfirmacao || MSG_CONFIRMACAO_DEFAULT, a, prestadoraNome))} target="_blank" rel="noopener noreferrer" onClick={() => setWaOpenId(null)} className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-green-50 rounded-lg transition-colors">
-                  ✅ Enviar confirmação
-                </a>
-                <a href={buildWhatsappUrl(a.clientes!.telefone, renderTemplate(msgCancelamento || MSG_CANCELAMENTO_DEFAULT, a, prestadoraNome))} target="_blank" rel="noopener noreferrer" onClick={() => setWaOpenId(null)} className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-red-50 rounded-lg transition-colors">
-                  ❌ Enviar cancelamento
-                </a>
-                {a.status === 'confirmado' && new Date(a.data_hora) >= amanha && (
-                  <a href={buildWhatsappUrl(a.clientes!.telefone, renderTemplate(msgLembrete || MSG_LEMBRETE_DEFAULT, a, prestadoraNome))} target="_blank" rel="noopener noreferrer" onClick={() => setWaOpenId(null)} className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-amber-50 rounded-lg transition-colors">
-                    🔔 Enviar lembrete
+          {a.clientes?.telefone && (
+            <div className="relative mt-1.5 inline-block">
+              <button
+                onClick={(e) => { e.stopPropagation(); setWaOpenId(waOpenId === a.id ? null : a.id) }}
+                className="flex items-center gap-1 bg-green-50 hover:bg-green-100 border border-green-100 text-green-600 rounded-full px-2.5 min-h-11 text-xs font-medium transition-colors"
+              >
+                <MessageCircle className="w-3 h-3" />
+                WhatsApp
+              </button>
+              {waOpenId === a.id && (
+                <div className="absolute left-0 bottom-full mb-1 z-20 bg-white border border-gray-100 rounded-xl shadow-xl p-1.5 space-y-0.5 w-52" onClick={(e) => e.stopPropagation()}>
+                  <a href={buildWhatsappUrl(a.clientes!.telefone, renderTemplate(msgConfirmacao || MSG_CONFIRMACAO_DEFAULT, a, prestadoraNome))} target="_blank" rel="noopener noreferrer" onClick={() => setWaOpenId(null)} className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-green-50 rounded-lg transition-colors">
+                    ✅ Enviar confirmação
                   </a>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+                  <a href={buildWhatsappUrl(a.clientes!.telefone, renderTemplate(msgCancelamento || MSG_CANCELAMENTO_DEFAULT, a, prestadoraNome))} target="_blank" rel="noopener noreferrer" onClick={() => setWaOpenId(null)} className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-red-50 rounded-lg transition-colors">
+                    ❌ Enviar cancelamento
+                  </a>
+                  {a.status === 'confirmado' && new Date(a.data_hora) >= amanha && (
+                    <a href={buildWhatsappUrl(a.clientes!.telefone, renderTemplate(msgLembrete || MSG_LEMBRETE_DEFAULT, a, prestadoraNome))} target="_blank" rel="noopener noreferrer" onClick={() => setWaOpenId(null)} className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-amber-50 rounded-lg transition-colors">
+                      🔔 Enviar lembrete
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="shrink-0 flex flex-col items-end gap-1">
+      <div className="flex items-center justify-between sm:shrink-0 sm:flex-col sm:items-end sm:justify-start gap-1 sm:ml-auto pt-2 mt-1 border-t border-gray-100 sm:pt-0 sm:mt-0 sm:border-0">
         <p className="text-sm font-semibold text-gray-800">{formatCurrency(a.servicos?.preco ?? 0)}</p>
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-wrap justify-end">
           <button
             onClick={() => passou && !concluindoId && concluir(a.id)}
             disabled={!passou || concluindoId === a.id}
             title={!passou ? 'Disponível após o horário do atendimento' : 'Marcar como concluído'}
             className={cn(
-              'flex items-center gap-1 text-xs rounded-lg px-2.5 py-2 font-medium transition-all border min-h-9',
+              'flex items-center gap-1 text-xs rounded-lg px-2.5 font-medium transition-all border min-h-11',
               passou
                 ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 cursor-pointer'
                 : 'bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed'
@@ -125,7 +127,7 @@ function AgendamentoItem({
             <CheckCheck className="w-3 h-3" />
             {concluindoId === a.id ? '...' : 'Concluído'}
           </button>
-          <button onClick={() => setConfirmModalId(a.id)} className="text-xs text-red-400 hover:text-red-500 transition-colors px-2 py-2 min-h-9">
+          <button onClick={() => setConfirmModalId(a.id)} className="text-xs text-red-400 hover:text-red-500 transition-colors px-2.5 min-h-11">
             Cancelar
           </button>
         </div>

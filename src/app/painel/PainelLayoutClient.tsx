@@ -186,7 +186,7 @@ export default function PainelLayoutClient({
       </aside>
 
       {/* Main */}
-      <div className="flex-1 lg:ml-64 flex flex-col">
+      <div className="flex-1 lg:ml-64 flex flex-col min-w-0">
         {/* Topbar */}
         <header className="bg-white border-b border-gray-100 px-4 lg:px-8 py-4 flex items-center justify-between sticky top-0 z-20">
           <button

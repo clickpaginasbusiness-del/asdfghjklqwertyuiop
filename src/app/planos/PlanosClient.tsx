@@ -55,12 +55,14 @@ export default function PlanosClient({
   planoAtual,
   cicloInicial = 'mensal',
   eTrial = false,
+  trialExpirado = false,
   auto,
 }: {
   isLoggedIn: boolean
   planoAtual: 'basico' | 'pro' | null
   cicloInicial?: Ciclo
   eTrial?: boolean
+  trialExpirado?: boolean
   auto?: 'basico' | 'pro'
 }) {
   const [ciclo, setCiclo] = useState<Ciclo>(cicloInicial)
@@ -153,7 +155,14 @@ export default function PlanosClient({
         </p>
 
         {/* Banner para usuários em trial */}
-        {eTrial && (
+        {trialExpirado ? (
+          <div className="mb-6 inline-flex items-start gap-3 bg-red-50 border border-red-200 rounded-2xl px-5 py-4 text-left max-w-lg">
+            <div className="w-2 h-2 rounded-full bg-red-400 mt-1.5 shrink-0" />
+            <p className="text-sm text-red-800">
+              Seu <strong>período de teste gratuito de 30 dias terminou</strong>. Escolha um plano abaixo para continuar usando o BelleBook sem interrupções.
+            </p>
+          </div>
+        ) : eTrial && (
           <div className="mb-6 inline-flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 text-left max-w-lg">
             <div className="w-2 h-2 rounded-full bg-amber-400 mt-1.5 shrink-0" />
             <p className="text-sm text-amber-800">

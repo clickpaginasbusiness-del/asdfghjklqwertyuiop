@@ -433,6 +433,11 @@ export default function PerfilPublicoClient({
     ? avaliacoes.reduce((acc, a) => acc + a.nota, 0) / avaliacoes.length
     : null
 
+  const avaliacoesDestaque = avaliacoes.filter((a) => a.destaque)
+  const avaliacoesExibidas = avaliacoesDestaque.length > 0
+    ? avaliacoesDestaque.slice(0, 3)
+    : avaliacoes.slice(0, 6)
+
   async function compartilharAgendamento() {
     if (!agendamentoFeito) return
     const texto = `Acabei de agendar ${agendamentoFeito.servicos?.nome} com ${prestadora.nome}! Agenda você também:`
@@ -633,7 +638,7 @@ export default function PerfilPublicoClient({
           <section data-animate>
             <h2 className="font-serif text-xl font-semibold text-gray-900 mb-4">O que dizem sobre mim</h2>
             <div className="space-y-3">
-              {avaliacoes.slice(0, 6).map((av) => (
+              {avaliacoesExibidas.map((av) => (
                 <div key={av.id} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-0.5">
