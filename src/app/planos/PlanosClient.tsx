@@ -145,13 +145,13 @@ export default function PlanosClient({
       <div className="text-center px-4 pt-8 pb-10 max-w-2xl mx-auto">
         <div className="inline-flex items-center gap-2 bg-rose-100 text-rose-600 text-xs font-semibold px-3 py-1.5 rounded-full mb-6">
           <Sparkles className="w-3.5 h-3.5" />
-          30 dias grátis · Sem cobrar agora
+          {trialExpirado ? 'Planos simples e diretos' : '30 dias grátis · Sem cobrar agora'}
         </div>
         <h1 className="font-serif text-4xl sm:text-5xl font-bold text-gray-900 mb-4 leading-tight">
           Escolha seu plano e<br className="hidden sm:block" /> comece a crescer
         </h1>
         <p className="text-gray-500 text-lg mb-6">
-          Teste grátis por 30 dias. Cancele quando quiser.
+          {trialExpirado ? 'Cancele quando quiser.' : 'Teste grátis por 30 dias. Cancele quando quiser.'}
         </p>
 
         {/* Banner para usuários em trial */}
@@ -231,7 +231,9 @@ export default function PlanosClient({
                     )}
                     <span className="text-gray-400 text-sm">/mês</span>
                   </div>
-                  <p className="text-sm text-emerald-600 font-medium mt-1">30 dias grátis, depois {PRECOS.basico.mensal}/mês</p>
+                  <p className="text-sm text-emerald-600 font-medium mt-1">
+                    {trialExpirado ? `${PRECOS.basico.mensal}/mês, sem período grátis` : `30 dias grátis, depois ${PRECOS.basico.mensal}/mês`}
+                  </p>
                 </div>
               ) : (
                 <div>
@@ -246,7 +248,9 @@ export default function PlanosClient({
                     )}
                     <span className="text-gray-400 text-sm">/ano</span>
                   </div>
-                  <p className="text-sm text-emerald-600 font-medium mt-1">30 dias grátis, depois {PRECOS.basico.anual}/ano</p>
+                  <p className="text-sm text-emerald-600 font-medium mt-1">
+                    {trialExpirado ? `${PRECOS.basico.anual}/ano, sem período grátis` : `30 dias grátis, depois ${PRECOS.basico.anual}/ano`}
+                  </p>
                   <p className="text-xs text-gray-400 mt-0.5">{PRECOS.basico.mensal_equiv}/mês equivalente</p>
                 </div>
               )}
@@ -265,7 +269,7 @@ export default function PlanosClient({
               disabled={loading !== null}
               className="w-full py-3.5 rounded-2xl border-2 border-gray-200 text-gray-700 font-semibold text-sm hover:border-gray-300 hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading === 'basico' ? 'Aguarde...' : 'Começar grátis por 30 dias'}
+              {loading === 'basico' ? 'Aguarde...' : trialExpirado ? 'Assinar Básico' : 'Começar grátis por 30 dias'}
             </button>
           </div>
 
@@ -391,7 +395,9 @@ export default function PlanosClient({
 
         {/* Garantia */}
         <p className="text-center text-sm text-gray-400 mt-6">
-          30 dias grátis exclusivos do Plano Básico · Plano Pro cobra imediatamente · Cancele quando quiser
+          {trialExpirado
+            ? 'Plano Pro cobra imediatamente · Cancele quando quiser'
+            : '30 dias grátis exclusivos do Plano Básico · Plano Pro cobra imediatamente · Cancele quando quiser'}
         </p>
       </div>
     </div>

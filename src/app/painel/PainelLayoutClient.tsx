@@ -48,10 +48,7 @@ function DowngradeBanner({ prestadoraId }: { prestadoraId: string }) {
   )
 }
 
-function TrialBanner({ trialFim }: { trialFim: string }) {
-  const dias = Math.max(0, Math.ceil(
-    (new Date(trialFim).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-  ))
+function TrialBanner({ dias }: { dias: number }) {
   const urgente = dias <= 7
 
   return (
@@ -63,7 +60,7 @@ function TrialBanner({ trialFim }: { trialFim: string }) {
     )}>
       <div className="flex items-center gap-2 min-w-0">
         <AlertCircle className={cn('w-4 h-4 shrink-0', urgente ? 'text-amber-500' : 'text-rose-400')} />
-        <p className={cn('text-sm truncate', urgente ? 'text-amber-800' : 'text-rose-700')} suppressHydrationWarning>
+        <p className={cn('text-sm truncate', urgente ? 'text-amber-800' : 'text-rose-700')}>
           {dias === 0
             ? 'Seu trial gratuito encerra hoje! Assine para manter o acesso.'
             : `Seu trial gratuito encerra em ${dias} dia${dias > 1 ? 's' : ''}. Assine para continuar.`}
@@ -108,9 +105,11 @@ const navItems = [
 export default function PainelLayoutClient({
   children,
   prestadora,
+  trialDiasRestantes,
 }: {
   children: React.ReactNode
   prestadora: Prestadora
+  trialDiasRestantes: number | null
 }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -211,8 +210,8 @@ export default function PainelLayoutClient({
         )}
 
         {/* Trial banner */}
-        {prestadora.e_trial && !prestadora.stripe_subscription_id && prestadora.trial_fim && (
-          <TrialBanner trialFim={prestadora.trial_fim} />
+        {prestadora.e_trial && !prestadora.stripe_subscription_id && trialDiasRestantes !== null && (
+          <TrialBanner dias={trialDiasRestantes} />
         )}
 
         {/* Page content */}

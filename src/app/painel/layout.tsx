@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
+import { differenceInCalendarDays } from 'date-fns'
 import { createClient } from '@/lib/supabase/server'
 import PainelLayoutClient from './PainelLayoutClient'
 
@@ -37,5 +38,16 @@ export default async function PainelLayout({ children }: { children: React.React
   )
   if (!prestadora.assinatura_ativa || isExpiredTrial) redirect('/planos')
 
-  return <PainelLayoutClient prestadora={prestadora}>{children}</PainelLayoutClient>
+  // Calculado no servidor (não no relógio do cliente) para evitar inconsistências
+  // de fuso horário / clock drift. Usa diferença em dias de calendário, não horas
+  // cheias — assim "termina amanhã" sempre mostra "1 dia" independente da hora do dia.
+  const trialDiasRestantes = prestadora.trial_fim
+    ? Math.max(0, differenceInCalendarDays(new Date(prestadora.trial_fim), new Date()))
+    : null
+
+  return (
+    <PainelLayoutClient prestadora={prestadora} trialDiasRestantes={trialDiasRestantes}>
+      {children}
+    </PainelLayoutClient>
+  )
 }
