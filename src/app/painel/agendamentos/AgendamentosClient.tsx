@@ -349,8 +349,8 @@ export default function AgendamentosClient({
                         <span className="text-gray-400" suppressHydrationWarning> · {formatDateTime(a.data_hora)}</span>
                       </p>
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        {/* Telefone */}
-                        <div className="flex items-center gap-1 text-xs text-gray-400">
+                        {/* Telefone (oculto no mobile, WhatsApp pill já cobre o contato) */}
+                        <div className="hidden sm:flex items-center gap-1 text-xs text-gray-400">
                           <Phone className="w-3 h-3 shrink-0" />
                           <span>{a.clientes?.telefone ? maskTelefone(a.clientes.telefone) : '—'}</span>
                         </div>
@@ -419,7 +419,7 @@ export default function AgendamentosClient({
                             disabled={!passou || concluindoId === a.id}
                             title={!passou ? 'Disponível após o horário do atendimento' : 'Marcar como concluído'}
                             className={cn(
-                              'flex items-center gap-1 text-xs rounded-lg px-2 py-1 font-medium transition-all border',
+                              'flex items-center gap-1 text-xs rounded-lg px-2.5 py-2 font-medium transition-all border min-h-9',
                               passou
                                 ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 cursor-pointer'
                                 : 'bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed'
@@ -431,7 +431,7 @@ export default function AgendamentosClient({
                           {/* Cancelar */}
                           <button
                             onClick={() => setConfirmModalId(a.id)}
-                            className="text-xs text-red-400 hover:text-red-500 transition-colors"
+                            className="text-xs text-red-400 hover:text-red-500 transition-colors px-2 py-2 min-h-9"
                           >
                             Cancelar
                           </button>
@@ -442,7 +442,7 @@ export default function AgendamentosClient({
                       {a.status === 'concluido' && a.clientes?.telefone && (
                         <button
                           onClick={() => window.open(buildWhatsappUrl(a.clientes!.telefone, buildMsgAvaliacao(a, prestadoraNome)), '_blank')}
-                          className="flex items-center gap-1 text-xs rounded-lg px-2 py-1 font-medium transition-all border bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
+                          className="flex items-center gap-1 text-xs rounded-lg px-2.5 py-2 font-medium transition-all border bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 min-h-9"
                         >
                           <Star className="w-3 h-3" />
                           Pedir avaliação
@@ -453,7 +453,7 @@ export default function AgendamentosClient({
                       {a.status === 'cancelado' && (
                         <button
                           onClick={() => setDeleteModalId(a.id)}
-                          className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors"
+                          className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 transition-colors px-2 py-2 min-h-9"
                         >
                           <Trash2 className="w-3 h-3" />
                           Excluir

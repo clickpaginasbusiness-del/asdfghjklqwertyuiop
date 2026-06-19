@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { NotificacoesSino } from '@/components/painel/NotificacoesSino'
+import { OnboardingTour } from '@/components/painel/OnboardingTour'
 import { cn } from '@/lib/utils'
 import type { Prestadora } from '@/lib/types'
 
@@ -82,6 +83,13 @@ function TrialBanner({ trialFim }: { trialFim: string }) {
   )
 }
 
+const TOUR_NAV_KEYS: Record<string, string> = {
+  '/painel/servicos': 'tour-servicos',
+  '/painel/horarios': 'tour-horarios',
+  '/painel/perfil': 'tour-perfil',
+  '/painel/assinatura': 'tour-assinatura',
+}
+
 const navItems = [
   { href: '/painel', label: 'Painel', icon: LayoutDashboard },
   { href: '/painel/agendamentos', label: 'Agendamentos', icon: Calendar },
@@ -140,9 +148,10 @@ export default function PainelLayoutClient({
               <Link
                 key={item.href}
                 href={item.href}
+                data-tour={TOUR_NAV_KEYS[item.href]}
                 onClick={() => setSidebarOpen(false)}
                 className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
+                  'flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all min-h-11',
                   active
                     ? 'bg-rose-50 text-rose-600'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
@@ -159,14 +168,15 @@ export default function PainelLayoutClient({
           <a
             href={`/n/${prestadora.slug}`}
             target="_blank"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-500 hover:bg-gray-50 transition-all"
+            data-tour="tour-link-publico"
+            className="flex items-center gap-3 px-3 py-3 rounded-xl text-sm text-gray-500 hover:bg-gray-50 transition-all min-h-11"
           >
             <ExternalLink className="w-4 h-4" />
             Ver meu perfil
           </a>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-500 hover:bg-gray-50 w-full transition-all"
+            className="flex items-center gap-3 px-3 py-3 rounded-xl text-sm text-gray-500 hover:bg-gray-50 w-full transition-all min-h-11"
           >
             <LogOut className="w-4 h-4" />
             Sair
@@ -180,7 +190,8 @@ export default function PainelLayoutClient({
         <header className="bg-white border-b border-gray-100 px-4 lg:px-8 py-4 flex items-center justify-between sticky top-0 z-20">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="lg:hidden p-2 rounded-xl text-gray-500 hover:bg-gray-100"
+            aria-label={sidebarOpen ? 'Fechar menu' : 'Abrir menu'}
+            className="lg:hidden w-11 h-11 flex items-center justify-center rounded-xl text-gray-500 hover:bg-gray-100 -ml-1"
           >
             {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
@@ -208,6 +219,14 @@ export default function PainelLayoutClient({
           {children}
         </main>
       </div>
+
+      {pathname === '/painel' && (
+        <OnboardingTour
+          prestadoraId={prestadora.id}
+          onOpenSidebar={() => setSidebarOpen(true)}
+          onCloseSidebar={() => setSidebarOpen(false)}
+        />
+      )}
     </div>
   )
 }

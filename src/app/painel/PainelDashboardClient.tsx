@@ -116,7 +116,7 @@ function AgendamentoItem({
             disabled={!passou || concluindoId === a.id}
             title={!passou ? 'Disponível após o horário do atendimento' : 'Marcar como concluído'}
             className={cn(
-              'flex items-center gap-1 text-xs rounded-lg px-2 py-1 font-medium transition-all border',
+              'flex items-center gap-1 text-xs rounded-lg px-2.5 py-2 font-medium transition-all border min-h-9',
               passou
                 ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 cursor-pointer'
                 : 'bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed'
@@ -125,7 +125,7 @@ function AgendamentoItem({
             <CheckCheck className="w-3 h-3" />
             {concluindoId === a.id ? '...' : 'Concluído'}
           </button>
-          <button onClick={() => setConfirmModalId(a.id)} className="text-xs text-red-400 hover:text-red-500 transition-colors">
+          <button onClick={() => setConfirmModalId(a.id)} className="text-xs text-red-400 hover:text-red-500 transition-colors px-2 py-2 min-h-9">
             Cancelar
           </button>
         </div>

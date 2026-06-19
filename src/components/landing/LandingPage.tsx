@@ -186,7 +186,7 @@ function Navbar({
           <button
             onClick={() => setMobileOpen((o) => !o)}
             aria-label="Menu"
-            className="sm:hidden ml-1 p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors"
+            className="sm:hidden ml-1 w-11 h-11 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 transition-colors"
           >
             <span className="flex flex-col gap-[5px] w-4">
               <span className={cn('block h-px bg-gray-600 transition-all duration-200', mobileOpen && 'rotate-45 translate-y-[6px]')} />
@@ -487,8 +487,8 @@ export default function LandingPage() {
           {/* 60 / 40 split */}
           <div className="flex flex-col lg:flex-row items-center gap-10 lg:gap-16">
 
-            {/* ── Browser mockup (60%) ── */}
-            <div data-animate className="w-full lg:w-[60%] shrink-0">
+            {/* ── Browser mockup (60%, escondido no mobile — vira lista de features) ── */}
+            <div data-animate className="hidden lg:block w-full lg:w-[60%] shrink-0">
               <div className="rounded-2xl overflow-hidden border border-gray-200/60 shadow-[0_30px_80px_rgba(0,0,0,0.13),0_8px_24px_rgba(249,168,201,0.20)]">
 
                 {/* Chrome bar */}
@@ -592,8 +592,8 @@ export default function LandingPage() {
               </div>
             </div>
 
-            {/* ── Feature list (40%) ── */}
-            <div className="w-full lg:w-[40%] space-y-7">
+            {/* ── Feature list (40% no desktop, full width no mobile) ── */}
+            <div className="w-full lg:w-[40%] space-y-7 max-w-md mx-auto lg:max-w-none lg:mx-0">
               {DASHBOARD_FEATURES.map((f, i) => (
                 <div
                   key={f.title}

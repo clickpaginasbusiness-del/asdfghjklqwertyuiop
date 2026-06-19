@@ -117,20 +117,20 @@ export function NotificacoesSino({ prestadoraId }: Props) {
     <div ref={ref} className="relative">
       <button
         onClick={handleToggle}
-        className="relative p-2 rounded-xl text-gray-500 hover:bg-gray-100 transition-colors"
+        className="relative w-11 h-11 flex items-center justify-center rounded-xl text-gray-500 hover:bg-gray-100 transition-colors"
         aria-label="Notificações"
         suppressHydrationWarning
       >
         <Bell className="w-5 h-5" />
         {naoLidas > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 bg-rose-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center leading-none">
+          <span className="absolute top-1 right-1 bg-rose-500 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center leading-none">
             {naoLidas > 9 ? '9+' : naoLidas}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-12 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
+        <div className="absolute right-0 top-12 w-80 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <h3 className="font-semibold text-gray-900 text-sm">Notificações</h3>
             {notificacoes.length > 0 && (

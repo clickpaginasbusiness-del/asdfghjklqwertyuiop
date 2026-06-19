@@ -453,17 +453,18 @@ export default function PerfilPublicoClient({
 
         <div className="max-w-2xl mx-auto px-4 pt-8">
           {/* Top bar */}
-          <div className="flex items-center justify-between mb-10">
-            <span className="font-serif text-xl font-bold text-rose-400">BelleBook</span>
-            <div className="flex gap-2">
+          <div className="flex items-center justify-between gap-2 flex-wrap mb-10">
+            <span className="font-serif text-xl font-bold text-rose-400 shrink-0">BelleBook</span>
+            <div className="flex gap-2 flex-wrap">
               {clienteLogado && (
                 <Button variant="outline" size="sm" onClick={() => setMeusAgendamentosModal(true)}>
-                  Meus agendamentos
+                  <span className="hidden sm:inline">Meus agendamentos</span>
+                  <span className="sm:hidden">Agendamentos</span>
                 </Button>
               )}
               <button
                 onClick={() => setLoginModal(true)}
-                className="px-3 py-1.5 text-sm font-semibold rounded-xl bg-white border-2 hover:brightness-95 transition-all shadow-sm"
+                className="px-3 py-1.5 min-h-11 text-sm font-semibold rounded-xl bg-white border-2 hover:brightness-95 transition-all shadow-sm"
                 style={{ borderColor: tema.hex, color: tema.hexDark }}
               >
                 {clienteLogado ? clienteLogado.nome.split(' ')[0] : 'Entrar'}
@@ -590,7 +591,7 @@ export default function PerfilPublicoClient({
         {galeria.length > 0 && (
           <section data-animate>
             <h2 className="font-serif text-xl font-semibold text-gray-900 mb-4">Trabalhos</h2>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {galeria.slice(0, 9).map((item, i) => (
                 <div
                   key={item.id}
