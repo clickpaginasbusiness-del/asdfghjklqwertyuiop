@@ -2,30 +2,25 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
+import { addDays, startOfDay } from 'date-fns'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
-import { formatCurrency, formatDateTime, formatDateShort, maskTelefone, buildWhatsappUrl } from '@/lib/utils'
-import { Calendar, Phone, Search, MessageCircle, ArrowDownAZ, ArrowUpAZ, Clock4, CheckCheck, Trash2 } from 'lucide-react'
+import { formatCurrency, formatDateTime, maskTelefone, buildWhatsappUrl, formatDateShort } from '@/lib/utils'
+import { Calendar, Phone, Search, MessageCircle, ArrowDownAZ, ArrowUpAZ, Clock4, CheckCheck, Trash2, Star } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import type { Agendamento, Profissional } from '@/lib/types'
+import { renderTemplate, MSG_CONFIRMACAO_DEFAULT, MSG_CANCELAMENTO_DEFAULT, MSG_LEMBRETE_DEFAULT } from '@/lib/whatsappTemplates'
 import toast from 'react-hot-toast'
 
 type FiltroStatus = 'todos' | 'confirmado' | 'concluido' | 'cancelado'
 type Ordenacao = 'recente' | 'antigo' | 'proximo'
 
-function buildMsgConfirmar(a: Agendamento): string {
-  const prof = a.profissionais?.nome ? ` com ${a.profissionais.nome}` : ''
-  const dt = formatDateShort(a.data_hora)
-  return `Olá ${a.clientes?.nome}! Confirmando seu agendamento de ${a.servicos?.nome}${prof} no dia ${dt}. Te esperamos! 💅 - BelleBook`
-}
-
-function buildMsgCancelar(a: Agendamento): string {
-  const dt = formatDateShort(a.data_hora)
-  return `Olá ${a.clientes?.nome}, infelizmente precisamos cancelar seu agendamento de ${a.servicos?.nome} no dia ${dt}. Entre em contato para remarcar. - BelleBook`
+function buildMsgAvaliacao(a: Agendamento, prestadoraNome: string): string {
+  return `Olá ${a.clientes?.nome}! Esperamos que tenha amado seu ${a.servicos?.nome}. Poderia deixar uma avaliação sobre o atendimento? 🌟 ${window.location.origin}/avaliar/${a.id} - ${prestadoraNome}`
 }
 
 const FILTROS_STATUS: { value: FiltroStatus; label: string }[] = [
@@ -66,11 +61,20 @@ export default function AgendamentosClient({
   agendamentos: initialAgendamentos,
   profissionais,
   prestadoraId,
+  prestadoraNome,
+  msgConfirmacao,
+  msgCancelamento,
+  msgLembrete,
 }: {
   agendamentos: Agendamento[]
   profissionais: Profissional[]
   prestadoraId: string
+  prestadoraNome: string
+  msgConfirmacao: string | null
+  msgCancelamento: string | null
+  msgLembrete: string | null
 }) {
+  const amanha = startOfDay(addDays(new Date(), 1))
   const [agendamentos, setAgendamentos] = useState(initialAgendamentos)
   const [busca, setBusca] = useState('')
   const [filtroStatus, setFiltroStatus] = useState<FiltroStatus>('todos')
@@ -367,7 +371,7 @@ export default function AgendamentosClient({
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <a
-                                  href={buildWhatsappUrl(a.clientes!.telefone, buildMsgConfirmar(a))}
+                                  href={buildWhatsappUrl(a.clientes!.telefone, renderTemplate(msgConfirmacao || MSG_CONFIRMACAO_DEFAULT, a, prestadoraNome))}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   onClick={() => setWaOpenId(null)}
@@ -376,7 +380,7 @@ export default function AgendamentosClient({
                                   ✅ Enviar confirmação
                                 </a>
                                 <a
-                                  href={buildWhatsappUrl(a.clientes!.telefone, buildMsgCancelar(a))}
+                                  href={buildWhatsappUrl(a.clientes!.telefone, renderTemplate(msgCancelamento || MSG_CANCELAMENTO_DEFAULT, a, prestadoraNome))}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   onClick={() => setWaOpenId(null)}
@@ -384,6 +388,17 @@ export default function AgendamentosClient({
                                 >
                                   ❌ Enviar cancelamento
                                 </a>
+                                {a.status === 'confirmado' && new Date(a.data_hora) >= amanha && (
+                                  <a
+                                    href={buildWhatsappUrl(a.clientes!.telefone, renderTemplate(msgLembrete || MSG_LEMBRETE_DEFAULT, a, prestadoraNome))}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={() => setWaOpenId(null)}
+                                    className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-amber-50 rounded-lg transition-colors"
+                                  >
+                                    🔔 Enviar lembrete
+                                  </a>
+                                )}
                               </div>
                             )}
                           </div>
@@ -421,6 +436,17 @@ export default function AgendamentosClient({
                             Cancelar
                           </button>
                         </div>
+                      )}
+
+                      {/* Ação para concluídos */}
+                      {a.status === 'concluido' && a.clientes?.telefone && (
+                        <button
+                          onClick={() => window.open(buildWhatsappUrl(a.clientes!.telefone, buildMsgAvaliacao(a, prestadoraNome)), '_blank')}
+                          className="flex items-center gap-1 text-xs rounded-lg px-2 py-1 font-medium transition-all border bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
+                        >
+                          <Star className="w-3 h-3" />
+                          Pedir avaliação
+                        </button>
                       )}
 
                       {/* Ação para cancelados */}

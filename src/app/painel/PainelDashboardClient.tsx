@@ -14,6 +14,7 @@ import {
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import toast from 'react-hot-toast'
+import { renderTemplate, MSG_CONFIRMACAO_DEFAULT, MSG_CANCELAMENTO_DEFAULT, MSG_LEMBRETE_DEFAULT } from '@/lib/whatsappTemplates'
 
 /* ── Types ── */
 type QuickSel = 'hoje' | '7d' | '30d' | null
@@ -33,6 +34,9 @@ interface Props {
   horarioFechamento: string
   prestadoraId: string
   nomeUsuario: string
+  msgConfirmacao: string | null
+  msgCancelamento: string | null
+  msgLembrete: string | null
 }
 
 /* ── Constants ── */
@@ -42,32 +46,25 @@ const QUICK_BUTTONS: { value: Exclude<QuickSel, null>; label: string }[] = [
   { value: '30d',  label: '30 dias' },
 ]
 
-function buildMsgConfirmar(a: Ag): string {
-  const prof = a.profissionais?.nome ? ` com ${a.profissionais.nome}` : ''
-  const dt = formatDateShort(a.data_hora)
-  return `Olá ${a.clientes?.nome}! Confirmando seu agendamento de ${a.servicos?.nome}${prof} no dia ${dt}. Te esperamos! 💅 - BelleBook`
-}
-
-function buildMsgCancelar(a: Ag): string {
-  const dt = formatDateShort(a.data_hora)
-  return `Olá ${a.clientes?.nome}, infelizmente precisamos cancelar seu agendamento de ${a.servicos?.nome} no dia ${dt}. Entre em contato para remarcar. - BelleBook`
-}
-
 function formatHorario(h: string) { return h.slice(0, 5) }
 
 /* ── Appointment item ── */
 function AgendamentoItem({
   a, showDate, waOpenId, setWaOpenId, concluindoId, concluir, setConfirmModalId,
+  prestadoraNome, msgConfirmacao, msgCancelamento, msgLembrete,
 }: {
   a: Ag; showDate: boolean
   waOpenId: string | null; setWaOpenId: (id: string | null) => void
   concluindoId: string | null; concluir: (id: string) => void
   setConfirmModalId: (id: string) => void
+  prestadoraNome: string
+  msgConfirmacao: string | null; msgCancelamento: string | null; msgLembrete: string | null
 }) {
   const passou = new Date(a.data_hora) < new Date()
   const timeLabel = showDate
     ? format(new Date(a.data_hora), 'dd/MM HH:mm')
     : format(new Date(a.data_hora), 'HH:mm')
+  const amanha = startOfDay(addDays(new Date(), 1))
 
   return (
     <div className="flex items-start sm:items-center gap-3 p-3 hover:bg-gray-50/80 rounded-xl transition-colors">
@@ -94,12 +91,17 @@ function AgendamentoItem({
             </button>
             {waOpenId === a.id && (
               <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-gray-100 rounded-xl shadow-xl p-1.5 space-y-0.5 w-52" onClick={(e) => e.stopPropagation()}>
-                <a href={buildWhatsappUrl(a.clientes!.telefone, buildMsgConfirmar(a))} target="_blank" rel="noopener noreferrer" onClick={() => setWaOpenId(null)} className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-green-50 rounded-lg transition-colors">
+                <a href={buildWhatsappUrl(a.clientes!.telefone, renderTemplate(msgConfirmacao || MSG_CONFIRMACAO_DEFAULT, a, prestadoraNome))} target="_blank" rel="noopener noreferrer" onClick={() => setWaOpenId(null)} className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-green-50 rounded-lg transition-colors">
                   ✅ Enviar confirmação
                 </a>
-                <a href={buildWhatsappUrl(a.clientes!.telefone, buildMsgCancelar(a))} target="_blank" rel="noopener noreferrer" onClick={() => setWaOpenId(null)} className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-red-50 rounded-lg transition-colors">
+                <a href={buildWhatsappUrl(a.clientes!.telefone, renderTemplate(msgCancelamento || MSG_CANCELAMENTO_DEFAULT, a, prestadoraNome))} target="_blank" rel="noopener noreferrer" onClick={() => setWaOpenId(null)} className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-red-50 rounded-lg transition-colors">
                   ❌ Enviar cancelamento
                 </a>
+                {a.status === 'confirmado' && new Date(a.data_hora) >= amanha && (
+                  <a href={buildWhatsappUrl(a.clientes!.telefone, renderTemplate(msgLembrete || MSG_LEMBRETE_DEFAULT, a, prestadoraNome))} target="_blank" rel="noopener noreferrer" onClick={() => setWaOpenId(null)} className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-amber-50 rounded-lg transition-colors">
+                    🔔 Enviar lembrete
+                  </a>
+                )}
               </div>
             )}
           </div>
@@ -138,6 +140,10 @@ export default function PainelDashboardClient({
   horarioAbertura,
   horarioFechamento,
   prestadoraId,
+  nomeUsuario,
+  msgConfirmacao,
+  msgCancelamento,
+  msgLembrete,
 }: Props) {
   const todayStr = format(new Date(), 'yyyy-MM-dd')
 
@@ -351,7 +357,10 @@ export default function PainelDashboardClient({
     setConcluindoId(null)
   }
 
-  const itemProps = { waOpenId, setWaOpenId, concluindoId, concluir, setConfirmModalId }
+  const itemProps = {
+    waOpenId, setWaOpenId, concluindoId, concluir, setConfirmModalId,
+    prestadoraNome: nomeUsuario, msgConfirmacao, msgCancelamento, msgLembrete,
+  }
 
   /* ── Agenda do período — label do card ── */
   const agendaPeriodoLabel = quickSel === '7d' ? 'Agenda — últimos 7 dias'

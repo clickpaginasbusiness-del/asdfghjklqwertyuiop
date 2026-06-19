@@ -35,6 +35,9 @@ export default async function PainelPage() {
       horarioFechamento={prestadora.hora_fechamento}
       prestadoraId={prestadora.id}
       nomeUsuario={prestadora.nome}
+      msgConfirmacao={prestadora.mensagem_confirmacao}
+      msgCancelamento={prestadora.mensagem_cancelamento}
+      msgLembrete={prestadora.mensagem_lembrete}
     />
   )
 }

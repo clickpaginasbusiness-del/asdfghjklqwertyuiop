@@ -12,6 +12,7 @@ const TABELAS_VINCULADAS = [
   'notificacoes',
   'dias_bloqueados',
   'visitas_pagina',
+  'avaliacoes',
   'agendamentos',
   'galeria',
   'profissionais',

@@ -14,8 +14,9 @@ import {
 import {
   Clock, CheckCircle2, Calendar, ChevronLeft, ChevronRight, X,
   UserCircle2, MessageCircle, AtSign, MapPin, Star, Scissors,
+  CalendarPlus, Share2, Quote,
 } from 'lucide-react'
-import type { Prestadora, Servico, GaleriaItem, Agendamento, Profissional, HorarioFuncionamento } from '@/lib/types'
+import type { Prestadora, Servico, GaleriaItem, Agendamento, Profissional, HorarioFuncionamento, Avaliacao } from '@/lib/types'
 import { getTema } from '@/lib/theme'
 import toast from 'react-hot-toast'
 import { format, addDays, startOfDay, isSameDay, isToday, isBefore, getDay, subDays } from 'date-fns'
@@ -28,7 +29,22 @@ interface Props {
   diasBloqueados: string[]
   profissionais: Profissional[]
   horariosFuncionamento: HorarioFuncionamento[]
+  avaliacoes: Avaliacao[]
   isDemo?: boolean
+}
+
+function buildGoogleCalendarUrl(a: Agendamento, prestadoraNome: string): string {
+  const inicio = new Date(a.data_hora)
+  const duracao = a.servicos?.duracao_minutos ?? 30
+  const fim = new Date(inicio.getTime() + duracao * 60000)
+  const toUTC = (d: Date) => format(d, "yyyyMMdd'T'HHmmss")
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: `${a.servicos?.nome} - ${prestadoraNome}`,
+    dates: `${toUTC(inicio)}/${toUTC(fim)}`,
+    details: `Agendamento de ${a.servicos?.nome}${a.profissionais ? ` com ${a.profissionais.nome}` : ''} - ${prestadoraNome}`,
+  })
+  return `https://calendar.google.com/calendar/render?${params.toString()}`
 }
 
 type Step = 'servico' | 'profissional' | 'data' | 'horario' | 'cliente' | 'confirmado'
@@ -39,7 +55,7 @@ function formatHora(h: string): string {
 }
 
 export default function PerfilPublicoClient({
-  prestadora, servicos, galeria, diasBloqueados, profissionais, horariosFuncionamento, isDemo = false,
+  prestadora, servicos, galeria, diasBloqueados, profissionais, horariosFuncionamento, avaliacoes, isDemo = false,
 }: Props) {
   const temMultiplasProfissionais = profissionais.length >= 2
 
@@ -403,6 +419,26 @@ export default function PerfilPublicoClient({
     ? buildWhatsappUrl(prestadora.whatsapp, 'Olá! Gostaria de saber mais sobre os serviços 💅')
     : null
 
+  const mediaAvaliacoes = avaliacoes.length > 0
+    ? avaliacoes.reduce((acc, a) => acc + a.nota, 0) / avaliacoes.length
+    : null
+
+  async function compartilharAgendamento() {
+    if (!agendamentoFeito) return
+    const texto = `Acabei de agendar ${agendamentoFeito.servicos?.nome} com ${prestadora.nome}! Agenda você também:`
+    const url = `${window.location.origin}/n/${prestadora.slug}`
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: prestadora.nome, text: texto, url })
+      } catch {
+        // usuária cancelou o compartilhamento — não é um erro
+      }
+    } else {
+      await navigator.clipboard.writeText(`${texto} ${url}`)
+      toast.success('Link copiado!')
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
 
@@ -466,12 +502,18 @@ export default function PerfilPublicoClient({
             <div className="space-y-3">
               <h1 className="font-serif text-4xl font-bold text-gray-900 leading-tight">{prestadora.nome}</h1>
 
-              {/* 24h badge */}
-              <div className="flex items-center justify-center">
+              {/* 24h + avaliações badges */}
+              <div className="flex items-center justify-center gap-2 flex-wrap">
                 <span className="inline-flex items-center gap-1.5 bg-amber-50 border border-amber-100 text-amber-600 rounded-full px-4 py-1.5 text-xs font-semibold">
                   <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                   Agendamento online 24h
                 </span>
+                {mediaAvaliacoes !== null && (
+                  <span className="inline-flex items-center gap-1.5 bg-amber-50 border border-amber-100 text-amber-600 rounded-full px-4 py-1.5 text-xs font-semibold">
+                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                    {mediaAvaliacoes.toFixed(1)} ({avaliacoes.length} avaliaç{avaliacoes.length > 1 ? 'ões' : 'ão'})
+                  </span>
+                )}
               </div>
 
               {prestadora.bio && (
@@ -575,14 +617,52 @@ export default function PerfilPublicoClient({
           </section>
         )}
 
+        {/* Avaliações */}
+        {avaliacoes.length > 0 && (
+          <section data-animate>
+            <h2 className="font-serif text-xl font-semibold text-gray-900 mb-4">O que dizem sobre mim</h2>
+            <div className="space-y-3">
+              {avaliacoes.slice(0, 6).map((av) => (
+                <div key={av.id} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-0.5">
+                      {Array.from({ length: 5 }, (_, i) => (
+                        <Star
+                          key={i}
+                          className={`w-3.5 h-3.5 ${i < av.nota ? 'fill-amber-400 text-amber-400' : 'text-gray-200'}`}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-[11px] text-gray-400">{formatDateShort(av.created_at)}</span>
+                  </div>
+                  {av.comentario && (
+                    <p className="text-sm text-gray-600 leading-relaxed flex gap-1.5">
+                      <Quote className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: tema.hex }} />
+                      {av.comentario}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Booking flow */}
         <section data-animate>
           <h2 className="font-serif text-xl font-semibold text-gray-900 mb-4">Agendar</h2>
 
           {step === 'confirmado' && agendamentoFeito ? (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center space-y-4">
-              <CheckCircle2 className="w-16 h-16 mx-auto" style={{ color: tema.hex }} />
-              <h3 className="font-serif text-2xl font-bold text-gray-900">Agendado!</h3>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center space-y-5">
+              <div
+                className="w-20 h-20 mx-auto rounded-full flex items-center justify-center animate-check-pop"
+                style={{ backgroundColor: tema.hexLight }}
+              >
+                <CheckCircle2 className="w-12 h-12" style={{ color: tema.hex }} />
+              </div>
+              <div>
+                <h3 className="font-serif text-2xl font-bold text-gray-900">Agendado!</h3>
+                <p className="text-sm text-gray-400 mt-1">Te esperamos, {agendamentoFeito.clientes?.nome?.split(' ')[0]}!</p>
+              </div>
               <div className="rounded-xl p-4 text-sm text-left space-y-2" style={{ backgroundColor: tema.hexLight }}>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Serviço</span>
@@ -603,7 +683,27 @@ export default function PerfilPublicoClient({
                   <span className="font-medium" style={{ color: tema.hexDark }}>{formatCurrency(agendamentoFeito.servicos?.preco ?? 0)}</span>
                 </div>
               </div>
-              <Button variant="outline" onClick={resetarFluxo}>
+
+              <div className="flex flex-col sm:flex-row gap-2.5">
+                <a
+                  href={buildGoogleCalendarUrl(agendamentoFeito, prestadora.nome)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  <CalendarPlus className="w-4 h-4" />
+                  Adicionar ao Google Calendar
+                </a>
+                <button
+                  onClick={compartilharAgendamento}
+                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  <Share2 className="w-4 h-4" />
+                  Compartilhar
+                </button>
+              </div>
+
+              <Button variant="outline" onClick={resetarFluxo} className="w-full">
                 Fazer outro agendamento
               </Button>
             </div>

@@ -22,6 +22,9 @@ export type Prestadora = {
   e_trial: boolean
   downgrade_aviso: boolean
   cor_tema: string | null
+  mensagem_confirmacao: string | null
+  mensagem_cancelamento: string | null
+  mensagem_lembrete: string | null
   created_at: string
 }
 
@@ -108,5 +111,14 @@ export type Notificacao = {
 export type VisitaPagina = {
   id: string
   prestadora_id: string
+  created_at: string
+}
+
+export type Avaliacao = {
+  id: string
+  agendamento_id: string
+  prestadora_id: string
+  nota: number
+  comentario: string | null
   created_at: string
 }

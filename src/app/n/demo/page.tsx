@@ -1,5 +1,5 @@
 import PerfilPublicoClient from '../[slug]/PerfilPublicoClient'
-import type { Prestadora, Servico, GaleriaItem, Profissional, HorarioFuncionamento } from '@/lib/types'
+import type { Prestadora, Servico, GaleriaItem, Profissional, HorarioFuncionamento, Avaliacao } from '@/lib/types'
 
 const DEMO_PRESTADORA: Prestadora = {
   id: 'demo',
@@ -23,6 +23,9 @@ const DEMO_PRESTADORA: Prestadora = {
   e_trial: false,
   downgrade_aviso: false,
   cor_tema: 'rosa',
+  mensagem_confirmacao: null,
+  mensagem_cancelamento: null,
+  mensagem_lembrete: null,
   created_at: new Date().toISOString(),
 }
 
@@ -132,6 +135,12 @@ const DEMO_GALERIA: GaleriaItem[] = [
   },
 ]
 
+const DEMO_AVALIACOES: Avaliacao[] = [
+  { id: 'av1', agendamento_id: 'a1', prestadora_id: 'demo', nota: 5, comentario: 'Atendimento incrível, super atenciosa! Minhas unhas ficaram perfeitas.', created_at: '2026-06-10T12:00:00Z' },
+  { id: 'av2', agendamento_id: 'a2', prestadora_id: 'demo', nota: 5, comentario: 'Profissional excelente, ambiente acolhedor. Recomendo demais!', created_at: '2026-06-05T12:00:00Z' },
+  { id: 'av3', agendamento_id: 'a3', prestadora_id: 'demo', nota: 4, comentario: 'Muito bom, só achei o horário um pouco apertado.', created_at: '2026-05-28T12:00:00Z' },
+]
+
 export const metadata = {
   title: 'Ana Nails Studio — Exemplo BelleBook',
   description: 'Veja como fica sua página de agendamento no BelleBook',
@@ -150,6 +159,7 @@ export default function DemoPage() {
         diasBloqueados={[]}
         profissionais={DEMO_PROFISSIONAIS}
         horariosFuncionamento={DEMO_HORARIOS}
+        avaliacoes={DEMO_AVALIACOES}
         isDemo
       />
     </div>

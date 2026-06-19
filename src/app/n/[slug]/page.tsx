@@ -20,12 +20,14 @@ export default async function PerfilPage({ params }: { params: Promise<{ slug: s
     { data: diasBloqueados },
     { data: profissionais },
     { data: horariosFuncionamento },
+    { data: avaliacoes },
   ] = await Promise.all([
     supabase.from('servicos').select('*').eq('prestadora_id', prestadora.id).eq('ativo', true).order('nome'),
     supabase.from('galeria').select('*').eq('prestadora_id', prestadora.id).order('created_at', { ascending: false }),
     supabase.from('dias_bloqueados').select('data').eq('prestadora_id', prestadora.id),
     supabase.from('profissionais').select('*').eq('prestadora_id', prestadora.id).eq('ativa', true).order('nome'),
     supabase.from('horarios_funcionamento').select('*').eq('prestadora_id', prestadora.id).order('dia_semana'),
+    supabase.from('avaliacoes').select('*').eq('prestadora_id', prestadora.id).order('created_at', { ascending: false }),
   ])
 
   return (
@@ -36,6 +38,7 @@ export default async function PerfilPage({ params }: { params: Promise<{ slug: s
       diasBloqueados={(diasBloqueados ?? []).map((d) => d.data)}
       profissionais={profissionais ?? []}
       horariosFuncionamento={horariosFuncionamento ?? []}
+      avaliacoes={avaliacoes ?? []}
     />
   )
 }

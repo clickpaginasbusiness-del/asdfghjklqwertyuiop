@@ -11,12 +11,13 @@ import { Textarea } from '@/components/ui/textarea'
 import { Modal } from '@/components/ui/modal'
 import {
   User, Link2, Upload, Phone, AtSign, MapPin, AlertTriangle,
-  CheckCircle2, XCircle, Loader2, Palette, Lock, Check,
+  CheckCircle2, XCircle, Loader2, Palette, Lock, Check, MessageCircle,
 } from 'lucide-react'
 import Image from 'next/image'
 import type { Prestadora } from '@/lib/types'
 import { maskTelefone, cleanTelefone, slugify } from '@/lib/utils'
 import { TEMAS, type CorTema } from '@/lib/theme'
+import { TEMPLATE_VARS, MSG_CONFIRMACAO_DEFAULT, MSG_CANCELAMENTO_DEFAULT, MSG_LEMBRETE_DEFAULT } from '@/lib/whatsappTemplates'
 import toast from 'react-hot-toast'
 
 type SlugStatus = 'idle' | 'checking' | 'available' | 'taken'
@@ -44,6 +45,11 @@ export default function PerfilPainelClient({ prestadora: initial }: { prestadora
   const [corTema, setCorTema] = useState<CorTema>((initial.cor_tema as CorTema) || 'rosa')
   const [savingTema, setSavingTema] = useState(false)
   const ehPro = prestadora.plano === 'pro'
+
+  const [msgConfirmacao, setMsgConfirmacao] = useState(initial.mensagem_confirmacao ?? MSG_CONFIRMACAO_DEFAULT)
+  const [msgCancelamento, setMsgCancelamento] = useState(initial.mensagem_cancelamento ?? MSG_CANCELAMENTO_DEFAULT)
+  const [msgLembrete, setMsgLembrete] = useState(initial.mensagem_lembrete ?? MSG_LEMBRETE_DEFAULT)
+  const [savingMsgs, setSavingMsgs] = useState(false)
 
   useEffect(() => {
     if (slug === prestadora.slug || slug.length < 3) { setSlugStatus('idle'); return }
@@ -86,6 +92,30 @@ export default function PerfilPainelClient({ prestadora: initial }: { prestadora
       toast.success('Cor da página atualizada!')
     }
     setSavingTema(false)
+  }
+
+  async function salvarMensagens() {
+    setSavingMsgs(true)
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('prestadoras')
+      .update({
+        mensagem_confirmacao: msgConfirmacao.trim() || null,
+        mensagem_cancelamento: msgCancelamento.trim() || null,
+        mensagem_lembrete: msgLembrete.trim() || null,
+      })
+      .eq('id', prestadora.id)
+    if (error) toast.error('Erro ao salvar mensagens')
+    else {
+      setPrestadora((p) => ({
+        ...p,
+        mensagem_confirmacao: msgConfirmacao.trim() || null,
+        mensagem_cancelamento: msgCancelamento.trim() || null,
+        mensagem_lembrete: msgLembrete.trim() || null,
+      }))
+      toast.success('Mensagens salvas!')
+    }
+    setSavingMsgs(false)
   }
 
   async function excluirConta() {
@@ -401,6 +431,41 @@ export default function PerfilPainelClient({ prestadora: initial }: { prestadora
               </span>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Mensagens de WhatsApp */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <MessageCircle className="w-5 h-5 text-rose-400" />
+            <CardTitle>Mensagens de WhatsApp</CardTitle>
+          </div>
+          <p className="text-sm text-gray-400">
+            Personalize os textos enviados às clientes. Variáveis disponíveis:{' '}
+            {TEMPLATE_VARS.map((v) => `{${v.key}}`).join(', ')}
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Textarea
+            label="Mensagem de confirmação"
+            value={msgConfirmacao}
+            onChange={(e) => setMsgConfirmacao(e.target.value)}
+            rows={3}
+          />
+          <Textarea
+            label="Mensagem de cancelamento"
+            value={msgCancelamento}
+            onChange={(e) => setMsgCancelamento(e.target.value)}
+            rows={3}
+          />
+          <Textarea
+            label="Mensagem de lembrete"
+            value={msgLembrete}
+            onChange={(e) => setMsgLembrete(e.target.value)}
+            rows={3}
+          />
+          <Button onClick={salvarMensagens} loading={savingMsgs}>Salvar mensagens</Button>
         </CardContent>
       </Card>
 

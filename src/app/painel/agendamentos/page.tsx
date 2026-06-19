@@ -9,7 +9,7 @@ export default async function AgendamentosPage() {
 
   const { data: prestadora } = await supabase
     .from('prestadoras')
-    .select('id')
+    .select('id, nome, mensagem_confirmacao, mensagem_cancelamento, mensagem_lembrete')
     .eq('user_id', user.id)
     .single()
 
@@ -33,6 +33,10 @@ export default async function AgendamentosPage() {
       agendamentos={agendamentos ?? []}
       profissionais={profissionais ?? []}
       prestadoraId={prestadora.id}
+      prestadoraNome={prestadora.nome}
+      msgConfirmacao={prestadora.mensagem_confirmacao}
+      msgCancelamento={prestadora.mensagem_cancelamento}
+      msgLembrete={prestadora.mensagem_lembrete}
     />
   )
 }
