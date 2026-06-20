@@ -1,11 +1,17 @@
-const CACHE_VERSION = 'bellebook-v1'
+// __BUILD_ID__ é substituído em build time (scripts/set-sw-version.mjs) por um hash
+// único do deploy, garantindo que o navegador sempre detecte este arquivo como
+// "mudou" a cada novo deploy na Vercel — mesmo quando só o código do app mudou e
+// este arquivo em si ficaria byte-a-byte idêntico.
+const CACHE_VERSION = 'bellebook-__BUILD_ID__'
 const PRECACHE_URLS = ['/', '/painel', '/painel/login', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png']
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_VERSION).then((cache) => cache.addAll(PRECACHE_URLS)).catch(() => {})
   )
-  self.skipWaiting()
+  // Não chama skipWaiting() aqui de propósito: o novo SW fica em "waiting" até o
+  // cliente confirmar via postMessage (botão "Atualizar" no banner), para que o
+  // usuário veja o aviso antes da página trocar de versão sob os pés dele.
 })
 
 self.addEventListener('activate', (event) => {
@@ -15,6 +21,10 @@ self.addEventListener('activate', (event) => {
     )
   )
   self.clients.claim()
+})
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting()
 })
 
 self.addEventListener('fetch', (event) => {
