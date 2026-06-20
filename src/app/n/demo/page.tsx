@@ -1,5 +1,5 @@
-import PerfilPublicoClient from '../[slug]/PerfilPublicoClient'
-import type { Prestadora, Servico, GaleriaItem, Profissional, HorarioFuncionamento, Avaliacao } from '@/lib/types'
+import PerfilPublicoClient, { type ServicoComProfissionais } from '../[slug]/PerfilPublicoClient'
+import type { Prestadora, GaleriaItem, Profissional, HorarioFuncionamento, Avaliacao } from '@/lib/types'
 
 const DEMO_PRESTADORA: Prestadora = {
   id: 'demo',
@@ -40,13 +40,14 @@ const DEMO_HORARIOS: HorarioFuncionamento[] = [
   { id: 'h6', prestadora_id: 'demo', dia_semana: 6, ativo: true,  hora_abertura: '09:00', hora_fechamento: '13:00' },
 ]
 
-const DEMO_SERVICOS: Servico[] = [
+const DEMO_SERVICOS: ServicoComProfissionais[] = [
   {
     id: 's1', prestadora_id: 'demo', ativo: true, created_at: '',
     nome: 'Manicure',
     preco: 35,
     duracao_minutos: 30,
     descricao: 'Cutilagem, esmaltação e hidratação das mãos.',
+    servico_profissionais: [],
   },
   {
     id: 's2', prestadora_id: 'demo', ativo: true, created_at: '',
@@ -54,6 +55,7 @@ const DEMO_SERVICOS: Servico[] = [
     preco: 55,
     duracao_minutos: 60,
     descricao: 'Cutilagem, esmaltação e esfoliação dos pés.',
+    servico_profissionais: [],
   },
   {
     id: 's3', prestadora_id: 'demo', ativo: true, created_at: '',
@@ -61,6 +63,7 @@ const DEMO_SERVICOS: Servico[] = [
     preco: 70,
     duracao_minutos: 90,
     descricao: 'Decoração artística nas unhas com glitter, strass e estampas.',
+    servico_profissionais: [],
   },
   {
     id: 's4', prestadora_id: 'demo', ativo: true, created_at: '',
@@ -68,6 +71,7 @@ const DEMO_SERVICOS: Servico[] = [
     preco: 150,
     duracao_minutos: 120,
     descricao: 'Extensão das unhas em gel com formato e comprimento personalizados.',
+    servico_profissionais: [],
   },
   {
     id: 's5', prestadora_id: 'demo', ativo: true, created_at: '',
@@ -75,6 +79,7 @@ const DEMO_SERVICOS: Servico[] = [
     preco: 90,
     duracao_minutos: 60,
     descricao: 'Reequilíbrio e esmaltação das unhas em gel com preenchimento da raiz.',
+    servico_profissionais: [],
   },
 ]
 

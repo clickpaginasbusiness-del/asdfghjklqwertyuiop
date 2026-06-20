@@ -22,9 +22,13 @@ import toast from 'react-hot-toast'
 import { format, addDays, startOfDay, isSameDay, isToday, isBefore, getDay, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
+export type ServicoComProfissionais = Servico & {
+  servico_profissionais: { profissional_id: string }[]
+}
+
 interface Props {
   prestadora: Prestadora
-  servicos: Servico[]
+  servicos: ServicoComProfissionais[]
   galeria: GaleriaItem[]
   diasBloqueados: string[]
   profissionais: Profissional[]
@@ -60,10 +64,16 @@ export default function PerfilPublicoClient({
   const temMultiplasProfissionais = profissionais.length >= 2
 
   const [step, setStep] = useState<Step>('servico')
-  const [servicoSelecionado, setServicoSelecionado] = useState<Servico | null>(null)
+  const [servicoSelecionado, setServicoSelecionado] = useState<ServicoComProfissionais | null>(null)
   const [profissionalSelecionada, setProfissionalSelecionada] = useState<Profissional | null>(
     profissionais.length === 1 ? profissionais[0] : null
   )
+
+  const profissionaisDoServico = useMemo(() => {
+    const ids = servicoSelecionado?.servico_profissionais?.map((sp) => sp.profissional_id) ?? []
+    // Sem restrição cadastrada → serviço disponível para todas
+    return ids.length === 0 ? profissionais : profissionais.filter((p) => ids.includes(p.id))
+  }, [servicoSelecionado, profissionais])
   const [dataSelecionada, setDataSelecionada] = useState<Date | null>(null)
   const [horarioSelecionado, setHorarioSelecionado] = useState<string | null>(null)
   const [agendamentosExistentes, setAgendamentosExistentes] = useState<{start: number; end: number}[]>([])
@@ -158,8 +168,9 @@ export default function PerfilPublicoClient({
     }
   }
 
-  function selecionarServico(s: Servico) {
+  function selecionarServico(s: ServicoComProfissionais) {
     setServicoSelecionado(s)
+    setProfissionalSelecionada(profissionais.length === 1 ? profissionais[0] : null)
     if (temMultiplasProfissionais) {
       setStep('profissional')
     } else {
@@ -279,6 +290,7 @@ export default function PerfilPublicoClient({
           data_hora: dataHora.toISOString(),
           status: 'confirmado',
           cancelado_por: null,
+          arquivado: false,
           created_at: new Date().toISOString(),
           servicos: servico,
           clientes: { id: 'demo-cliente', nome: nomeCliente.trim(), telefone: cleanTelefone(telefoneCliente), created_at: '' },
@@ -789,7 +801,7 @@ export default function PerfilPublicoClient({
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
-                    {profissionais.map((p) => (
+                    {profissionaisDoServico.map((p) => (
                       <button
                         key={p.id}
                         onClick={() => selecionarProfissional(p)}

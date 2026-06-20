@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input'
 import { Clock, CalendarX, Plus, Trash2 } from 'lucide-react'
 import type { Prestadora, DiaBloqueado, HorarioFuncionamento } from '@/lib/types'
 import { formatDate } from '@/lib/utils'
+import { AgendaDoDiaSection } from './AgendaDoDiaSection'
+import type { AgendaSlotAg } from './page'
 import toast from 'react-hot-toast'
 
 const DIAS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
@@ -39,10 +41,14 @@ export default function HorariosClient({
   prestadora,
   diasBloqueados: initial,
   horariosFuncionamento,
+  profissionais,
+  agendamentos,
 }: {
   prestadora: Prestadora
   diasBloqueados: DiaBloqueado[]
   horariosFuncionamento: HorarioFuncionamento[]
+  profissionais: { id: string; nome: string }[]
+  agendamentos: AgendaSlotAg[]
 }) {
   const [horarios, setHorarios] = useState<HorarioDia[]>(() => initHorarios(horariosFuncionamento))
   const [savingHorario, setSavingHorario] = useState(false)
@@ -107,9 +113,10 @@ export default function HorariosClient({
   }
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6">
       <h1 className="font-serif text-2xl font-semibold text-gray-900">Horários</h1>
 
+      <div className="max-w-2xl space-y-6">
       {/* Horário de funcionamento por dia */}
       <Card>
         <CardHeader>
@@ -121,35 +128,37 @@ export default function HorariosClient({
         </CardHeader>
         <CardContent className="space-y-3">
           {horarios.map((h, i) => (
-            <div key={h.dia_semana} className="flex items-center gap-3">
-              {/* Toggle */}
-              <button
-                type="button"
-                onClick={() => toggleDia(i)}
-                className={`shrink-0 relative inline-flex h-5 w-9 rounded-full transition-colors focus:outline-none ${
-                  h.ativo ? 'bg-rose-400' : 'bg-gray-200'
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform mt-0.5 ${
-                    h.ativo ? 'translate-x-4' : 'translate-x-0.5'
+            <div key={h.dia_semana} className="flex flex-wrap items-center gap-3 py-1">
+              <div className="flex items-center gap-3 shrink-0">
+                {/* Toggle */}
+                <button
+                  type="button"
+                  onClick={() => toggleDia(i)}
+                  className={`shrink-0 relative inline-flex h-5 w-9 rounded-full transition-colors focus:outline-none ${
+                    h.ativo ? 'bg-rose-400' : 'bg-gray-200'
                   }`}
-                />
-              </button>
+                >
+                  <span
+                    className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform mt-0.5 ${
+                      h.ativo ? 'translate-x-4' : 'translate-x-0.5'
+                    }`}
+                  />
+                </button>
 
-              {/* Nome do dia */}
-              <span className={`w-16 text-sm font-medium shrink-0 ${h.ativo ? 'text-gray-700' : 'text-gray-400'}`}>
-                {DIAS[h.dia_semana]}
-              </span>
+                {/* Nome do dia */}
+                <span className={`w-16 text-sm font-medium shrink-0 ${h.ativo ? 'text-gray-700' : 'text-gray-400'}`}>
+                  {DIAS[h.dia_semana]}
+                </span>
+              </div>
 
               {/* Horários */}
-              <div className={`flex items-center gap-2 flex-1 transition-opacity ${h.ativo ? 'opacity-100' : 'opacity-30 pointer-events-none'}`}>
+              <div className={`flex items-center gap-2 flex-wrap transition-opacity ${h.ativo ? 'opacity-100' : 'opacity-30 pointer-events-none'}`}>
                 <input
                   type="time"
                   value={h.hora_abertura}
                   onChange={(e) => updateHora(i, 'hora_abertura', e.target.value)}
                   disabled={!h.ativo}
-                  className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm w-24 focus:outline-none focus:ring-1 focus:ring-rose-300 focus:border-rose-300"
+                  className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm w-[6.5rem] focus:outline-none focus:ring-1 focus:ring-rose-300 focus:border-rose-300"
                 />
                 <span className="text-gray-400 text-xs shrink-0">até</span>
                 <input
@@ -157,7 +166,7 @@ export default function HorariosClient({
                   value={h.hora_fechamento}
                   onChange={(e) => updateHora(i, 'hora_fechamento', e.target.value)}
                   disabled={!h.ativo}
-                  className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm w-24 focus:outline-none focus:ring-1 focus:ring-rose-300 focus:border-rose-300"
+                  className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm w-[6.5rem] focus:outline-none focus:ring-1 focus:ring-rose-300 focus:border-rose-300"
                 />
               </div>
             </div>
@@ -213,6 +222,15 @@ export default function HorariosClient({
           )}
         </CardContent>
       </Card>
+      </div>
+
+      {/* Agenda do dia */}
+      <AgendaDoDiaSection
+        prestadora={prestadora}
+        horariosFuncionamento={horariosFuncionamento}
+        profissionais={profissionais}
+        agendamentos={agendamentos}
+      />
     </div>
   )
 }

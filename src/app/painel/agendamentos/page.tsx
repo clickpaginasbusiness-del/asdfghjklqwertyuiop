@@ -20,6 +20,7 @@ export default async function AgendamentosPage() {
       .from('agendamentos')
       .select('*, servicos(*), clientes(*), profissionais(*)')
       .eq('prestadora_id', prestadora.id)
+      .eq('arquivado', false)
       .order('data_hora', { ascending: false }),
     supabase
       .from('profissionais')

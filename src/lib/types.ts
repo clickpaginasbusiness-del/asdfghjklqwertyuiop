@@ -77,6 +77,7 @@ export type Agendamento = {
   data_hora: string
   status: 'confirmado' | 'cancelado' | 'concluido'
   cancelado_por: 'prestadora' | 'cliente' | null
+  arquivado: boolean
   created_at: string
   servicos?: Servico
   clientes?: Cliente

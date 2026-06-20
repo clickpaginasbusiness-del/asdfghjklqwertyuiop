@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { addDays, startOfDay, endOfDay } from 'date-fns'
 import HorariosClient from './HorariosClient'
 
 export default async function HorariosPage() {
@@ -15,7 +16,14 @@ export default async function HorariosPage() {
 
   if (!prestadora) redirect('/painel/login')
 
-  const [{ data: diasBloqueados }, { data: horariosFuncionamento }] = await Promise.all([
+  const hoje = new Date()
+
+  const [
+    { data: diasBloqueados },
+    { data: horariosFuncionamento },
+    { data: profissionais },
+    { data: agendamentos },
+  ] = await Promise.all([
     supabase
       .from('dias_bloqueados')
       .select('*')
@@ -26,6 +34,20 @@ export default async function HorariosPage() {
       .select('*')
       .eq('prestadora_id', prestadora.id)
       .order('dia_semana'),
+    supabase
+      .from('profissionais')
+      .select('id, nome')
+      .eq('prestadora_id', prestadora.id)
+      .eq('ativa', true)
+      .order('nome'),
+    supabase
+      .from('agendamentos')
+      .select('id, data_hora, status, profissional_id, servicos(nome, preco, duracao_minutos), clientes(nome, telefone), profissionais(nome)')
+      .eq('prestadora_id', prestadora.id)
+      .neq('status', 'cancelado')
+      .gte('data_hora', startOfDay(hoje).toISOString())
+      .lte('data_hora', endOfDay(addDays(hoje, 7)).toISOString())
+      .order('data_hora'),
   ])
 
   return (
@@ -33,6 +55,18 @@ export default async function HorariosPage() {
       prestadora={prestadora}
       diasBloqueados={diasBloqueados ?? []}
       horariosFuncionamento={horariosFuncionamento ?? []}
+      profissionais={profissionais ?? []}
+      agendamentos={(agendamentos ?? []) as unknown as AgendaSlotAg[]}
     />
   )
+}
+
+export type AgendaSlotAg = {
+  id: string
+  data_hora: string
+  status: 'confirmado' | 'cancelado' | 'concluido'
+  profissional_id: string | null
+  servicos: { nome: string; preco: number; duracao_minutos: number } | null
+  clientes: { nome: string; telefone: string } | null
+  profissionais: { nome: string } | null
 }

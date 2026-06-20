@@ -19,35 +19,55 @@ interface ServicoForm {
   descricao: string
 }
 
+export type ServicoComProfissionais = Servico & {
+  servico_profissionais: { profissional_id: string }[]
+}
+
+interface ProfissionalLite {
+  id: string
+  nome: string
+}
+
 const emptyForm: ServicoForm = { nome: '', preco: '', duracao_minutos: '', descricao: '' }
 
 export default function ServicosClient({
   servicos: initial,
+  profissionais,
   prestadoraId,
 }: {
-  servicos: Servico[]
+  servicos: ServicoComProfissionais[]
+  profissionais: ProfissionalLite[]
   prestadoraId: string
 }) {
   const [servicos, setServicos] = useState(initial)
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState<ServicoForm>(emptyForm)
+  const [profissionaisSelecionadas, setProfissionaisSelecionadas] = useState<string[]>([])
   const [editId, setEditId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
 
+  function toggleProfissional(id: string) {
+    setProfissionaisSelecionadas((prev) =>
+      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
+    )
+  }
+
   function openCreate() {
     setForm(emptyForm)
+    setProfissionaisSelecionadas([])
     setEditId(null)
     setModalOpen(true)
   }
 
-  function openEdit(s: Servico) {
+  function openEdit(s: ServicoComProfissionais) {
     setForm({
       nome: s.nome,
       preco: String(s.preco),
       duracao_minutos: String(s.duracao_minutos),
       descricao: s.descricao ?? '',
     })
+    setProfissionaisSelecionadas(s.servico_profissionais.map((sp) => sp.profissional_id))
     setEditId(s.id)
     setModalOpen(true)
   }
@@ -64,15 +84,32 @@ export default function ServicosClient({
       descricao: form.descricao || null,
     }
 
+    let servicoId = editId
+
     if (editId) {
       const { error } = await supabase.from('servicos').update(data).eq('id', editId)
       if (error) { toast.error('Erro ao atualizar'); setLoading(false); return }
-      setServicos((prev) => prev.map((s) => s.id === editId ? { ...s, ...data } : s))
-      toast.success('Serviço atualizado')
     } else {
       const { data: novo, error } = await supabase.from('servicos').insert(data).select().single()
       if (error) { toast.error('Erro ao criar'); setLoading(false); return }
-      setServicos((prev) => [...prev, novo])
+      servicoId = novo.id
+    }
+
+    // Sincroniza profissionais do serviço: remove tudo e reinsere a seleção atual
+    await supabase.from('servico_profissionais').delete().eq('servico_id', servicoId!)
+    if (profissionaisSelecionadas.length > 0) {
+      await supabase.from('servico_profissionais').insert(
+        profissionaisSelecionadas.map((profissional_id) => ({ servico_id: servicoId, profissional_id }))
+      )
+    }
+
+    const servico_profissionais = profissionaisSelecionadas.map((profissional_id) => ({ profissional_id }))
+
+    if (editId) {
+      setServicos((prev) => prev.map((s) => s.id === editId ? { ...s, ...data, servico_profissionais } : s))
+      toast.success('Serviço atualizado')
+    } else {
+      setServicos((prev) => [...prev, { ...data, id: servicoId!, ativo: true, created_at: new Date().toISOString(), servico_profissionais }])
       toast.success('Serviço criado')
     }
 
@@ -183,6 +220,27 @@ export default function ServicosClient({
             value={form.descricao}
             onChange={(e) => setForm({ ...form, descricao: e.target.value })}
           />
+
+          {profissionais.length > 0 && (
+            <div>
+              <label className="text-sm font-medium text-gray-700">Quem realiza este serviço</label>
+              <p className="text-xs text-gray-400 mt-0.5 mb-2">Se nenhuma for marcada, o serviço fica disponível para todas</p>
+              <div className="space-y-1.5">
+                {profissionais.map((p) => (
+                  <label key={p.id} className="flex items-center gap-2.5 text-sm text-gray-700 cursor-pointer min-h-9">
+                    <input
+                      type="checkbox"
+                      checked={profissionaisSelecionadas.includes(p.id)}
+                      onChange={() => toggleProfissional(p.id)}
+                      className="w-4 h-4 rounded border-gray-300 text-rose-400 focus:ring-rose-300"
+                    />
+                    {p.nome}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="outline" onClick={() => setModalOpen(false)} className="flex-1">
               Cancelar

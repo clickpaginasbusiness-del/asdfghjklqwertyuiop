@@ -22,7 +22,7 @@ export default async function PerfilPage({ params }: { params: Promise<{ slug: s
     { data: horariosFuncionamento },
     { data: avaliacoes },
   ] = await Promise.all([
-    supabase.from('servicos').select('*').eq('prestadora_id', prestadora.id).eq('ativo', true).order('nome'),
+    supabase.from('servicos').select('*, servico_profissionais(profissional_id)').eq('prestadora_id', prestadora.id).eq('ativo', true).order('nome'),
     supabase.from('galeria').select('*').eq('prestadora_id', prestadora.id).order('created_at', { ascending: false }),
     supabase.from('dias_bloqueados').select('data').eq('prestadora_id', prestadora.id),
     supabase.from('profissionais').select('*').eq('prestadora_id', prestadora.id).eq('ativa', true).order('nome'),

@@ -85,6 +85,8 @@ export default function AgendamentosClient({
   const [confirmModalId, setConfirmModalId] = useState<string | null>(null)
   const [deleteModalId, setDeleteModalId] = useState<string | null>(null)
   const [waOpenId, setWaOpenId] = useState<string | null>(null)
+  const [excluirTodosModalOpen, setExcluirTodosModalOpen] = useState(false)
+  const [excluindoTodos, setExcluindoTodos] = useState(false)
 
   /* Realtime: novos agendamentos aparecem na lista e cancelamentos/conclusões refletem sem precisar recarregar */
   useEffect(() => {
@@ -208,7 +210,7 @@ export default function AgendamentosClient({
     const supabase = createClient()
     const { error } = await supabase
       .from('agendamentos')
-      .delete()
+      .update({ arquivado: true })
       .eq('id', id)
 
     if (error) {
@@ -218,6 +220,25 @@ export default function AgendamentosClient({
       toast.success('Agendamento excluído')
     }
     setDeleteModalId(null)
+  }
+
+  async function excluirTodosCancelados() {
+    setExcluindoTodos(true)
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('agendamentos')
+      .update({ arquivado: true })
+      .eq('prestadora_id', prestadoraId)
+      .eq('status', 'cancelado')
+
+    if (error) {
+      toast.error('Erro ao excluir cancelados')
+    } else {
+      setAgendamentos((prev) => prev.filter((a) => a.status !== 'cancelado'))
+      toast.success('Agendamentos cancelados excluídos')
+      setExcluirTodosModalOpen(false)
+    }
+    setExcluindoTodos(false)
   }
 
   const statusVariant = (status: string): 'success' | 'concluido' | 'danger' | 'default' => {
@@ -236,12 +257,24 @@ export default function AgendamentosClient({
 
   const temProfissionais = profissionais.length > 0
   const confirmadosCount = agendamentos.filter(a => a.status === 'confirmado').length
+  const temCanceladosVisiveis = filtrados.some((a) => a.status === 'cancelado')
 
   return (
     <div className="space-y-4" onClick={() => waOpenId && setWaOpenId(null)}>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <h1 className="font-serif text-2xl font-semibold text-gray-900">Agendamentos</h1>
-        <Badge variant="pink">{confirmadosCount} confirmados</Badge>
+        <div className="flex items-center gap-2">
+          {temCanceladosVisiveis && (
+            <button
+              onClick={() => setExcluirTodosModalOpen(true)}
+              className="flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-red-500 border border-gray-200 hover:border-red-200 rounded-xl px-3 py-2 min-h-9 transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Excluir todos cancelados
+            </button>
+          )}
+          <Badge variant="pink">{confirmadosCount} confirmados</Badge>
+        </div>
       </div>
 
       {/* Busca */}
@@ -543,7 +576,9 @@ export default function AgendamentosClient({
       {/* Modal excluir */}
       <Modal open={!!deleteModalId} onClose={() => setDeleteModalId(null)} title="Excluir agendamento?">
         <div className="p-6 space-y-4">
-          <p className="text-sm text-gray-600">O agendamento será removido permanentemente.</p>
+          <p className="text-sm text-gray-600">
+            O agendamento sairá desta lista. Os dados continuam contabilizados nos relatórios.
+          </p>
           <div className="flex gap-3">
             <Button variant="outline" onClick={() => setDeleteModalId(null)} className="flex-1">
               Voltar
@@ -553,7 +588,29 @@ export default function AgendamentosClient({
               onClick={() => deleteModalId && excluir(deleteModalId)}
               className="flex-1"
             >
-              Excluir permanentemente
+              Excluir
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal excluir todos cancelados */}
+      <Modal open={excluirTodosModalOpen} onClose={() => setExcluirTodosModalOpen(false)} title="Excluir todos os cancelados?">
+        <div className="p-6 space-y-4">
+          <p className="text-sm text-gray-600">
+            Todos os agendamentos cancelados sairão desta lista. Os dados continuam contabilizados nos relatórios.
+          </p>
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={() => setExcluirTodosModalOpen(false)} className="flex-1">
+              Voltar
+            </Button>
+            <Button
+              variant="danger"
+              onClick={excluirTodosCancelados}
+              loading={excluindoTodos}
+              className="flex-1"
+            >
+              Excluir todos
             </Button>
           </div>
         </div>
