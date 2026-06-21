@@ -10,15 +10,30 @@ export default function RecuperarSenhaPage() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [enviado, setEnviado] = useState(false)
+  const [naoEncontrado, setNaoEncontrado] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
+    setNaoEncontrado(false)
     const supabase = createClient()
-    await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
+    const emailLimpo = email.trim().toLowerCase()
+
+    const { data: prestadora } = await supabase
+      .from('prestadoras')
+      .select('id')
+      .eq('email', emailLimpo)
+      .maybeSingle()
+
+    if (!prestadora) {
+      setNaoEncontrado(true)
+      setLoading(false)
+      return
+    }
+
+    await supabase.auth.resetPasswordForEmail(emailLimpo, {
       redirectTo: 'https://nailbook-eta.vercel.app/api/auth/callback?next=/painel/nova-senha',
     })
-    // Sempre mostra sucesso para não revelar se o email existe
     setEnviado(true)
     setLoading(false)
   }
@@ -46,6 +61,24 @@ export default function RecuperarSenhaPage() {
               >
                 Voltar para o login
               </Link>
+            </div>
+          ) : naoEncontrado ? (
+            <div className="text-center space-y-3">
+              <p className="text-sm text-gray-600">
+                Não encontramos nenhuma conta com esse email. Verifique o email ou cadastre-se gratuitamente.
+              </p>
+              <Link
+                href="/painel/cadastro"
+                className="inline-block text-sm font-semibold text-white bg-rose-400 hover:bg-rose-500 rounded-xl px-4 py-2.5 mt-2 transition-colors"
+              >
+                Cadastre-se gratuitamente
+              </Link>
+              <button
+                onClick={() => setNaoEncontrado(false)}
+                className="block text-sm text-gray-400 hover:underline mx-auto mt-1"
+              >
+                Tentar outro email
+              </button>
             </div>
           ) : (
             <>

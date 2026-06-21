@@ -95,6 +95,7 @@ export default function PerfilPublicoClient({
   const [nomeAuth, setNomeAuth] = useState('')
   const [verificationToken, setVerificationToken] = useState('')
   const [enviandoAuth, setEnviandoAuth] = useState(false)
+  const [numeroNaoEncontrado, setNumeroNaoEncontrado] = useState(false)
   const [pendingBooking, setPendingBooking] = useState(false)
   const [clienteLogado, setClienteLogado] = useState<{ id: string; nome: string; telefone: string } | null>(null)
   const [meusAgendamentos, setMeusAgendamentos] = useState<Agendamento[]>([])
@@ -303,6 +304,7 @@ export default function PerfilPublicoClient({
     setNomeAuth('')
     setVerificationToken('')
     setPendingBooking(false)
+    setNumeroNaoEncontrado(false)
   }
 
   async function aoLogarComSucesso(token: string, cliente: { id: string; nome: string; telefone: string }) {
@@ -343,6 +345,7 @@ export default function PerfilPublicoClient({
       toast.error('Telefone inválido')
       return
     }
+    setNumeroNaoEncontrado(false)
     setEnviandoAuth(true)
     try {
       const res = await fetch('/api/clientes/auth/enviar-codigo', {
@@ -352,6 +355,10 @@ export default function PerfilPublicoClient({
       })
       const data = await res.json()
       if (!res.ok) {
+        if (authMode === 'recuperacao' && res.status === 404) {
+          setNumeroNaoEncontrado(true)
+          return
+        }
         toast.error(data.error ?? 'Erro ao enviar código')
         return
       }
@@ -1303,7 +1310,26 @@ export default function PerfilPublicoClient({
             </>
           )}
 
-          {authMode !== 'login' && authStep === 'inicio' && (
+          {authMode === 'recuperacao' && authStep === 'inicio' && numeroNaoEncontrado ? (
+            <>
+              <p className="text-sm text-gray-600">
+                Não encontramos nenhuma conta com esse número. Verifique o número ou crie uma conta.
+              </p>
+              <Button
+                onClick={() => { setAuthMode('cadastro'); setNumeroNaoEncontrado(false) }}
+                className="w-full hover:brightness-95"
+                style={{ backgroundColor: tema.hex }}
+              >
+                Criar conta
+              </Button>
+              <button
+                onClick={() => { setNumeroNaoEncontrado(false) }}
+                className="text-xs text-gray-400 hover:underline w-full text-center"
+              >
+                Tentar outro número
+              </button>
+            </>
+          ) : authMode !== 'login' && authStep === 'inicio' && (
             <>
               <p className="text-sm text-gray-500">
                 {authMode === 'cadastro'
