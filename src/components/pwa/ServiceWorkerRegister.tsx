@@ -1,14 +1,15 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { RefreshCw } from 'lucide-react'
+import Image from 'next/image'
 
 const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000
-const VERSION_POLL_INTERVAL_MS = 5 * 60 * 1000
+const VERSION_POLL_INTERVAL_MS = 2 * 60 * 1000
 
 export function ServiceWorkerRegister() {
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null)
   const [updating, setUpdating] = useState(false)
+  const [forcedDevOverlay, setForcedDevOverlay] = useState(false)
 
   useEffect(() => {
     if (process.env.NODE_ENV !== 'production') return
@@ -20,7 +21,7 @@ export function ServiceWorkerRegister() {
         // "installed" + já existir um controller ativo = isto é uma atualização
         // (não a primeira instalação do SW neste dispositivo)
         if (worker.state === 'installed' && navigator.serviceWorker.controller) {
-          console.log('[sw] novo service worker instalado e aguardando ativação — exibindo banner')
+          console.log('[sw] novo service worker instalado e aguardando ativação — exibindo overlay obrigatório')
           setWaitingWorker(worker)
         }
       })
@@ -30,12 +31,6 @@ export function ServiceWorkerRegister() {
     let versionInterval: ReturnType<typeof setInterval> | undefined
     let registration: ServiceWorkerRegistration | undefined
     let buildIdInicial: string | null = null
-
-    const onVisible = () => {
-      if (document.visibilityState !== 'visible') return
-      console.log('[sw] app voltou ao foco — checando atualização do service worker')
-      registration?.update().catch((err) => console.warn('[sw] falha ao checar atualização:', err))
-    }
 
     async function checarVersao() {
       try {
@@ -54,6 +49,13 @@ export function ServiceWorkerRegister() {
       } catch (err) {
         console.warn('[version-poll] falha ao consultar /api/version:', err)
       }
+    }
+
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return
+      console.log('[sw] app voltou ao foco — checando atualização do service worker e versão')
+      registration?.update().catch((err) => console.warn('[sw] falha ao checar atualização:', err))
+      checarVersao()
     }
 
     navigator.serviceWorker
@@ -102,32 +104,57 @@ export function ServiceWorkerRegister() {
   }, [])
 
   function atualizarAgora() {
+    if (forcedDevOverlay) {
+      console.log('[sw][dev] simulação — fechando overlay sem service worker real')
+      setForcedDevOverlay(false)
+      return
+    }
     if (!waitingWorker) return
     console.log('[sw] usuária confirmou atualização — enviando SKIP_WAITING')
     setUpdating(true)
     waitingWorker.postMessage({ type: 'SKIP_WAITING' })
     // O reload acontece via o listener de "controllerchange" assim que o novo SW
-    // assumir o controle (clients.claim()) — o banner já desaparece (updating=true)
-    // dando feedback imediato enquanto isso ocorre.
+    // assumir o controle (clients.claim()).
   }
 
-  if (!waitingWorker || updating) return null
+  const mostrarOverlay = forcedDevOverlay || (!!waitingWorker && !updating)
 
   return (
-    <div className="fixed bottom-4 inset-x-4 sm:inset-x-auto sm:left-4 sm:right-auto sm:max-w-sm z-[200] bg-white rounded-2xl shadow-xl border border-rose-100 p-4 flex items-start gap-3">
-      <div className="w-11 h-11 shrink-0 rounded-xl bg-rose-50 flex items-center justify-center">
-        <RefreshCw className="w-5 h-5 text-rose-400" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="font-semibold text-gray-900 text-sm">Nova atualização disponível!</p>
-        <p className="text-xs text-gray-500 mt-0.5">Toque para atualizar e ver as novidades</p>
+    <>
+      {process.env.NODE_ENV === 'development' && (
         <button
-          onClick={atualizarAgora}
-          className="mt-2.5 text-xs font-semibold text-white bg-rose-400 hover:bg-rose-500 rounded-lg px-3 py-2 min-h-9 transition-colors"
+          onClick={() => setForcedDevOverlay(true)}
+          className="fixed bottom-4 right-4 z-[250] text-xs font-semibold text-white bg-gray-800 hover:bg-gray-900 rounded-lg px-3 py-2 shadow-lg"
         >
-          Atualizar agora
+          🐛 Simular atualização
         </button>
-      </div>
-    </div>
+      )}
+
+      {mostrarOverlay && (
+        <div className="fixed inset-0 z-[300] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-8 text-center space-y-5">
+            <Image
+              src="/icon-192.png"
+              alt="BelleBook"
+              width={64}
+              height={64}
+              className="mx-auto rounded-2xl"
+            />
+            <div>
+              <h2 className="font-serif text-xl font-bold text-gray-900">Nova versão disponível! 🎉</h2>
+              <p className="text-sm text-gray-500 mt-2 leading-relaxed">
+                Atualizamos o BelleBook com melhorias e novidades. Clique abaixo para atualizar agora.
+              </p>
+            </div>
+            <button
+              onClick={atualizarAgora}
+              className="w-full bg-rose-400 hover:bg-rose-500 text-white font-semibold rounded-2xl py-3.5 text-base transition-colors"
+            >
+              Atualizar agora
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
