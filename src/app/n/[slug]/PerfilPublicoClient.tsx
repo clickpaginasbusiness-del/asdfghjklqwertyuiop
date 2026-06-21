@@ -844,7 +844,7 @@ export default function PerfilPublicoClient({
                   ) : (
                     /* Inner div for scale — absolute fills parent, Image fills this div */
                     <div className="absolute inset-0 transition-transform duration-300 group-hover:scale-110">
-                      <Image src={item.url} alt="Trabalho" fill className="object-cover" sizes="33vw" />
+                      <Image src={item.url} alt={`Trabalho ${i + 1} de ${prestadora.nome}`} fill className="object-cover" sizes="33vw" />
                     </div>
                   )}
                   {/* Subtle overlay */}
@@ -1528,7 +1528,7 @@ export default function PerfilPublicoClient({
             ) : (
               <Image
                 src={galeria[galeriaIndex].url}
-                alt="Trabalho"
+                alt={`Trabalho ${galeriaIndex + 1} de ${prestadora.nome}`}
                 width={600}
                 height={600}
                 className="rounded-2xl w-full max-h-[80vh] object-contain"

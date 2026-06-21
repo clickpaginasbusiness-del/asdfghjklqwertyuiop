@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import PerfilPublicoClient from './PerfilPublicoClient'
+import { SITE_URL } from '@/lib/seo'
 
 export default async function PerfilPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
@@ -46,10 +47,32 @@ export default async function PerfilPage({ params }: { params: Promise<{ slug: s
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const supabase = await createClient()
-  const { data } = await supabase.from('prestadoras').select('nome, bio').eq('slug', slug).single()
+  const { data } = await supabase.from('prestadoras').select('nome, bio, foto_url').eq('slug', slug).single()
   if (!data) return {}
+
+  const title = `${data.nome} — BelleBook`
+  const description = data.bio ?? `Agende seu horário com ${data.nome}`
+  const url = `${SITE_URL}/n/${slug}`
+  const image = data.foto_url ?? '/og-image.png'
+
   return {
-    title: `${data.nome} — BelleBook`,
-    description: data.bio ?? `Agende seu horário com ${data.nome}`,
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title,
+      description,
+      url,
+      siteName: 'BelleBook',
+      locale: 'pt_BR',
+      type: 'profile',
+      images: [{ url: image }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [image],
+    },
   }
 }

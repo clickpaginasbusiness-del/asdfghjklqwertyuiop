@@ -60,7 +60,7 @@ export async function POST() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : ''
       if (!msg.toLowerCase().includes('no such subscription')) {
-        console.error('[delete-account] falha ao cancelar assinatura', prestadora.stripe_subscription_id, err)
+        console.error('[delete-account] falha ao cancelar assinatura', prestadora.stripe_subscription_id, msg)
         return NextResponse.json(
           { error: 'Não foi possível cancelar sua assinatura. Tente novamente ou contate o suporte.' },
           { status: 500 }

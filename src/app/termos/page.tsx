@@ -1,7 +1,17 @@
+import type { Metadata } from 'next'
 import { LegalLayout, LegalSection } from '@/components/legal/LegalLayout'
+import { SITE_URL } from '@/lib/seo'
 
-export const metadata = {
-  title: 'Termos de Uso — BelleBook',
+const TITLE = 'Termos de Uso — BelleBook'
+const DESCRIPTION = 'Termos de Uso da plataforma BelleBook — planos, pagamento, cancelamento e responsabilidades.'
+
+export const metadata: Metadata = {
+  title: TITLE,
+  description: DESCRIPTION,
+  alternates: { canonical: `${SITE_URL}/termos` },
+  openGraph: { title: TITLE, description: DESCRIPTION, url: `${SITE_URL}/termos`, siteName: 'BelleBook', locale: 'pt_BR', type: 'website' },
+  twitter: { card: 'summary', title: TITLE, description: DESCRIPTION },
+  robots: { index: true, follow: true },
 }
 
 export default function TermosPage() {

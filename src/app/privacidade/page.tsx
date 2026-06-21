@@ -1,7 +1,17 @@
+import type { Metadata } from 'next'
 import { LegalLayout, LegalSection } from '@/components/legal/LegalLayout'
+import { SITE_URL } from '@/lib/seo'
 
-export const metadata = {
-  title: 'Política de Privacidade — BelleBook',
+const TITLE = 'Política de Privacidade — BelleBook'
+const DESCRIPTION = 'Como o BelleBook coleta, usa e protege seus dados, em conformidade com a LGPD.'
+
+export const metadata: Metadata = {
+  title: TITLE,
+  description: DESCRIPTION,
+  alternates: { canonical: `${SITE_URL}/privacidade` },
+  openGraph: { title: TITLE, description: DESCRIPTION, url: `${SITE_URL}/privacidade`, siteName: 'BelleBook', locale: 'pt_BR', type: 'website' },
+  twitter: { card: 'summary', title: TITLE, description: DESCRIPTION },
+  robots: { index: true, follow: true },
 }
 
 export default function PrivacidadePage() {

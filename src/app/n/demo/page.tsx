@@ -1,5 +1,7 @@
+import type { Metadata } from 'next'
 import PerfilPublicoClient, { type ServicoComProfissionais } from '../[slug]/PerfilPublicoClient'
 import type { Prestadora, GaleriaItem, Profissional, HorarioFuncionamento, Avaliacao } from '@/lib/types'
+import { SITE_URL } from '@/lib/seo'
 
 const DEMO_PRESTADORA: Prestadora = {
   id: 'demo',
@@ -146,9 +148,24 @@ const DEMO_AVALIACOES: Avaliacao[] = [
   { id: 'av3', agendamento_id: 'a3', prestadora_id: 'demo', nota: 4, comentario: 'Muito bom, só achei o horário um pouco apertado.', destaque: false, created_at: '2026-05-28T12:00:00Z' },
 ]
 
-export const metadata = {
-  title: 'Ana Nails Studio — Exemplo BelleBook',
-  description: 'Veja como fica sua página de agendamento no BelleBook',
+const TITLE = 'Ana Nails Studio — Exemplo BelleBook'
+const DESCRIPTION = 'Veja como fica sua página de agendamento no BelleBook'
+
+export const metadata: Metadata = {
+  title: TITLE,
+  description: DESCRIPTION,
+  alternates: { canonical: `${SITE_URL}/n/demo` },
+  robots: { index: true, follow: true },
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    url: `${SITE_URL}/n/demo`,
+    siteName: 'BelleBook',
+    locale: 'pt_BR',
+    type: 'website',
+    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'BelleBook' }],
+  },
+  twitter: { card: 'summary_large_image', title: TITLE, description: DESCRIPTION, images: ['/og-image.png'] },
 }
 
 export default function DemoPage() {

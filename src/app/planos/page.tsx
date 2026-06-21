@@ -1,10 +1,26 @@
+import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import PlanosClient from './PlanosClient'
+import { SITE_URL } from '@/lib/seo'
 
-export const metadata = {
-  title: 'Planos — BelleBook',
-  description: 'Escolha o plano ideal para o seu negócio de beleza',
+const TITLE = 'Planos — BelleBook'
+const DESCRIPTION = 'Escolha o plano ideal para o seu negócio de beleza'
+
+export const metadata: Metadata = {
+  title: TITLE,
+  description: DESCRIPTION,
+  alternates: { canonical: `${SITE_URL}/planos` },
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    url: `${SITE_URL}/planos`,
+    siteName: 'BelleBook',
+    locale: 'pt_BR',
+    type: 'website',
+    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'BelleBook' }],
+  },
+  twitter: { card: 'summary_large_image', title: TITLE, description: DESCRIPTION, images: ['/og-image.png'] },
 }
 
 export default async function PlanosPage({

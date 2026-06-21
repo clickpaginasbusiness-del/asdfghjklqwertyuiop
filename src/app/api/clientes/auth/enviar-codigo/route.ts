@@ -56,8 +56,11 @@ export async function POST(request: NextRequest) {
 
   try {
     await enviarCodigoVerificacao(toE164(digits))
-  } catch (err) {
-    console.error('[clientes/auth/enviar-codigo] erro Twilio:', err)
+  } catch {
+    // Não loga o erro completo: a resposta de erro do Twilio costuma incluir
+    // o próprio número de telefone (campo "To"), então logar `err` aqui
+    // vazaria o telefone do usuário nos logs do servidor.
+    console.error('[clientes/auth/enviar-codigo] falha ao enviar código via Twilio')
     return NextResponse.json(
       { error: 'Não foi possível enviar o código. Tente novamente.' },
       { status: 500 }

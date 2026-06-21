@@ -3,10 +3,16 @@ import './globals.css'
 import { Toaster } from 'react-hot-toast'
 import { ServiceWorkerRegister } from '@/components/pwa/ServiceWorkerRegister'
 import { InstallPrompt } from '@/components/pwa/InstallPrompt'
+import { SITE_URL } from '@/lib/seo'
+
+const TITLE = 'BelleBook — Agendamento para Profissionais de Beleza'
+const DESCRIPTION = 'A plataforma mais elegante para profissionais de beleza gerenciarem seus agendamentos'
 
 export const metadata: Metadata = {
-  title: 'BelleBook — Agendamento para Profissionais de Beleza',
-  description: 'A plataforma mais elegante para profissionais de beleza gerenciarem seus agendamentos',
+  metadataBase: new URL(SITE_URL),
+  title: TITLE,
+  description: DESCRIPTION,
+  robots: { index: true, follow: true },
   icons: {
     icon: [
       { url: '/favicon-32.png', sizes: '32x32', type: 'image/png' },
@@ -18,6 +24,20 @@ export const metadata: Metadata = {
   appleWebApp: {
     title: 'BelleBook',
     statusBarStyle: 'black-translucent',
+  },
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    siteName: 'BelleBook',
+    locale: 'pt_BR',
+    type: 'website',
+    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'BelleBook' }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: TITLE,
+    description: DESCRIPTION,
+    images: ['/og-image.png'],
   },
 }
 
