@@ -104,6 +104,11 @@ export async function POST(request: NextRequest) {
     porDispositivo.set(sub.user_agent, grupo)
   }
 
+  console.log(
+    `[push/send] dedup: ${semDispositivoIdentificado.length} sem user_agent, ` +
+    `${porDispositivo.size} grupo(s) de dispositivo distintos a partir de ${subscriptionsRaw.length} registro(s) brutos`
+  )
+
   const subscriptions = [...semDispositivoIdentificado]
   const subscriptionsObsoletas: typeof subscriptionsRaw = []
   for (const grupo of porDispositivo.values()) {
@@ -111,6 +116,11 @@ export async function POST(request: NextRequest) {
     subscriptions.push(ordenado[0])
     subscriptionsObsoletas.push(...ordenado.slice(1))
   }
+
+  console.log(
+    `[push/send] após dedup: ${subscriptions.length} subscription(s) vão receber o envio ` +
+    `(${subscriptionsObsoletas.length} obsoleta(s) descartada(s))`
+  )
 
   if (subscriptionsObsoletas.length) {
     console.log(

@@ -532,6 +532,7 @@ export default function PerfilPublicoClient({
     }
 
     setAgendamentoFeito(data.agendamento)
+    setMeusAgendamentos((prev) => [data.agendamento, ...prev])
     setStep('confirmado')
   }
 

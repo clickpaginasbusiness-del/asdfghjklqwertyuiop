@@ -97,11 +97,13 @@ export async function POST(request: NextRequest) {
     mensagem: `Nova cliente! ${ag.clientes?.nome} agendou ${ag.servicos?.nome}${profNome} para ${format(new Date(dataHora), "dd/MM 'às' HH'h'mm")}`,
   })
 
-  fetch(new URL('/api/push/send', request.nextUrl.origin), {
+  // Precisa ser aguardado: sem o await, a função serverless pode ser
+  // encerrada antes do fetch completar e a notificação nunca é enviada.
+  await fetch(new URL('/api/push/send', request.nextUrl.origin), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ agendamentoId: ag.id }),
-  }).catch(() => {})
+  }).catch((err) => console.error('[agendamentos/criar] erro ao notificar push:', err))
 
   return NextResponse.json({ agendamento: ag })
 }

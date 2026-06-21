@@ -2,7 +2,7 @@
 // único do deploy, garantindo que o navegador sempre detecte este arquivo como
 // "mudou" a cada novo deploy na Vercel — mesmo quando só o código do app mudou e
 // este arquivo em si ficaria byte-a-byte idêntico.
-const CACHE_VERSION = 'bellebook-mqo8of05'
+const CACHE_VERSION = 'bellebook-mqocrqv9'
 const PRECACHE_URLS = ['/', '/painel', '/painel/login', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png']
 
 self.addEventListener('install', (event) => {
