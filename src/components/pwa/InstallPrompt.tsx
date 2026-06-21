@@ -1,88 +1,19 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import Image from 'next/image'
+import { usePathname } from 'next/navigation'
 import { X, Share } from 'lucide-react'
+import { useInstallPrompt } from './useInstallPrompt'
 
 const DISMISS_KEY = 'bb_install_prompt_dismissed_until'
 const DISMISS_DAYS = 7
 
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
-}
-
-function isIos() {
-  return /iphone|ipad|ipod/i.test(window.navigator.userAgent)
-}
-
-function isAndroid() {
-  return /android/i.test(window.navigator.userAgent)
-}
-
-function isStandalone() {
-  return (
-    window.matchMedia('(display-mode: standalone)').matches ||
-    (window.navigator as Navigator & { standalone?: boolean }).standalone === true
-  )
-}
-
-function isDismissed() {
-  const until = localStorage.getItem(DISMISS_KEY)
-  return !!until && Date.now() < Number(until)
-}
-
-function dismissForDays(days: number) {
-  localStorage.setItem(DISMISS_KEY, String(Date.now() + days * 24 * 60 * 60 * 1000))
-}
-
 export function InstallPrompt() {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
-  const [showIosHint, setShowIosHint] = useState(false)
-  const [visible, setVisible] = useState(false)
+  const pathname = usePathname()
+  const { visible, showIosHint, install, dismiss } = useInstallPrompt(DISMISS_KEY, DISMISS_DAYS)
 
-  useEffect(() => {
-    if (isDismissed()) return
-    if (isStandalone()) return
-    if (!isAndroid() && !isIos()) return
-
-    function handleBeforeInstall(e: Event) {
-      e.preventDefault()
-      setDeferredPrompt(e as BeforeInstallPromptEvent)
-      setVisible(true)
-    }
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstall)
-
-    if (isIos()) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- detecção de plataforma só é possível após montar (window/navigator)
-      setShowIosHint(true)
-      setVisible(true)
-    }
-
-    function handleInstalled() {
-      setVisible(false)
-    }
-    window.addEventListener('appinstalled', handleInstalled)
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstall)
-      window.removeEventListener('appinstalled', handleInstalled)
-    }
-  }, [])
-
-  function dismiss() {
-    setVisible(false)
-    dismissForDays(DISMISS_DAYS)
-  }
-
-  async function handleInstall() {
-    if (!deferredPrompt) return
-    await deferredPrompt.prompt()
-    await deferredPrompt.userChoice
-    setVisible(false)
-  }
-
+  // Dentro do painel, o InstallPromptBanner (inline, com texto contextual) assume esse papel.
+  if (pathname?.startsWith('/painel')) return null
   if (!visible) return null
 
   return (
@@ -100,7 +31,7 @@ export function InstallPrompt() {
           </p>
         ) : (
           <button
-            onClick={handleInstall}
+            onClick={install}
             className="mt-2.5 text-xs font-semibold text-white bg-rose-400 hover:bg-rose-500 rounded-lg px-4 py-2 min-h-9 transition-colors"
           >
             Instalar app

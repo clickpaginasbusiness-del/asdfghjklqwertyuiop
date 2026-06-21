@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/client'
 import { NotificacoesSino } from '@/components/painel/NotificacoesSino'
 import { OnboardingTour } from '@/components/painel/OnboardingTour'
 import { PushNotificationPrompt } from '@/components/painel/PushNotificationPrompt'
+import { InstallPromptBanner } from '@/components/painel/InstallPromptBanner'
 import { cn } from '@/lib/utils'
 import type { Prestadora } from '@/lib/types'
 
@@ -215,6 +216,12 @@ export default function PainelLayoutClient({
           <TrialBanner dias={trialDiasRestantes} />
         )}
 
+        {/* Instalar PWA */}
+        <InstallPromptBanner />
+
+        {/* Ativar notificações push */}
+        <PushNotificationPrompt prestadoraId={prestadora.id} />
+
         {/* Page content */}
         <main className="flex-1 p-4 lg:p-8">
           {children}
@@ -228,8 +235,6 @@ export default function PainelLayoutClient({
           onCloseSidebar={() => setSidebarOpen(false)}
         />
       )}
-
-      <PushNotificationPrompt prestadoraId={prestadora.id} />
     </div>
   )
 }
