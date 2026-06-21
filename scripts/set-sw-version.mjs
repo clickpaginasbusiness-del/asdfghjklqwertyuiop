@@ -17,4 +17,4 @@ const buildIdOriginal = readFileSync(BUILD_ID_PATH, 'utf8')
 const buildIdUpdated = buildIdOriginal.replace(/BUILD_ID = '[^']*'/, `BUILD_ID = 'bellebook-${buildId}'`)
 writeFileSync(BUILD_ID_PATH, buildIdUpdated)
 
-console.log(`[set-sw-version] CACHE_VERSION = bellebook-${buildId}`)
+console.error(`[set-sw-version] CACHE_VERSION = bellebook-${buildId}`)
