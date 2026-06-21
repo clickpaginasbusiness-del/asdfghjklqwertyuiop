@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { RefreshCw } from 'lucide-react'
 
 const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000
+const VERSION_POLL_INTERVAL_MS = 5 * 60 * 1000
 
 export function ServiceWorkerRegister() {
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null)
@@ -15,42 +16,79 @@ export function ServiceWorkerRegister() {
 
     function trackInstallingWorker(worker: ServiceWorker) {
       worker.addEventListener('statechange', () => {
+        console.log('[sw] novo service worker mudou de estado:', worker.state)
         // "installed" + já existir um controller ativo = isto é uma atualização
         // (não a primeira instalação do SW neste dispositivo)
         if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+          console.log('[sw] novo service worker instalado e aguardando ativação — exibindo banner')
           setWaitingWorker(worker)
         }
       })
     }
 
-    let interval: ReturnType<typeof setInterval> | undefined
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') registration?.update().catch(() => {})
-    }
+    let updateInterval: ReturnType<typeof setInterval> | undefined
+    let versionInterval: ReturnType<typeof setInterval> | undefined
     let registration: ServiceWorkerRegistration | undefined
+    let buildIdInicial: string | null = null
+
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return
+      console.log('[sw] app voltou ao foco — checando atualização do service worker')
+      registration?.update().catch((err) => console.warn('[sw] falha ao checar atualização:', err))
+    }
+
+    async function checarVersao() {
+      try {
+        const res = await fetch('/api/version', { cache: 'no-store' })
+        const data = await res.json()
+        if (buildIdInicial === null) {
+          buildIdInicial = data.buildId
+          console.log('[version-poll] build atual desta página:', buildIdInicial)
+          return
+        }
+        console.log('[version-poll] build no servidor:', data.buildId, '| build desta página:', buildIdInicial)
+        if (data.buildId !== buildIdInicial) {
+          console.log('[version-poll] nova versão detectada — forçando checagem do service worker')
+          registration?.update().catch((err) => console.warn('[sw] falha ao checar atualização:', err))
+        }
+      } catch (err) {
+        console.warn('[version-poll] falha ao consultar /api/version:', err)
+      }
+    }
 
     navigator.serviceWorker
       .register('/sw.js', { updateViaCache: 'none' })
       .then((reg) => {
         registration = reg
+        console.log('[sw] registrado com sucesso, scope:', reg.scope)
 
         if (reg.waiting && navigator.serviceWorker.controller) {
+          console.log('[sw] já havia um service worker em espera na primeira checagem')
           setWaitingWorker(reg.waiting)
         }
 
         reg.addEventListener('updatefound', () => {
+          console.log('[sw] updatefound — novo service worker sendo instalado')
           if (reg.installing) trackInstallingWorker(reg.installing)
         })
 
-        interval = setInterval(() => reg.update().catch(() => {}), UPDATE_CHECK_INTERVAL_MS)
+        updateInterval = setInterval(() => {
+          console.log('[sw] checagem periódica de atualização (1h)')
+          reg.update().catch((err) => console.warn('[sw] falha ao checar atualização:', err))
+        }, UPDATE_CHECK_INTERVAL_MS)
+
+        checarVersao()
+        versionInterval = setInterval(checarVersao, VERSION_POLL_INTERVAL_MS)
+
         document.addEventListener('visibilitychange', onVisible)
       })
-      .catch(() => {})
+      .catch((err) => console.warn('[sw] falha ao registrar:', err))
 
     let reloading = false
     function handleControllerChange() {
       if (reloading) return
       reloading = true
+      console.log('[sw] novo service worker assumiu controle — recarregando página')
       window.location.reload()
     }
     navigator.serviceWorker.addEventListener('controllerchange', handleControllerChange)
@@ -58,12 +96,14 @@ export function ServiceWorkerRegister() {
     return () => {
       navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange)
       document.removeEventListener('visibilitychange', onVisible)
-      if (interval) clearInterval(interval)
+      if (updateInterval) clearInterval(updateInterval)
+      if (versionInterval) clearInterval(versionInterval)
     }
   }, [])
 
   function atualizarAgora() {
     if (!waitingWorker) return
+    console.log('[sw] usuária confirmou atualização — enviando SKIP_WAITING')
     setUpdating(true)
     waitingWorker.postMessage({ type: 'SKIP_WAITING' })
     // O reload acontece via o listener de "controllerchange" assim que o novo SW
