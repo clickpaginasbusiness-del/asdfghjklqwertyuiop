@@ -138,11 +138,11 @@ export default function PainelLayoutClient({
         'lg:translate-x-0',
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       )}>
-        <div className="p-6 border-b border-gray-100">
+        <div className="p-6 border-b border-gray-100 shrink-0">
           <span className="font-serif text-2xl font-bold text-rose-400">BelleBook</span>
         </div>
 
-        <nav className="flex-1 p-4 space-y-1">
+        <nav className="flex-1 min-h-0 overflow-y-auto p-4 space-y-1">
           {navItems.map((item) => {
             const active = pathname === item.href
             return (
@@ -165,7 +165,7 @@ export default function PainelLayoutClient({
           })}
         </nav>
 
-        <div className="p-4 border-t border-gray-100 space-y-2">
+        <div className="p-4 border-t border-gray-100 space-y-2 shrink-0">
           <a
             href={`/n/${prestadora.slug}`}
             target="_blank"

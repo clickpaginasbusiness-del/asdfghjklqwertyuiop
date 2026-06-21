@@ -61,15 +61,20 @@ export function AgendaDoDiaSection({
   const abertura = horarioDoDia?.hora_abertura ?? prestadora.hora_abertura
   const fechamento = horarioDoDia?.hora_fechamento ?? prestadora.hora_fechamento
 
-  const slots = useMemo(
-    () => (ativo ? gerarSlots(abertura, fechamento) : []),
-    [ativo, abertura, fechamento]
-  )
-
   const agendamentosDoDia = useMemo(
     () => agendamentos.filter((a) => isSameDay(parseISO(a.data_hora), dataSelecionada)),
     [agendamentos, dataSelecionada]
   )
+
+  // Slots padrão de 30 em 30 min (mostram os horários livres) + horários
+  // exatos de agendamentos que não caem nessa grade (ex.: 09:45) — sem isso
+  // um agendamento fora do padrão de 30 min simplesmente não apareceria.
+  const slots = useMemo(() => {
+    if (!ativo) return []
+    const padrao = gerarSlots(abertura, fechamento)
+    const horariosAgendados = agendamentosDoDia.map((a) => format(parseISO(a.data_hora), 'HH:mm'))
+    return Array.from(new Set([...padrao, ...horariosAgendados])).sort()
+  }, [ativo, abertura, fechamento, agendamentosDoDia])
 
   const colunas: ProfissionalLite[] = profissionais.length > 0
     ? profissionais
@@ -82,6 +87,12 @@ export function AgendaDoDiaSection({
       if (profissionais.length === 0) return true
       return a.profissional_id === colunaId
     })
+  }
+
+  function formatFaixaHorario(ag: AgendaSlotAg): string {
+    const inicio = parseISO(ag.data_hora)
+    const fim = new Date(inicio.getTime() + (ag.servicos?.duracao_minutos ?? 30) * 60000)
+    return `${format(inicio, 'HH:mm')} - ${format(fim, 'HH:mm')}`
   }
 
   return (
@@ -159,6 +170,7 @@ export function AgendaDoDiaSection({
                           <>
                             <p className="font-medium text-rose-700 truncate">{ag.clientes?.nome}</p>
                             <p className="text-[11px] text-rose-500 truncate">{ag.servicos?.nome}</p>
+                            <p className="text-[10px] text-rose-400">{formatFaixaHorario(ag)}</p>
                           </>
                         ) : (
                           <span>—</span>
