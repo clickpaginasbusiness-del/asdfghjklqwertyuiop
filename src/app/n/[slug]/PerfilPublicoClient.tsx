@@ -14,7 +14,7 @@ import {
 import {
   Clock, CheckCircle2, Calendar, ChevronLeft, ChevronRight, X,
   UserCircle2, MessageCircle, AtSign, MapPin, Star, Scissors,
-  CalendarPlus, Share2, Quote,
+  CalendarPlus, Share2, Quote, Trash2,
 } from 'lucide-react'
 import type { Prestadora, Servico, GaleriaItem, Agendamento, Profissional, HorarioFuncionamento, Avaliacao } from '@/lib/types'
 import { getTema } from '@/lib/theme'
@@ -99,6 +99,8 @@ export default function PerfilPublicoClient({
   const [clienteLogado, setClienteLogado] = useState<{ id: string; nome: string; telefone: string } | null>(null)
   const [meusAgendamentos, setMeusAgendamentos] = useState<Agendamento[]>([])
   const [meusAgendamentosModal, setMeusAgendamentosModal] = useState(false)
+  const [agendamentoParaCancelar, setAgendamentoParaCancelar] = useState<Agendamento | null>(null)
+  const [cancelando, setCancelando] = useState(false)
 
   const [perfilAberto, setPerfilAberto] = useState(false)
   const [editandoNome, setEditandoNome] = useState(false)
@@ -539,6 +541,14 @@ export default function PerfilPublicoClient({
     }
     setMeusAgendamentos((prev) => prev.map((a) => a.id === id ? { ...a, status: 'cancelado' as const } : a))
     toast.success('Agendamento cancelado')
+  }
+
+  async function confirmarCancelamento() {
+    if (!agendamentoParaCancelar) return
+    setCancelando(true)
+    await cancelarMeuAgendamento(agendamentoParaCancelar.id)
+    setCancelando(false)
+    setAgendamentoParaCancelar(null)
   }
 
   function resetarFluxo() {
@@ -1395,29 +1405,76 @@ export default function PerfilPublicoClient({
             <p className="text-center text-gray-400 py-8 text-sm">Nenhum agendamento</p>
           ) : (
             meusAgendamentosVisiveis.map((a) => (
-              <div key={a.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-900 text-sm">{a.servicos?.nome}</p>
-                  {a.profissionais && (
-                    <p className="text-xs text-rose-500">{a.profissionais.nome}</p>
-                  )}
-                  <p className="text-xs text-gray-400">{formatDateTime(a.data_hora)}</p>
+              <div key={a.id} className="p-3 bg-gray-50 rounded-xl space-y-2">
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-gray-900 text-sm">{a.servicos?.nome}</p>
+                    {a.profissionais && (
+                      <p className="text-xs text-rose-500">{a.profissionais.nome}</p>
+                    )}
+                    <p className="text-xs text-gray-400">{formatDateTime(a.data_hora)}</p>
+                  </div>
+                  <Badge variant={a.status === 'confirmado' ? 'success' : 'danger'}>
+                    {a.status === 'confirmado' ? 'Confirmado' : 'Cancelado'}
+                  </Badge>
                 </div>
-                <Badge variant={a.status === 'confirmado' ? 'success' : 'danger'}>
-                  {a.status === 'confirmado' ? 'Confirmado' : 'Cancelado'}
-                </Badge>
                 {a.status === 'confirmado' && (
-                  <button
-                    onClick={() => cancelarMeuAgendamento(a.id)}
-                    className="text-gray-300 hover:text-red-400 transition-colors"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+                  <div className="flex justify-end">
+                    <button
+                      onClick={() => setAgendamentoParaCancelar(a)}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-500 hover:text-white hover:bg-red-500 border border-red-200 hover:border-red-500 rounded-lg px-3 py-1.5 min-h-9 transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Cancelar
+                    </button>
+                  </div>
                 )}
               </div>
             ))
           )}
         </div>
+      </Modal>
+
+      {/* ── MODAL CONFIRMAR CANCELAMENTO ────────── */}
+      <Modal
+        open={!!agendamentoParaCancelar}
+        onClose={() => setAgendamentoParaCancelar(null)}
+        title="Cancelar agendamento"
+      >
+        {agendamentoParaCancelar && (
+          <div className="p-6 space-y-5">
+            <p className="text-sm text-gray-600">
+              Tem certeza que deseja cancelar seu agendamento de{' '}
+              <span className="font-semibold text-gray-900">{agendamentoParaCancelar.servicos?.nome}</span>
+              {' '}em{' '}
+              <span className="font-semibold text-gray-900">
+                {format(new Date(agendamentoParaCancelar.data_hora), "d 'de' MMMM", { locale: ptBR })}
+              </span>
+              {' '}às{' '}
+              <span className="font-semibold text-gray-900">
+                {format(new Date(agendamentoParaCancelar.data_hora), 'HH:mm')}
+              </span>
+              ?
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2.5">
+              <Button
+                variant="outline"
+                onClick={() => setAgendamentoParaCancelar(null)}
+                className="flex-1"
+              >
+                Voltar
+              </Button>
+              <Button
+                variant="danger"
+                onClick={confirmarCancelamento}
+                loading={cancelando}
+                className="flex-1"
+              >
+                Sim, cancelar
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* ── GALERIA LIGHTBOX ────────────────────── */}
