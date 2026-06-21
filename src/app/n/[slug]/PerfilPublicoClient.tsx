@@ -83,13 +83,18 @@ export default function PerfilPublicoClient({
     fechamento: prestadora.hora_fechamento,
   })
 
-  const [nomeCliente, setNomeCliente] = useState('')
-  const [telefoneCliente, setTelefoneCliente] = useState('')
   const [agendando, setAgendando] = useState(false)
   const [agendamentoFeito, setAgendamentoFeito] = useState<Agendamento | null>(null)
 
   const [loginModal, setLoginModal] = useState(false)
+  const [loginStep, setLoginStep] = useState<'telefone' | 'codigo'>('telefone')
   const [telefoneLogin, setTelefoneLogin] = useState('')
+  const [codigoLogin, setCodigoLogin] = useState('')
+  const [nomeLogin, setNomeLogin] = useState('')
+  const [clienteExistenteLogin, setClienteExistenteLogin] = useState(true)
+  const [enviandoCodigo, setEnviandoCodigo] = useState(false)
+  const [verificandoCodigo, setVerificandoCodigo] = useState(false)
+  const [pendingBooking, setPendingBooking] = useState(false)
   const [clienteLogado, setClienteLogado] = useState<{ id: string; nome: string; telefone: string } | null>(null)
   const [meusAgendamentos, setMeusAgendamentos] = useState<Agendamento[]>([])
   const [meusAgendamentosModal, setMeusAgendamentosModal] = useState(false)
@@ -139,6 +144,37 @@ export default function PerfilPublicoClient({
     sessionStorage.setItem(key, '1')
     createClient().from('visitas_pagina').insert({ prestadora_id: prestadora.id })
   }, [isDemo, prestadora.id])
+
+  async function carregarMeusAgendamentos(clienteId: string) {
+    const supabase = createClient()
+    const { data: ags } = await supabase
+      .from('agendamentos')
+      .select('*, servicos(*), profissionais(*)')
+      .eq('cliente_id', clienteId)
+      .eq('prestadora_id', prestadora.id)
+      .order('data_hora', { ascending: false })
+      .limit(10)
+    setMeusAgendamentos(ags ?? [])
+  }
+
+  /* Restaura sessao do cliente a partir do token salvo (valido por 30 dias) */
+  useEffect(() => {
+    if (isDemo) return
+    const token = localStorage.getItem('clienteToken')
+    if (!token) return
+    fetch('/api/clientes/auth/sessao', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then(({ cliente }) => {
+        setClienteLogado(cliente)
+        carregarMeusAgendamentos(cliente.id)
+      })
+      .catch(() => localStorage.removeItem('clienteToken'))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDemo])
 
   /* Today's opening hours */
   const diaHoje = getDay(new Date())
@@ -231,53 +267,84 @@ export default function PerfilPublicoClient({
     setStep('horario')
   }
 
-  async function loginCliente() {
-    if (isDemo) {
-      setLoginModal(false)
-      toast('Na demonstração, o histórico de agendamentos não está disponível.')
+  function loginDemoInstantaneo() {
+    setClienteLogado({ id: 'demo-cliente', nome: 'Cliente Demo', telefone: '11999999999' })
+    toast('Login simulado (modo demonstração).')
+  }
+
+  function fecharLoginModal() {
+    setLoginModal(false)
+    setLoginStep('telefone')
+    setCodigoLogin('')
+    setPendingBooking(false)
+  }
+
+  async function enviarCodigo() {
+    if (cleanTelefone(telefoneLogin).length < 10) {
+      toast.error('Telefone inválido')
       return
     }
-    if (!telefoneLogin.trim()) return
-    const supabase = createClient()
-    const { data } = await supabase
-      .from('clientes')
-      .select('*')
-      .eq('telefone', cleanTelefone(telefoneLogin))
-      .maybeSingle()
+    setEnviandoCodigo(true)
+    try {
+      const res = await fetch('/api/clientes/auth/enviar-codigo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ telefone: telefoneLogin }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? 'Erro ao enviar código')
+        return
+      }
+      setClienteExistenteLogin(data.clienteExistente)
+      setLoginStep('codigo')
+    } finally {
+      setEnviandoCodigo(false)
+    }
+  }
 
-    if (data) {
-      setClienteLogado(data)
-      setNomeCliente(data.nome)
-      setTelefoneCliente(maskTelefone(data.telefone))
-      const { data: ags } = await supabase
-        .from('agendamentos')
-        .select('*, servicos(*), profissionais(*)')
-        .eq('cliente_id', data.id)
-        .eq('prestadora_id', prestadora.id)
-        .order('data_hora', { ascending: false })
-        .limit(10)
-      setMeusAgendamentos(ags ?? [])
-      setLoginModal(false)
-      toast.success(`Olá, ${data.nome}!`)
-    } else {
-      setTelefoneCliente(maskTelefone(telefoneLogin))
-      setLoginModal(false)
-      toast('Número não encontrado. Preencha seu nome ao agendar.')
+  async function verificarCodigo() {
+    setVerificandoCodigo(true)
+    try {
+      const res = await fetch('/api/clientes/auth/verificar-codigo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          telefone: telefoneLogin,
+          codigo: codigoLogin,
+          nome: clienteExistenteLogin ? undefined : nomeLogin,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? 'Código inválido')
+        return
+      }
+      localStorage.setItem('clienteToken', data.token)
+      setClienteLogado(data.cliente)
+      await carregarMeusAgendamentos(data.cliente.id)
+      const irParaAgendamento = pendingBooking
+      fecharLoginModal()
+      toast.success(`Olá, ${data.cliente.nome}!`)
+      if (irParaAgendamento) setStep('cliente')
+    } finally {
+      setVerificandoCodigo(false)
     }
   }
 
   async function confirmarAgendamento() {
     if (!servicoSelecionado || !dataSelecionada || !horarioSelecionado) return
-    if (!nomeCliente.trim() || !telefoneCliente.trim()) {
-      toast.error('Preencha seu nome e telefone')
+    if (!clienteLogado) {
+      toast.error('Faça login para agendar')
       return
     }
 
+    const [h, m] = horarioSelecionado.split(':').map(Number)
+    const dataHora = new Date(dataSelecionada)
+    dataHora.setHours(h, m, 0, 0)
+
     if (isDemo) {
       setAgendando(true)
-      const [h, m] = horarioSelecionado.split(':').map(Number)
-      const dataHora = new Date(dataSelecionada)
-      dataHora.setHours(h, m, 0, 0)
       const servico = servicoSelecionado
       const prof = profissionalSelecionada
       setTimeout(() => {
@@ -293,7 +360,7 @@ export default function PerfilPublicoClient({
           arquivado: false,
           created_at: new Date().toISOString(),
           servicos: servico,
-          clientes: { id: 'demo-cliente', nome: nomeCliente.trim(), telefone: cleanTelefone(telefoneCliente), created_at: '' },
+          clientes: { id: 'demo-cliente', nome: clienteLogado.nome, telefone: clienteLogado.telefone, verificado_em: null, created_at: '' },
           profissionais: prof ?? undefined,
         })
         setStep('confirmado')
@@ -303,93 +370,40 @@ export default function PerfilPublicoClient({
     }
 
     setAgendando(true)
-    const supabase = createClient()
-    const telLimpo = cleanTelefone(telefoneCliente)
-
-    let clienteId = clienteLogado?.id
-
-    if (!clienteId) {
-      const { data: existente } = await supabase
-        .from('clientes')
-        .select('id')
-        .eq('telefone', telLimpo)
-        .maybeSingle()
-
-      if (existente) {
-        clienteId = existente.id
-      } else {
-        const { data: novoCliente } = await supabase
-          .from('clientes')
-          .insert({ nome: nomeCliente.trim(), telefone: telLimpo })
-          .select()
-          .single()
-        clienteId = novoCliente?.id
-      }
-    }
-
-    if (!clienteId) {
-      toast.error('Erro ao identificar cliente')
-      setAgendando(false)
-      return
-    }
-
-    const [h, m] = horarioSelecionado.split(':').map(Number)
-    const dataHora = new Date(dataSelecionada)
-    dataHora.setHours(h, m, 0, 0)
-
-    const { data: ag, error } = await supabase
-      .from('agendamentos')
-      .insert({
-        prestadora_id: prestadora.id,
-        profissional_id: profissionalSelecionada?.id ?? null,
-        servico_id: servicoSelecionado.id,
-        cliente_id: clienteId,
-        data_hora: dataHora.toISOString(),
-        status: 'confirmado',
-      })
-      .select('*, servicos(*), clientes(*), profissionais(*)')
-      .single()
-
-    if (error) {
-      toast.error('Erro ao agendar. Tente novamente.')
-      setAgendando(false)
-      return
-    }
-
-    const profNome = profissionalSelecionada ? ` com ${profissionalSelecionada.nome}` : ''
-    await supabase.from('notificacoes').insert({
-      prestadora_id: prestadora.id,
-      tipo: 'agendamento',
-      mensagem: `Nova cliente! ${nomeCliente} agendou ${servicoSelecionado.nome}${profNome} para ${format(dataHora, "dd/MM 'às' HH'h'mm")}`,
-    })
-    fetch('/api/push/send', {
+    const token = localStorage.getItem('clienteToken')
+    const res = await fetch('/api/agendamentos/criar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ agendamentoId: ag.id }),
-    }).catch(() => {})
-
-    setAgendamentoFeito(ag)
-    setStep('confirmado')
+      body: JSON.stringify({
+        token,
+        prestadoraId: prestadora.id,
+        servicoId: servicoSelecionado.id,
+        profissionalId: profissionalSelecionada?.id ?? null,
+        dataHora: dataHora.toISOString(),
+      }),
+    })
+    const data = await res.json()
     setAgendando(false)
+
+    if (!res.ok) {
+      toast.error(data.error ?? 'Erro ao agendar. Tente novamente.')
+      return
+    }
+
+    setAgendamentoFeito(data.agendamento)
+    setStep('confirmado')
   }
 
   async function cancelarMeuAgendamento(id: string) {
-    const supabase = createClient()
-    const ag = meusAgendamentos.find((a) => a.id === id)
-    await supabase.from('agendamentos').update({ status: 'cancelado', cancelado_por: 'cliente' }).eq('id', id)
-    if (ag) {
-      const profNome = ag.profissionais?.nome ? ` com ${ag.profissionais.nome}` : ''
-      const dt = formatDateShort(ag.data_hora)
-      await supabase.from('notificacoes').insert({
-        prestadora_id: prestadora.id,
-        tipo: 'cancelamento',
-        mensagem: `${clienteLogado?.nome} cancelou o agendamento - ${ag.servicos?.nome}${profNome} em ${dt}`,
-      })
-      fetch('/api/push/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ agendamentoId: id }),
-      }).catch(() => {})
+    const token = localStorage.getItem('clienteToken')
+    const res = await fetch('/api/agendamentos/cancelar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, agendamentoId: id }),
+    })
+    if (!res.ok) {
+      toast.error('Erro ao cancelar')
+      return
     }
     setMeusAgendamentos((prev) => prev.map((a) => a.id === id ? { ...a, status: 'cancelado' as const } : a))
     toast.success('Agendamento cancelado')
@@ -490,7 +504,11 @@ export default function PerfilPublicoClient({
                 </Button>
               )}
               <button
-                onClick={() => setLoginModal(true)}
+                onClick={() => {
+                  if (clienteLogado) return
+                  if (isDemo) { loginDemoInstantaneo(); return }
+                  setLoginModal(true)
+                }}
                 className="px-3 py-1.5 min-h-11 text-sm font-semibold rounded-xl bg-white border-2 hover:brightness-95 transition-all shadow-sm"
                 style={{ borderColor: tema.hex, color: tema.hexDark }}
               >
@@ -935,7 +953,13 @@ export default function PerfilPublicoClient({
                         return (
                           <button
                             key={h}
-                            onClick={() => { setHorarioSelecionado(h); setStep('cliente') }}
+                            onClick={() => {
+                              setHorarioSelecionado(h)
+                              if (clienteLogado) { setStep('cliente'); return }
+                              if (isDemo) { loginDemoInstantaneo(); setStep('cliente'); return }
+                              setPendingBooking(true)
+                              setLoginModal(true)
+                            }}
                             className={`py-2.5 rounded-xl text-sm font-medium transition-all border ${
                               selecionadoSlot ? 'text-white' : 'bg-white border-gray-200 text-gray-700'
                             }`}
@@ -978,31 +1002,42 @@ export default function PerfilPublicoClient({
                     </div>
                   </div>
 
-                  <Input
-                    label="Seu nome"
-                    placeholder="Maria Silva"
-                    value={nomeCliente}
-                    onChange={(e) => setNomeCliente(e.target.value)}
-                    required
-                  />
-                  <Input
-                    label="WhatsApp"
-                    placeholder="(11) 99999-9999"
-                    type="tel"
-                    value={telefoneCliente}
-                    onChange={(e) => setTelefoneCliente(maskTelefone(e.target.value))}
-                    required
-                  />
+                  {clienteLogado ? (
+                    <>
+                      <div className="flex items-center justify-between rounded-xl border border-gray-100 px-3 py-2.5 text-sm">
+                        <span className="text-gray-600">
+                          Agendando como <span className="font-medium text-gray-900">{clienteLogado.nome}</span>
+                          {' · '}{maskTelefone(clienteLogado.telefone)}
+                        </span>
+                        <button
+                          onClick={() => setLoginModal(true)}
+                          className="text-xs font-medium hover:underline shrink-0 ml-2"
+                          style={{ color: tema.hexDark }}
+                        >
+                          Trocar
+                        </button>
+                      </div>
 
-                  <Button
-                    onClick={confirmarAgendamento}
-                    loading={agendando}
-                    className="w-full hover:brightness-95"
-                    size="lg"
-                    style={{ backgroundColor: tema.hex }}
-                  >
-                    Confirmar agendamento
-                  </Button>
+                      <Button
+                        onClick={confirmarAgendamento}
+                        loading={agendando}
+                        className="w-full hover:brightness-95"
+                        size="lg"
+                        style={{ backgroundColor: tema.hex }}
+                      >
+                        Confirmar agendamento
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      onClick={() => { if (isDemo) { loginDemoInstantaneo() } else { setPendingBooking(true); setLoginModal(true) } }}
+                      className="w-full hover:brightness-95"
+                      size="lg"
+                      style={{ backgroundColor: tema.hex }}
+                    >
+                      Entrar para confirmar
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
@@ -1040,17 +1075,63 @@ export default function PerfilPublicoClient({
       )}
 
       {/* ── MODAL LOGIN ────────────────────────── */}
-      <Modal open={loginModal} onClose={() => setLoginModal(false)} title="Entrar">
+      <Modal open={loginModal} onClose={fecharLoginModal} title="Entrar">
         <div className="p-6 space-y-4">
-          <p className="text-sm text-gray-500">Digite seu WhatsApp para acessar seus agendamentos.</p>
-          <Input
-            label="WhatsApp"
-            type="tel"
-            placeholder="(11) 99999-9999"
-            value={telefoneLogin}
-            onChange={(e) => setTelefoneLogin(maskTelefone(e.target.value))}
-          />
-          <Button onClick={loginCliente} className="w-full">Entrar</Button>
+          {loginStep === 'telefone' ? (
+            <>
+              <p className="text-sm text-gray-500">Para agendar, confirme seu número de telefone.</p>
+              <Input
+                label="WhatsApp"
+                type="tel"
+                placeholder="(11) 99999-9999"
+                value={telefoneLogin}
+                onChange={(e) => setTelefoneLogin(maskTelefone(e.target.value))}
+              />
+              <Button
+                onClick={enviarCodigo}
+                loading={enviandoCodigo}
+                className="w-full hover:brightness-95"
+                style={{ backgroundColor: tema.hex }}
+              >
+                Enviar código
+              </Button>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-gray-500">
+                Digite o código enviado por SMS para {maskTelefone(telefoneLogin)}.
+              </p>
+              <Input
+                label="Código"
+                inputMode="numeric"
+                placeholder="123456"
+                value={codigoLogin}
+                onChange={(e) => setCodigoLogin(e.target.value.replace(/\D/g, ''))}
+              />
+              {!clienteExistenteLogin && (
+                <Input
+                  label="Seu nome"
+                  placeholder="Maria Silva"
+                  value={nomeLogin}
+                  onChange={(e) => setNomeLogin(e.target.value)}
+                />
+              )}
+              <Button
+                onClick={verificarCodigo}
+                loading={verificandoCodigo}
+                className="w-full hover:brightness-95"
+                style={{ backgroundColor: tema.hex }}
+              >
+                Confirmar
+              </Button>
+              <button
+                onClick={() => setLoginStep('telefone')}
+                className="text-xs text-gray-400 hover:underline w-full text-center"
+              >
+                Trocar número
+              </button>
+            </>
+          )}
         </div>
       </Modal>
 

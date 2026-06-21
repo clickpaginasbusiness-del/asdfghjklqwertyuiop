@@ -84,6 +84,11 @@ export function cleanTelefone(value: string): string {
   return value.replace(/\D/g, '')
 }
 
+export function toE164(telefoneDigits: string): string {
+  const digits = telefoneDigits.replace(/\D/g, '')
+  return digits.startsWith('55') && digits.length >= 12 ? `+${digits}` : `+55${digits}`
+}
+
 export function buildWhatsappUrl(telefone: string, mensagem?: string): string {
   const limpo = cleanTelefone(telefone)
   const numero = limpo.startsWith('55') ? limpo : `55${limpo}`
