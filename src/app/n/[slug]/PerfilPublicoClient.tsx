@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -87,17 +87,24 @@ export default function PerfilPublicoClient({
   const [agendamentoFeito, setAgendamentoFeito] = useState<Agendamento | null>(null)
 
   const [loginModal, setLoginModal] = useState(false)
-  const [loginStep, setLoginStep] = useState<'telefone' | 'codigo'>('telefone')
-  const [telefoneLogin, setTelefoneLogin] = useState('')
-  const [codigoLogin, setCodigoLogin] = useState('')
-  const [nomeLogin, setNomeLogin] = useState('')
-  const [clienteExistenteLogin, setClienteExistenteLogin] = useState(true)
-  const [enviandoCodigo, setEnviandoCodigo] = useState(false)
-  const [verificandoCodigo, setVerificandoCodigo] = useState(false)
+  const [authMode, setAuthMode] = useState<'login' | 'cadastro' | 'recuperacao'>('login')
+  const [authStep, setAuthStep] = useState<'inicio' | 'codigo' | 'finalizar'>('inicio')
+  const [telefoneAuth, setTelefoneAuth] = useState('')
+  const [senhaAuth, setSenhaAuth] = useState('')
+  const [codigoAuth, setCodigoAuth] = useState('')
+  const [nomeAuth, setNomeAuth] = useState('')
+  const [verificationToken, setVerificationToken] = useState('')
+  const [enviandoAuth, setEnviandoAuth] = useState(false)
   const [pendingBooking, setPendingBooking] = useState(false)
   const [clienteLogado, setClienteLogado] = useState<{ id: string; nome: string; telefone: string } | null>(null)
   const [meusAgendamentos, setMeusAgendamentos] = useState<Agendamento[]>([])
   const [meusAgendamentosModal, setMeusAgendamentosModal] = useState(false)
+
+  const [perfilAberto, setPerfilAberto] = useState(false)
+  const [editandoNome, setEditandoNome] = useState(false)
+  const [novoNome, setNovoNome] = useState('')
+  const [salvandoNome, setSalvandoNome] = useState(false)
+  const perfilRef = useRef<HTMLDivElement>(null)
 
   /* Exibe: confirmados futuros + últimos 7 dias (não deleta do banco) */
   const meusAgendamentosVisiveis = useMemo(() => {
@@ -175,6 +182,18 @@ export default function PerfilPublicoClient({
       .catch(() => localStorage.removeItem('clienteToken'))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDemo])
+
+  /* Fecha o dropdown de perfil ao clicar fora */
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (perfilRef.current && !perfilRef.current.contains(e.target as Node)) {
+        setPerfilAberto(false)
+        setEditandoNome(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
 
   /* Today's opening hours */
   const diaHoje = getDay(new Date())
@@ -274,62 +293,175 @@ export default function PerfilPublicoClient({
 
   function fecharLoginModal() {
     setLoginModal(false)
-    setLoginStep('telefone')
-    setCodigoLogin('')
+    setAuthMode('login')
+    setAuthStep('inicio')
+    setTelefoneAuth('')
+    setSenhaAuth('')
+    setCodigoAuth('')
+    setNomeAuth('')
+    setVerificationToken('')
     setPendingBooking(false)
   }
 
+  async function aoLogarComSucesso(token: string, cliente: { id: string; nome: string; telefone: string }) {
+    localStorage.setItem('clienteToken', token)
+    setClienteLogado(cliente)
+    await carregarMeusAgendamentos(cliente.id)
+    const irParaAgendamento = pendingBooking
+    fecharLoginModal()
+    toast.success(`Olá, ${cliente.nome}!`)
+    if (irParaAgendamento) setStep('cliente')
+  }
+
+  async function submitLogin() {
+    if (cleanTelefone(telefoneAuth).length < 10 || !senhaAuth) {
+      toast.error('Informe telefone e senha')
+      return
+    }
+    setEnviandoAuth(true)
+    try {
+      const res = await fetch('/api/clientes/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ telefone: telefoneAuth, senha: senhaAuth }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? 'Erro ao entrar')
+        return
+      }
+      await aoLogarComSucesso(data.token, data.cliente)
+    } finally {
+      setEnviandoAuth(false)
+    }
+  }
+
   async function enviarCodigo() {
-    if (cleanTelefone(telefoneLogin).length < 10) {
+    if (cleanTelefone(telefoneAuth).length < 10) {
       toast.error('Telefone inválido')
       return
     }
-    setEnviandoCodigo(true)
+    setEnviandoAuth(true)
     try {
       const res = await fetch('/api/clientes/auth/enviar-codigo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ telefone: telefoneLogin }),
+        body: JSON.stringify({ telefone: telefoneAuth, finalidade: authMode }),
       })
       const data = await res.json()
       if (!res.ok) {
         toast.error(data.error ?? 'Erro ao enviar código')
         return
       }
-      setClienteExistenteLogin(data.clienteExistente)
-      setLoginStep('codigo')
+      setAuthStep('codigo')
     } finally {
-      setEnviandoCodigo(false)
+      setEnviandoAuth(false)
     }
   }
 
   async function verificarCodigo() {
-    setVerificandoCodigo(true)
+    setEnviandoAuth(true)
     try {
       const res = await fetch('/api/clientes/auth/verificar-codigo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          telefone: telefoneLogin,
-          codigo: codigoLogin,
-          nome: clienteExistenteLogin ? undefined : nomeLogin,
-        }),
+        body: JSON.stringify({ telefone: telefoneAuth, codigo: codigoAuth, finalidade: authMode }),
       })
       const data = await res.json()
       if (!res.ok) {
         toast.error(data.error ?? 'Código inválido')
         return
       }
-      localStorage.setItem('clienteToken', data.token)
-      setClienteLogado(data.cliente)
-      await carregarMeusAgendamentos(data.cliente.id)
-      const irParaAgendamento = pendingBooking
-      fecharLoginModal()
-      toast.success(`Olá, ${data.cliente.nome}!`)
-      if (irParaAgendamento) setStep('cliente')
+      setVerificationToken(data.verificationToken)
+      setAuthStep('finalizar')
     } finally {
-      setVerificandoCodigo(false)
+      setEnviandoAuth(false)
     }
+  }
+
+  async function finalizarCadastro() {
+    if (nomeAuth.trim().length < 2) {
+      toast.error('Informe seu nome')
+      return
+    }
+    if (senhaAuth.length < 6) {
+      toast.error('A senha deve ter pelo menos 6 caracteres')
+      return
+    }
+    setEnviandoAuth(true)
+    try {
+      const res = await fetch('/api/clientes/auth/finalizar-cadastro', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ verificationToken, nome: nomeAuth, senha: senhaAuth }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? 'Erro ao concluir cadastro')
+        return
+      }
+      await aoLogarComSucesso(data.token, data.cliente)
+    } finally {
+      setEnviandoAuth(false)
+    }
+  }
+
+  async function redefinirSenha() {
+    if (senhaAuth.length < 6) {
+      toast.error('A senha deve ter pelo menos 6 caracteres')
+      return
+    }
+    setEnviandoAuth(true)
+    try {
+      const res = await fetch('/api/clientes/auth/redefinir-senha', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ verificationToken, novaSenha: senhaAuth }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? 'Erro ao redefinir senha')
+        return
+      }
+      await aoLogarComSucesso(data.token, data.cliente)
+    } finally {
+      setEnviandoAuth(false)
+    }
+  }
+
+  async function salvarNome() {
+    if (!clienteLogado || novoNome.trim().length < 2) {
+      toast.error('Informe um nome válido')
+      return
+    }
+    setSalvandoNome(true)
+    try {
+      const token = localStorage.getItem('clienteToken')
+      const res = await fetch('/api/clientes/auth/atualizar-nome', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, nome: novoNome }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? 'Erro ao atualizar nome')
+        return
+      }
+      setClienteLogado((prev) => prev ? { ...prev, nome: data.nome } : prev)
+      setEditandoNome(false)
+      setPerfilAberto(false)
+      toast.success('Nome atualizado!')
+    } finally {
+      setSalvandoNome(false)
+    }
+  }
+
+  function sair() {
+    localStorage.removeItem('clienteToken')
+    setClienteLogado(null)
+    setMeusAgendamentos([])
+    setPerfilAberto(false)
+    setEditandoNome(false)
   }
 
   async function confirmarAgendamento() {
@@ -503,17 +635,59 @@ export default function PerfilPublicoClient({
                   <span className="sm:hidden">Agendamentos</span>
                 </Button>
               )}
-              <button
-                onClick={() => {
-                  if (clienteLogado) return
-                  if (isDemo) { loginDemoInstantaneo(); return }
-                  setLoginModal(true)
-                }}
-                className="px-3 py-1.5 min-h-11 text-sm font-semibold rounded-xl bg-white border-2 hover:brightness-95 transition-all shadow-sm"
-                style={{ borderColor: tema.hex, color: tema.hexDark }}
-              >
-                {clienteLogado ? clienteLogado.nome.split(' ')[0] : 'Entrar'}
-              </button>
+
+              {clienteLogado ? (
+                <div className="relative" ref={perfilRef}>
+                  <button
+                    onClick={() => { setPerfilAberto((v) => !v); setEditandoNome(false) }}
+                    className="px-3 py-1.5 min-h-11 text-sm font-semibold rounded-xl bg-white border-2 hover:brightness-95 transition-all shadow-sm"
+                    style={{ borderColor: tema.hex, color: tema.hexDark }}
+                  >
+                    {clienteLogado.nome.split(' ')[0]}
+                  </button>
+
+                  {perfilAberto && (
+                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl border border-gray-100 shadow-lg z-30 p-2">
+                      {editandoNome ? (
+                        <div className="p-2 space-y-2">
+                          <Input
+                            placeholder="Seu nome"
+                            value={novoNome}
+                            onChange={(e) => setNovoNome(e.target.value)}
+                            autoFocus
+                          />
+                          <Button onClick={salvarNome} loading={salvandoNome} className="w-full" size="sm" style={{ backgroundColor: tema.hex }}>
+                            Salvar
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => { setNovoNome(clienteLogado.nome); setEditandoNome(true) }}
+                            className="w-full text-left px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                          >
+                            Alterar nome
+                          </button>
+                          <button
+                            onClick={sair}
+                            className="w-full text-left px-3 py-2 rounded-lg text-sm text-red-500 hover:bg-red-50 transition-colors"
+                          >
+                            Sair
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <button
+                  onClick={() => { if (isDemo) { loginDemoInstantaneo() } else { setLoginModal(true) } }}
+                  className="px-3 py-1.5 min-h-11 text-sm font-semibold rounded-xl bg-white border-2 hover:brightness-95 transition-all shadow-sm"
+                  style={{ borderColor: tema.hex, color: tema.hexDark }}
+                >
+                  Entrar
+                </button>
+              )}
             </div>
           </div>
 
@@ -1074,62 +1248,136 @@ export default function PerfilPublicoClient({
         </div>
       )}
 
-      {/* ── MODAL LOGIN ────────────────────────── */}
-      <Modal open={loginModal} onClose={fecharLoginModal} title="Entrar">
+      {/* ── MODAL LOGIN / CADASTRO / RECUPERAÇÃO ── */}
+      <Modal
+        open={loginModal}
+        onClose={fecharLoginModal}
+        title={authMode === 'login' ? 'Entrar' : authMode === 'cadastro' ? 'Criar conta' : 'Recuperar senha'}
+      >
         <div className="p-6 space-y-4">
-          {loginStep === 'telefone' ? (
+          {authMode === 'login' && (
             <>
               <p className="text-sm text-gray-500">Para agendar, confirme seu número de telefone.</p>
               <Input
                 label="WhatsApp"
                 type="tel"
                 placeholder="(11) 99999-9999"
-                value={telefoneLogin}
-                onChange={(e) => setTelefoneLogin(maskTelefone(e.target.value))}
+                value={telefoneAuth}
+                onChange={(e) => setTelefoneAuth(maskTelefone(e.target.value))}
               />
-              <Button
-                onClick={enviarCodigo}
-                loading={enviandoCodigo}
-                className="w-full hover:brightness-95"
-                style={{ backgroundColor: tema.hex }}
-              >
-                Enviar código
+              <Input
+                label="Senha"
+                type="password"
+                placeholder="••••••"
+                value={senhaAuth}
+                onChange={(e) => setSenhaAuth(e.target.value)}
+              />
+              <Button onClick={submitLogin} loading={enviandoAuth} className="w-full hover:brightness-95" style={{ backgroundColor: tema.hex }}>
+                Entrar
               </Button>
+              <div className="flex items-center justify-between text-xs">
+                <button
+                  onClick={() => { setAuthMode('cadastro'); setAuthStep('inicio'); setSenhaAuth('') }}
+                  className="hover:underline"
+                  style={{ color: tema.hexDark }}
+                >
+                  Criar conta
+                </button>
+                <button
+                  onClick={() => { setAuthMode('recuperacao'); setAuthStep('inicio'); setSenhaAuth('') }}
+                  className="text-gray-400 hover:underline"
+                >
+                  Esqueci minha senha
+                </button>
+              </div>
             </>
-          ) : (
+          )}
+
+          {authMode !== 'login' && authStep === 'inicio' && (
             <>
               <p className="text-sm text-gray-500">
-                Digite o código enviado por SMS para {maskTelefone(telefoneLogin)}.
+                {authMode === 'cadastro'
+                  ? 'Digite seu telefone para receber um código de confirmação.'
+                  : 'Digite o telefone da sua conta para receber um código.'}
+              </p>
+              <Input
+                label="WhatsApp"
+                type="tel"
+                placeholder="(11) 99999-9999"
+                value={telefoneAuth}
+                onChange={(e) => setTelefoneAuth(maskTelefone(e.target.value))}
+              />
+              <Button onClick={enviarCodigo} loading={enviandoAuth} className="w-full hover:brightness-95" style={{ backgroundColor: tema.hex }}>
+                Enviar código
+              </Button>
+              <button
+                onClick={() => { setAuthMode('login'); setAuthStep('inicio') }}
+                className="text-xs text-gray-400 hover:underline w-full text-center"
+              >
+                Voltar
+              </button>
+            </>
+          )}
+
+          {authMode !== 'login' && authStep === 'codigo' && (
+            <>
+              <p className="text-sm text-gray-500">
+                Digite o código enviado por SMS para {maskTelefone(telefoneAuth)}.
               </p>
               <Input
                 label="Código"
                 inputMode="numeric"
                 placeholder="123456"
-                value={codigoLogin}
-                onChange={(e) => setCodigoLogin(e.target.value.replace(/\D/g, ''))}
+                value={codigoAuth}
+                onChange={(e) => setCodigoAuth(e.target.value.replace(/\D/g, ''))}
               />
-              {!clienteExistenteLogin && (
-                <Input
-                  label="Seu nome"
-                  placeholder="Maria Silva"
-                  value={nomeLogin}
-                  onChange={(e) => setNomeLogin(e.target.value)}
-                />
-              )}
-              <Button
-                onClick={verificarCodigo}
-                loading={verificandoCodigo}
-                className="w-full hover:brightness-95"
-                style={{ backgroundColor: tema.hex }}
-              >
+              <Button onClick={verificarCodigo} loading={enviandoAuth} className="w-full hover:brightness-95" style={{ backgroundColor: tema.hex }}>
                 Confirmar
               </Button>
               <button
-                onClick={() => setLoginStep('telefone')}
+                onClick={() => setAuthStep('inicio')}
                 className="text-xs text-gray-400 hover:underline w-full text-center"
               >
                 Trocar número
               </button>
+            </>
+          )}
+
+          {authMode === 'cadastro' && authStep === 'finalizar' && (
+            <>
+              <p className="text-sm text-gray-500">Falta pouco! Defina seu nome e uma senha.</p>
+              <Input
+                label="Seu nome"
+                placeholder="Maria Silva"
+                value={nomeAuth}
+                onChange={(e) => setNomeAuth(e.target.value)}
+              />
+              <Input
+                label="Crie uma senha"
+                type="password"
+                placeholder="Mínimo 6 caracteres"
+                value={senhaAuth}
+                onChange={(e) => setSenhaAuth(e.target.value)}
+              />
+              <Button onClick={finalizarCadastro} loading={enviandoAuth} className="w-full hover:brightness-95" style={{ backgroundColor: tema.hex }}>
+                Criar conta
+              </Button>
+            </>
+          )}
+
+          {authMode === 'recuperacao' && authStep === 'finalizar' && (
+            <>
+              <p className="text-sm text-gray-500">Código confirmado! Defina sua nova senha.</p>
+              <Input
+                label="Nova senha"
+                type="password"
+                placeholder="Mínimo 6 caracteres"
+                value={senhaAuth}
+                onChange={(e) => setSenhaAuth(e.target.value)}
+              />
+              <Button onClick={redefinirSenha} loading={enviandoAuth} className="w-full hover:brightness-95" style={{ backgroundColor: tema.hex }}>
+                Salvar nova senha
+              </Button>
             </>
           )}
         </div>

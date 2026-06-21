@@ -7,7 +7,7 @@ const UMA_HORA_MS = 60 * 60 * 1000
 const MAX_TENTATIVAS_POR_HORA = 3
 
 export async function POST(request: NextRequest) {
-  let body: { telefone?: string }
+  let body: { telefone?: string; finalidade?: 'cadastro' | 'recuperacao' }
   try {
     body = await request.json()
   } catch {
@@ -15,11 +15,28 @@ export async function POST(request: NextRequest) {
   }
 
   const digits = cleanTelefone(body.telefone ?? '')
+  const finalidade = body.finalidade
   if (digits.length < 10 || digits.length > 11) {
     return NextResponse.json({ error: 'Telefone inválido' }, { status: 400 })
   }
+  if (finalidade !== 'cadastro' && finalidade !== 'recuperacao') {
+    return NextResponse.json({ error: 'Finalidade inválida' }, { status: 400 })
+  }
 
   const supabaseAdmin = createAdminClient()
+
+  const { data: clienteExistente } = await supabaseAdmin
+    .from('clientes')
+    .select('id, senha_hash')
+    .eq('telefone', digits)
+    .maybeSingle()
+
+  if (finalidade === 'cadastro' && clienteExistente?.senha_hash) {
+    return NextResponse.json({ error: 'Telefone já cadastrado. Faça login.' }, { status: 409 })
+  }
+  if (finalidade === 'recuperacao' && !clienteExistente) {
+    return NextResponse.json({ error: 'Número não encontrado.' }, { status: 404 })
+  }
 
   const desde = new Date(Date.now() - UMA_HORA_MS).toISOString()
   const { count } = await supabaseAdmin
@@ -47,11 +64,5 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const { data: clienteExistente } = await supabaseAdmin
-    .from('clientes')
-    .select('id')
-    .eq('telefone', digits)
-    .maybeSingle()
-
-  return NextResponse.json({ ok: true, clienteExistente: !!clienteExistente })
+  return NextResponse.json({ ok: true })
 }
