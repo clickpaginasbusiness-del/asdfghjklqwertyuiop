@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
-  LayoutDashboard, Calendar, Scissors, ImageIcon,
+  LayoutDashboard, Calendar, CalendarDays, Scissors, ImageIcon,
   Clock, Users, LogOut, Menu, X, ExternalLink, UserCircle, UserCircle2, CreditCard, AlertCircle, BarChart3, Headset
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
@@ -91,6 +91,7 @@ const TOUR_NAV_KEYS: Record<string, string> = {
 const navItems = [
   { href: '/painel', label: 'Painel', icon: LayoutDashboard },
   { href: '/painel/agendamentos', label: 'Agendamentos', icon: Calendar },
+  { href: '/painel/calendario', label: 'Calendário', icon: CalendarDays },
   { href: '/painel/servicos', label: 'Serviços', icon: Scissors },
   { href: '/painel/galeria', label: 'Galeria', icon: ImageIcon },
   { href: '/painel/horarios', label: 'Horários', icon: Clock },

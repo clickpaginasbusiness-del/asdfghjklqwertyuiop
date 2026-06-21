@@ -8,8 +8,6 @@ import { Input } from '@/components/ui/input'
 import { Clock, CalendarX, Plus, Trash2 } from 'lucide-react'
 import type { Prestadora, DiaBloqueado, HorarioFuncionamento } from '@/lib/types'
 import { formatDate } from '@/lib/utils'
-import { AgendaDoDiaSection } from './AgendaDoDiaSection'
-import type { AgendaSlotAg } from './page'
 import toast from 'react-hot-toast'
 
 const DIAS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
@@ -41,14 +39,10 @@ export default function HorariosClient({
   prestadora,
   diasBloqueados: initial,
   horariosFuncionamento,
-  profissionais,
-  agendamentos,
 }: {
   prestadora: Prestadora
   diasBloqueados: DiaBloqueado[]
   horariosFuncionamento: HorarioFuncionamento[]
-  profissionais: { id: string; nome: string }[]
-  agendamentos: AgendaSlotAg[]
 }) {
   const [horarios, setHorarios] = useState<HorarioDia[]>(() => initHorarios(horariosFuncionamento))
   const [savingHorario, setSavingHorario] = useState(false)
@@ -223,14 +217,6 @@ export default function HorariosClient({
         </CardContent>
       </Card>
       </div>
-
-      {/* Agenda do dia */}
-      <AgendaDoDiaSection
-        prestadora={prestadora}
-        horariosFuncionamento={horariosFuncionamento}
-        profissionais={profissionais}
-        agendamentos={agendamentos}
-      />
     </div>
   )
 }
