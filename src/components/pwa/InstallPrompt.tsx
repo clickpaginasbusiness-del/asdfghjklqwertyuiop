@@ -1,9 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { X, Download, Share } from 'lucide-react'
+import Image from 'next/image'
+import { X, Share } from 'lucide-react'
 
-const DISMISS_KEY = 'bb_install_prompt_dismissed'
+const DISMISS_KEY = 'bb_install_prompt_dismissed_until'
+const DISMISS_DAYS = 7
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -14,11 +16,24 @@ function isIos() {
   return /iphone|ipad|ipod/i.test(window.navigator.userAgent)
 }
 
+function isAndroid() {
+  return /android/i.test(window.navigator.userAgent)
+}
+
 function isStandalone() {
   return (
     window.matchMedia('(display-mode: standalone)').matches ||
     (window.navigator as Navigator & { standalone?: boolean }).standalone === true
   )
+}
+
+function isDismissed() {
+  const until = localStorage.getItem(DISMISS_KEY)
+  return !!until && Date.now() < Number(until)
+}
+
+function dismissForDays(days: number) {
+  localStorage.setItem(DISMISS_KEY, String(Date.now() + days * 24 * 60 * 60 * 1000))
 }
 
 export function InstallPrompt() {
@@ -27,8 +42,9 @@ export function InstallPrompt() {
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
-    if (localStorage.getItem(DISMISS_KEY)) return
+    if (isDismissed()) return
     if (isStandalone()) return
+    if (!isAndroid() && !isIos()) return
 
     function handleBeforeInstall(e: Event) {
       e.preventDefault()
@@ -46,7 +62,6 @@ export function InstallPrompt() {
 
     function handleInstalled() {
       setVisible(false)
-      localStorage.setItem(DISMISS_KEY, '1')
     }
     window.addEventListener('appinstalled', handleInstalled)
 
@@ -58,39 +73,37 @@ export function InstallPrompt() {
 
   function dismiss() {
     setVisible(false)
-    localStorage.setItem(DISMISS_KEY, '1')
+    dismissForDays(DISMISS_DAYS)
   }
 
   async function handleInstall() {
     if (!deferredPrompt) return
     await deferredPrompt.prompt()
-    const { outcome } = await deferredPrompt.userChoice
-    if (outcome === 'accepted') localStorage.setItem(DISMISS_KEY, '1')
+    await deferredPrompt.userChoice
     setVisible(false)
   }
 
   if (!visible) return null
 
   return (
-    <div className="fixed bottom-4 inset-x-4 sm:inset-x-auto sm:left-4 sm:right-auto sm:max-w-sm z-[200] bg-white rounded-2xl shadow-xl border border-rose-100 p-4 flex items-start gap-3">
-      <div className="w-11 h-11 shrink-0 rounded-xl bg-rose-50 flex items-center justify-center">
-        <Download className="w-5 h-5 text-rose-400" />
+    <div className="fixed bottom-0 inset-x-0 z-[200] bg-white border-t border-rose-100 shadow-[0_-4px_24px_rgba(0,0,0,0.08)] px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] flex items-start gap-3">
+      <div className="w-12 h-12 shrink-0 rounded-2xl overflow-hidden">
+        <Image src="/icon-192.png" alt="BelleBook" width={48} height={48} className="w-full h-full object-cover" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-semibold text-gray-900 text-sm">Instalar BelleBook</p>
+        <p className="font-semibold text-gray-900 text-sm leading-snug">
+          Instale o BelleBook no seu celular para acesso rápido!
+        </p>
         {showIosHint ? (
-          <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
-            Toque em <Share className="w-3 h-3 inline -mt-0.5" /> e depois em &quot;Adicionar à Tela de Início&quot;
+          <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+            Toque em <Share className="w-3 h-3 inline -mt-0.5" /> compartilhar → Adicionar à tela inicial
           </p>
         ) : (
-          <p className="text-xs text-gray-500 mt-0.5">Acesse mais rápido, direto da sua tela inicial</p>
-        )}
-        {!showIosHint && (
           <button
             onClick={handleInstall}
-            className="mt-2.5 text-xs font-semibold text-white bg-rose-400 hover:bg-rose-500 rounded-lg px-3 py-2 min-h-9 transition-colors"
+            className="mt-2.5 text-xs font-semibold text-white bg-rose-400 hover:bg-rose-500 rounded-lg px-4 py-2 min-h-9 transition-colors"
           >
-            Instalar
+            Instalar app
           </button>
         )}
       </div>

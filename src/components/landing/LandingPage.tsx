@@ -375,6 +375,22 @@ export default function LandingPage() {
           <p data-animate data-delay="350" className="mt-12 text-sm text-gray-400">
             Sem cartão de crédito · Cancele quando quiser
           </p>
+
+          {/* PWA badge */}
+          <div
+            data-animate
+            data-delay="450"
+            className="mt-6 inline-flex flex-col sm:flex-row items-center gap-1.5 sm:gap-3 bg-white border border-gray-100 shadow-sm px-5 py-3 rounded-2xl"
+          >
+            <span className="inline-flex items-center gap-2 text-rose-500 text-sm font-semibold">
+              <Smartphone className="w-4 h-4" />
+              Disponível como app gratuito
+            </span>
+            <span className="hidden sm:inline text-gray-300">·</span>
+            <span className="text-gray-400 text-xs sm:text-sm">
+              Acesse pelo celular e instale direto na tela inicial
+            </span>
+          </div>
         </div>
 
         {/* Scroll cue */}
@@ -892,6 +908,12 @@ export default function LandingPage() {
               <Mail className="w-4 h-4" />
               clickpaginasbusiness@gmail.com
             </a>
+          </div>
+
+          <div className="flex items-center justify-center gap-3 mt-6 text-xs text-gray-400">
+            <Link href="/termos" className="hover:text-gray-600 transition-colors">Termos de Uso</Link>
+            <span className="text-gray-200">·</span>
+            <Link href="/privacidade" className="hover:text-gray-600 transition-colors">Política de Privacidade</Link>
           </div>
 
           <p className="text-center text-xs text-gray-300 mt-8">

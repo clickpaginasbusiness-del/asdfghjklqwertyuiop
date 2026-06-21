@@ -41,6 +41,7 @@ export default function CadastroPage() {
   const [phoneError, setPhoneError] = useState<'taken' | null>(null)
   const [loadingOtp, setLoadingOtp] = useState(false)
   const [loadingCreate, setLoadingCreate] = useState(false)
+  const [aceitouTermos, setAceitouTermos] = useState(false)
 
   useEffect(() => {
     if (slug.length < 3) { setSlugStatus('idle'); return }
@@ -70,6 +71,7 @@ export default function CadastroPage() {
     if (senha.length < 6) { toast.error('A senha deve ter pelo menos 6 caracteres'); return }
     const digits = telefone.replace(/\D/g, '')
     if (digits.length < 10) { toast.error('Informe um telefone válido com DDD'); return }
+    if (!aceitouTermos) { toast.error('Você precisa concordar com os Termos de Uso e a Política de Privacidade'); return }
 
     const phone = formatPhone(telefone)
     setPhoneFormatted(phone)
@@ -332,10 +334,29 @@ export default function CadastroPage() {
               )}
             </div>
 
+            <label className="flex items-start gap-2.5 text-sm text-gray-600 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={aceitouTermos}
+                onChange={(e) => setAceitouTermos(e.target.checked)}
+                className="w-4 h-4 mt-0.5 rounded border-gray-300 text-rose-400 focus:ring-rose-300 shrink-0"
+              />
+              <span>
+                Concordo com os{' '}
+                <Link href="/termos" target="_blank" className="text-rose-500 font-medium hover:underline">
+                  Termos de Uso
+                </Link>
+                {' '}e a{' '}
+                <Link href="/privacidade" target="_blank" className="text-rose-500 font-medium hover:underline">
+                  Política de Privacidade
+                </Link>
+              </span>
+            </label>
+
             <Button
               type="submit"
               loading={loadingOtp}
-              disabled={loadingOtp || slugStatus === 'taken' || slugStatus === 'checking' || phoneError === 'taken'}
+              disabled={loadingOtp || slugStatus === 'taken' || slugStatus === 'checking' || phoneError === 'taken' || !aceitouTermos}
               className="w-full mt-2"
               size="lg"
             >
