@@ -63,21 +63,61 @@ export async function POST(request: NextRequest) {
 
   console.log('[push/send] agendamento encontrado — prestadora_id =', agendamento.prestadora_id, 'status =', agendamento.status)
 
-  const { data: subscriptions, error: subscriptionsError } = await supabaseAdmin
+  const { data: subscriptionsRaw, error: subscriptionsError } = await supabaseAdmin
     .from('push_subscriptions')
-    .select('id, endpoint, p256dh, auth')
-    .eq('prestadora_id', agendamento.prestadora_id)
+    .select('id, endpoint, p256dh, auth, user_agent, created_at')
+    .eq('prestadora_id', agendamento.prestadora_id) as { data: {
+      id: string
+      endpoint: string
+      p256dh: string
+      auth: string
+      user_agent: string | null
+      created_at: string
+    }[] | null, error: { message: string } | null }
 
   if (subscriptionsError) {
     console.error('[push/send] erro ao buscar push_subscriptions:', subscriptionsError.message)
     return NextResponse.json({ error: subscriptionsError.message }, { status: 500 })
   }
 
-  console.log(`[push/send] ${subscriptions?.length ?? 0} subscription(s) encontrada(s) para prestadora ${agendamento.prestadora_id}`)
+  console.log(`[push/send] ${subscriptionsRaw?.length ?? 0} subscription(s) encontrada(s) para prestadora ${agendamento.prestadora_id}`)
 
-  if (!subscriptions?.length) {
+  if (!subscriptionsRaw?.length) {
     console.warn('[push/send] nenhuma subscription registrada — notificação não será enviada a nenhum dispositivo')
     return NextResponse.json({ ok: true, sent: 0 })
+  }
+
+  // O token do FCM/push rotaciona periodicamente, então o mesmo celular pode
+  // acumular várias inscrições com endpoints diferentes ao longo do tempo —
+  // sem deduplicar por dispositivo, cada uma recebe a notificação e o mesmo
+  // celular vê duplicatas. Mantém só a mais recente por user_agent e remove
+  // as obsoletas.
+  const porDispositivo = new Map<string, typeof subscriptionsRaw>()
+  const semDispositivoIdentificado: typeof subscriptionsRaw = []
+  for (const sub of subscriptionsRaw) {
+    if (!sub.user_agent) {
+      semDispositivoIdentificado.push(sub)
+      continue
+    }
+    const grupo = porDispositivo.get(sub.user_agent) ?? []
+    grupo.push(sub)
+    porDispositivo.set(sub.user_agent, grupo)
+  }
+
+  const subscriptions = [...semDispositivoIdentificado]
+  const subscriptionsObsoletas: typeof subscriptionsRaw = []
+  for (const grupo of porDispositivo.values()) {
+    const ordenado = [...grupo].sort((a, b) => b.created_at.localeCompare(a.created_at))
+    subscriptions.push(ordenado[0])
+    subscriptionsObsoletas.push(...ordenado.slice(1))
+  }
+
+  if (subscriptionsObsoletas.length) {
+    console.log(
+      `[push/send] removendo ${subscriptionsObsoletas.length} subscription(s) duplicada(s) do mesmo dispositivo:`,
+      subscriptionsObsoletas.map((s) => s.id)
+    )
+    await supabaseAdmin.from('push_subscriptions').delete().in('id', subscriptionsObsoletas.map((s) => s.id))
   }
 
   const { servicos: servico, clientes: cliente, profissionais: profissional } = agendamento

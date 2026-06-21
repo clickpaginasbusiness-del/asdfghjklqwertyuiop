@@ -33,12 +33,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Prestadora não encontrada' }, { status: 404 })
   }
 
+  const userAgent = request.headers.get('user-agent')
+
+  // O token do FCM/push rotaciona periodicamente — quando isso acontece, o
+  // navegador gera um endpoint novo para o mesmo dispositivo. Sem essa
+  // limpeza, a inscrição antiga (do mesmo aparelho) fica esquecida na tabela
+  // e cada notificação passa a ser enviada duas vezes para o mesmo celular.
+  if (userAgent) {
+    await supabase
+      .from('push_subscriptions')
+      .delete()
+      .eq('prestadora_id', prestadora.id)
+      .eq('user_agent', userAgent)
+      .neq('endpoint', subscription.endpoint)
+  }
+
   const { error } = await supabase.from('push_subscriptions').upsert({
     prestadora_id: prestadora.id,
     endpoint: subscription.endpoint,
     p256dh: subscription.keys.p256dh,
     auth: subscription.keys.auth,
-    user_agent: request.headers.get('user-agent'),
+    user_agent: userAgent,
   }, { onConflict: 'endpoint' })
 
   if (error) {
