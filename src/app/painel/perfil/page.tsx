@@ -15,16 +15,30 @@ export default async function PerfilPainelPage() {
 
   if (!prestadora) redirect('/painel/login')
 
-  const { data: avaliacoes } = await supabase
-    .from('avaliacoes')
-    .select('id, nota, comentario, destaque, created_at, agendamentos(clientes(nome), servicos(nome))')
-    .eq('prestadora_id', prestadora.id)
-    .order('created_at', { ascending: false })
+  const [avaliacoesRes, indicacoesRes, conversoesRes] = await Promise.all([
+    supabase
+      .from('avaliacoes')
+      .select('id, nota, comentario, destaque, created_at, agendamentos(clientes(nome), servicos(nome))')
+      .eq('prestadora_id', prestadora.id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('prestadoras')
+      .select('id', { count: 'exact', head: true })
+      .eq('indicado_por', prestadora.id),
+    supabase
+      .from('prestadoras')
+      .select('id', { count: 'exact', head: true })
+      .eq('indicado_por', prestadora.id)
+      .eq('assinatura_ativa', true)
+      .eq('e_trial', false),
+  ])
 
   return (
     <PerfilPainelClient
       prestadora={prestadora}
-      avaliacoes={(avaliacoes ?? []) as unknown as AvaliacaoComCliente[]}
+      avaliacoes={(avaliacoesRes.data ?? []) as unknown as AvaliacaoComCliente[]}
+      indicacoesCount={indicacoesRes.count ?? 0}
+      conversoesCount={conversoesRes.count ?? 0}
     />
   )
 }

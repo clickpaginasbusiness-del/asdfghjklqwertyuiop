@@ -1,11 +1,7 @@
-import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { checarCodigoVerificacao } from '@/lib/twilioVerify'
 import { NextRequest, NextResponse } from 'next/server'
-
-const supabaseAdmin = createAdminClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
 
 function sanitizeSlug(raw: string): string {
   return String(raw).toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 50)
@@ -24,81 +20,59 @@ function generateCodigoIndicacao(nome: string): string {
 }
 
 export async function POST(request: NextRequest) {
-  // Session is set in cookies by verifyOtp on the client (via @supabase/ssr)
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) {
-    return NextResponse.json(
-      { error: 'Sessão inválida. Verifique o código novamente.' },
-      { status: 401 }
-    )
-  }
+  if (!user || !user.email) return NextResponse.json({ error: 'Sessão inválida' }, { status: 401 })
 
   let body: Record<string, unknown>
-  try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json({ error: 'JSON inválido' }, { status: 400 })
+  try { body = await request.json() } catch { return NextResponse.json({ error: 'JSON inválido' }, { status: 400 }) }
+
+  const { nome, slug, telefone, codigo, refCode } = body as {
+    nome?: string; slug?: string; telefone?: string; codigo?: string; refCode?: string
   }
 
-  const { nome, email, senha, slug, telefone, refCode } = body as {
-    nome?: string
-    email?: string
-    senha?: string
-    slug?: string
-    telefone?: string
-    refCode?: string
-  }
-
-  if (!nome || !email || !senha || !slug || !telefone) {
+  if (!nome || !slug || !telefone || !codigo) {
     return NextResponse.json({ error: 'Dados incompletos' }, { status: 400 })
   }
 
   const nomeLimpo = String(nome).trim().slice(0, 100)
-  const emailLimpo = String(email).trim().toLowerCase()
   const slugLimpo = sanitizeSlug(String(slug))
   const telefoneLimpo = String(telefone).trim()
-  const senhaStr = String(senha)
+  const codigoLimpo = String(codigo).trim()
 
   if (nomeLimpo.length < 2) return NextResponse.json({ error: 'Nome muito curto' }, { status: 400 })
-  if (slugLimpo.length < 3) return NextResponse.json({ error: 'Link muito curto (mínimo 3 caracteres)' }, { status: 400 })
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailLimpo)) return NextResponse.json({ error: 'Email inválido' }, { status: 400 })
-  if (senhaStr.length < 6) return NextResponse.json({ error: 'Senha muito curta' }, { status: 400 })
+  if (slugLimpo.length < 3) return NextResponse.json({ error: 'Link muito curto' }, { status: 400 })
 
-  // Prevent duplicate signups for this phone user
-  const { data: existing } = await supabaseAdmin
+  // Verifica OTP via Twilio
+  const aprovado = await checarCodigoVerificacao(telefoneLimpo, codigoLimpo)
+  if (!aprovado) return NextResponse.json({ error: 'Código inválido ou expirado.' }, { status: 400 })
+
+  const admin = createAdminClient()
+
+  // Verifica se telefone já vinculado a outra prestadora
+  const { data: telefoneEmUso } = await admin
+    .from('prestadoras')
+    .select('id')
+    .eq('telefone', telefoneLimpo)
+    .maybeSingle()
+
+  if (telefoneEmUso) {
+    return NextResponse.json({ error: 'Este número já está vinculado a outra conta.' }, { status: 409 })
+  }
+
+  // Verifica se já tem prestadora para esse user_id
+  const { data: jaExiste } = await admin
     .from('prestadoras')
     .select('id')
     .eq('user_id', user.id)
     .maybeSingle()
 
-  if (existing) {
-    return NextResponse.json(
-      { error: 'Conta já cadastrada para este telefone. Faça login.' },
-      { status: 409 }
-    )
+  if (jaExiste) {
+    return NextResponse.json({ error: 'Conta já cadastrada para este usuário.' }, { status: 409 })
   }
 
-  // Add email + password to the phone auth user
-  const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
-    email: emailLimpo,
-    password: senhaStr,
-    email_confirm: true,
-    phone_confirm: true,
-  })
-
-  if (updateError) {
-    const msg = updateError.message ?? ''
-    if (msg.includes('email') || msg.includes('already')) {
-      return NextResponse.json({ error: 'Este email já está em uso.' }, { status: 409 })
-    }
-    return NextResponse.json({ error: msg }, { status: 400 })
-  }
-
-  // Bloqueia reaproveitamento do trial gratuito por números que já usaram
-  // antes (mesmo que a conta anterior tenha sido deletada).
-  const { data: telefoneJaUsado } = await supabaseAdmin
+  // Checa se telefone já usou trial
+  const { data: telefoneJaUsado } = await admin
     .from('telefones_usados_trial')
     .select('id')
     .eq('telefone', telefoneLimpo)
@@ -107,10 +81,10 @@ export async function POST(request: NextRequest) {
   const semTrial = Boolean(telefoneJaUsado)
   const trialFim = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
 
-  // Resolve referrer pelo código de indicação
+  // Resolve código de indicação do referrer
   let referrerId: string | null = null
   if (refCode) {
-    const { data: referrer } = await supabaseAdmin
+    const { data: referrer } = await admin
       .from('prestadoras')
       .select('id')
       .eq('codigo_indicacao', String(refCode).toUpperCase())
@@ -122,7 +96,7 @@ export async function POST(request: NextRequest) {
   let codigoIndicacao: string | null = null
   for (let i = 0; i < 5; i++) {
     const tentativa = generateCodigoIndicacao(nomeLimpo)
-    const { data: colisao } = await supabaseAdmin
+    const { data: colisao } = await admin
       .from('prestadoras')
       .select('id')
       .eq('codigo_indicacao', tentativa)
@@ -130,10 +104,10 @@ export async function POST(request: NextRequest) {
     if (!colisao) { codigoIndicacao = tentativa; break }
   }
 
-  const { error: insertError } = await supabaseAdmin.from('prestadoras').insert({
+  const { error: insertError } = await admin.from('prestadoras').insert({
     user_id: user.id,
     nome: nomeLimpo,
-    email: emailLimpo,
+    email: user.email,
     slug: slugLimpo,
     telefone: telefoneLimpo,
     plano: 'basico',

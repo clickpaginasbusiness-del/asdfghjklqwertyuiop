@@ -28,6 +28,9 @@ const DEMO_PRESTADORA: Prestadora = {
   mensagem_confirmacao: null,
   mensagem_cancelamento: null,
   mensagem_lembrete: null,
+  codigo_indicacao: null,
+  indicado_por: null,
+  indicacao_recompensa_processada: false,
   created_at: new Date().toISOString(),
 }
 

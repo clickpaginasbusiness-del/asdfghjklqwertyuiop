@@ -25,6 +25,9 @@ export type Prestadora = {
   mensagem_confirmacao: string | null
   mensagem_cancelamento: string | null
   mensagem_lembrete: string | null
+  codigo_indicacao: string | null
+  indicado_por: string | null
+  indicacao_recompensa_processada: boolean
   created_at: string
 }
 

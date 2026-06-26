@@ -12,6 +12,7 @@ import { Modal } from '@/components/ui/modal'
 import {
   User, Link2, Upload, Phone, AtSign, MapPin, AlertTriangle,
   CheckCircle2, XCircle, Loader2, Palette, Lock, Check, MessageCircle,
+  Gift, Shield, Copy,
 } from 'lucide-react'
 import Image from 'next/image'
 import type { Prestadora } from '@/lib/types'
@@ -32,12 +33,18 @@ export type AvaliacaoComCliente = {
   agendamentos: { clientes: { nome: string } | null; servicos: { nome: string } | null } | null
 }
 
+const ADMIN_EMAIL = 'clickpaginasbusiness@gmail.com'
+
 export default function PerfilPainelClient({
   prestadora: initial,
   avaliacoes,
+  indicacoesCount,
+  conversoesCount,
 }: {
   prestadora: Prestadora
   avaliacoes: AvaliacaoComCliente[]
+  indicacoesCount: number
+  conversoesCount: number
 }) {
   const [prestadora, setPrestadora] = useState(initial)
   const [nome, setNome] = useState(initial.nome)
@@ -192,9 +199,25 @@ export default function PerfilPainelClient({
     setUploadingFoto(false)
   }
 
+  const isAdmin = prestadora.email === ADMIN_EMAIL
+  const linkIndicacao = typeof window !== 'undefined'
+    ? `${window.location.origin}/painel/cadastro?ref=${prestadora.codigo_indicacao ?? ''}`
+    : `https://bellebook.com.br/painel/cadastro?ref=${prestadora.codigo_indicacao ?? ''}`
+
   return (
     <div className="space-y-6 max-w-2xl">
-      <h1 className="font-serif text-2xl font-semibold text-gray-900">Meu Perfil</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="font-serif text-2xl font-semibold text-gray-900">Meu Perfil</h1>
+        {isAdmin && (
+          <Link
+            href="/admin"
+            className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-gray-700 transition-colors"
+          >
+            <Shield className="w-4 h-4" />
+            Painel Admin
+          </Link>
+        )}
+      </div>
 
       {/* Foto */}
       <Card>
@@ -487,6 +510,82 @@ export default function PerfilPainelClient({
 
       {/* Avaliações em destaque (exclusivo Pro) */}
       <AvaliacoesDestaqueSection ehPro={ehPro} avaliacoesIniciais={avaliacoes} />
+
+      {/* Indique e Ganhe */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Gift className="w-5 h-5 text-rose-400" />
+            <CardTitle>Indique e Ganhe</CardTitle>
+          </div>
+          <p className="text-sm text-gray-400">
+            Indique amigas e ganhe recompensas quando elas assinarem um plano
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {/* Stats */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-rose-50 rounded-xl p-4 text-center">
+              <p className="text-2xl font-bold text-rose-500">{indicacoesCount}</p>
+              <p className="text-xs text-gray-500 mt-0.5">Indicadas</p>
+            </div>
+            <div className="bg-emerald-50 rounded-xl p-4 text-center">
+              <p className="text-2xl font-bold text-emerald-600">{conversoesCount}</p>
+              <p className="text-xs text-gray-500 mt-0.5">Assinaram</p>
+            </div>
+            <div className="bg-blue-50 rounded-xl p-4 text-center">
+              <p className="text-2xl font-bold text-blue-600">{conversoesCount}</p>
+              <p className="text-xs text-gray-500 mt-0.5">Recompensas</p>
+            </div>
+          </div>
+
+          {/* Recompensas info */}
+          <div className="bg-amber-50 rounded-xl p-4 text-sm text-amber-800 space-y-1">
+            <p className="font-semibold">O que você ganha a cada indicação que assinar:</p>
+            <ul className="list-disc list-inside space-y-0.5 text-amber-700">
+              <li>Em trial → +30 dias grátis no seu trial</li>
+              <li>Plano pago → crédito de R$49 ou R$89 na sua conta Stripe</li>
+              <li>Sem plano / expirado → 30 dias grátis de volta</li>
+            </ul>
+          </div>
+
+          {/* Link de indicação */}
+          {prestadora.codigo_indicacao ? (
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium text-gray-700 block mb-1.5">Seu código</label>
+                <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
+                  <span className="font-mono font-bold text-gray-900 tracking-widest text-lg flex-1">
+                    {prestadora.codigo_indicacao}
+                  </span>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(prestadora.codigo_indicacao!); toast.success('Código copiado!') }}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 block mb-1.5">Link de indicação</label>
+                <div className="flex items-center gap-3 bg-rose-50 rounded-xl px-4 py-3">
+                  <span className="text-sm text-rose-700 flex-1 truncate">{linkIndicacao}</span>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(linkIndicacao); toast.success('Link copiado!') }}
+                    className="text-rose-400 hover:text-rose-600 transition-colors shrink-0"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400">
+              Seu código de indicação será gerado automaticamente. Recarregue a página.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Excluir conta */}
       <Card className="border-red-100">

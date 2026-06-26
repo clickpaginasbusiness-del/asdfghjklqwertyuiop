@@ -1,5 +1,8 @@
+import { createServerClient } from '@supabase/ssr'
 import { type NextRequest, NextResponse } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
+
+const ADMIN_EMAIL = 'clickpaginasbusiness@gmail.com'
 
 // In-memory rate limiter (per Edge runtime instance — good enough for single-region deployments)
 const ipWindows = new Map<string, { count: number; resetAt: number }>()
@@ -9,6 +12,8 @@ const ipWindows = new Map<string, { count: number; resetAt: number }>()
 // chamadas comuns do mesmo IP.
 const SENSITIVE_PATH_PREFIXES = [
   '/api/auth/complete-signup',
+  '/api/auth/google/enviar-sms',
+  '/api/auth/google/completar',
   '/api/clientes/auth/login',
   '/api/clientes/auth/enviar-codigo',
   '/api/clientes/auth/verificar-codigo',
@@ -39,6 +44,24 @@ function isRateLimited(bucket: string, limit: number, windowMs: number): boolean
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+
+  // Proteção do painel admin — só o email admin pode acessar /admin/*
+  if (pathname.startsWith('/admin')) {
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() { return request.cookies.getAll() },
+          setAll() {},
+        },
+      }
+    )
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user || user.email !== ADMIN_EMAIL) {
+      return NextResponse.redirect(new URL('/painel', request.url))
+    }
+  }
 
   if (pathname.startsWith('/api/')) {
     const ip = getIp(request)

@@ -48,13 +48,9 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Se a prestadora já tinha outra assinatura (ex: trial antigo sendo substituído
-        // por uma nova assinatura via checkout), guarda o id para cancelar depois de
-        // confirmar a troca — evita cobrar as duas assinaturas e evita que eventos
-        // futuros da assinatura antiga sobrescrevam o plano novo.
         const { data: prestadoraAntes } = await supabaseAdmin
           .from('prestadoras')
-          .select('stripe_subscription_id')
+          .select('stripe_subscription_id, indicado_por, indicacao_recompensa_processada')
           .eq('id', prestadora_id)
           .single()
         const subscriptionAntiga = prestadoraAntes?.stripe_subscription_id
@@ -73,6 +69,57 @@ export async function POST(request: NextRequest) {
             await stripe.subscriptions.cancel(subscriptionAntiga)
           } catch (err) {
             console.error('[stripe webhook] falha ao cancelar assinatura antiga substituída', subscriptionAntiga, err)
+          }
+        }
+
+        // Recompensa por indicação — processa apenas uma vez por prestadora
+        if (prestadoraAntes?.indicado_por && !prestadoraAntes.indicacao_recompensa_processada) {
+          try {
+            // Marca como processada imediatamente para evitar double-reward
+            await supabaseAdmin
+              .from('prestadoras')
+              .update({ indicacao_recompensa_processada: true })
+              .eq('id', prestadora_id)
+
+            const { data: referrer } = await supabaseAdmin
+              .from('prestadoras')
+              .select('id, stripe_customer_id, plano, assinatura_ativa, e_trial, trial_fim')
+              .eq('id', prestadoraAntes.indicado_por)
+              .single()
+
+            if (referrer) {
+              if (referrer.assinatura_ativa && !referrer.e_trial && referrer.stripe_customer_id) {
+                // Plano pago → crédito no Stripe
+                const creditCents = referrer.plano === 'pro' ? 8900 : 4900
+                await stripe.customers.createBalanceTransaction(referrer.stripe_customer_id, {
+                  amount: -creditCents,
+                  currency: 'brl',
+                  description: 'Recompensa por indicação',
+                })
+              } else if (referrer.assinatura_ativa && referrer.e_trial && referrer.trial_fim) {
+                // Trial ativo → estende 30 dias
+                const base = new Date(referrer.trial_fim)
+                const newEnd = new Date(Math.max(base.getTime(), Date.now()) + 30 * 24 * 60 * 60 * 1000)
+                await supabaseAdmin
+                  .from('prestadoras')
+                  .update({ trial_fim: newEnd.toISOString() })
+                  .eq('id', referrer.id)
+              } else {
+                // Sem plano / expirado → trial de 30 dias grátis
+                const newEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+                await supabaseAdmin
+                  .from('prestadoras')
+                  .update({
+                    assinatura_ativa: true,
+                    plano: 'basico',
+                    e_trial: true,
+                    trial_fim: newEnd.toISOString(),
+                  })
+                  .eq('id', referrer.id)
+              }
+            }
+          } catch (err) {
+            console.error('[stripe webhook] erro ao processar recompensa de indicação', prestadora_id, err)
           }
         }
         break

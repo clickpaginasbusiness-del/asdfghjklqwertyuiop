@@ -4,7 +4,7 @@ import { differenceInCalendarDays } from 'date-fns'
 import { createClient } from '@/lib/supabase/server'
 import PainelLayoutClient from './PainelLayoutClient'
 
-const PUBLIC_PATHS = ['/painel/login', '/painel/cadastro', '/painel/recuperar-senha', '/painel/nova-senha']
+const PUBLIC_PATHS = ['/painel/login', '/painel/cadastro', '/painel/recuperar-senha', '/painel/nova-senha', '/painel/completar-cadastro-google']
 
 export default async function PainelLayout({ children }: { children: React.ReactNode }) {
   const headersList = await headers()
