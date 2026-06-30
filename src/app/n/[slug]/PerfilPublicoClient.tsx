@@ -188,11 +188,15 @@ export default function PerfilPublicoClient({
     }
 
     if (ge) {
-      setGoogleEmail(decodeURIComponent(ge))
-      if (gn) setNomeAuth(decodeURIComponent(gn))
-      setAuthMode('cadastro')
-      setAuthStep('inicio')
-      setLoginModal(true)
+      const emailDecodado = decodeURIComponent(ge)
+      if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailDecodado)) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- inicialização única a partir de URL params após retorno do Google OAuth
+        setGoogleEmail(emailDecodado)
+        if (gn) setNomeAuth(decodeURIComponent(gn))
+        setAuthMode('cadastro')
+        setAuthStep('inicio')
+        setLoginModal(true)
+      }
       return
     }
 

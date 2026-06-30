@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Star, CheckCircle2 } from 'lucide-react'
@@ -10,7 +9,6 @@ import toast from 'react-hot-toast'
 
 interface Props {
   agendamentoId: string
-  prestadoraId: string
   prestadoraNome: string
   corTema: string | null
   servicoNome: string
@@ -19,7 +17,7 @@ interface Props {
 }
 
 export default function AvaliarClient({
-  agendamentoId, prestadoraId, prestadoraNome, corTema, servicoNome, profissionalNome, jaAvaliado,
+  agendamentoId, prestadoraNome, corTema, servicoNome, profissionalNome, jaAvaliado,
 }: Props) {
   const tema = getTema(corTema)
   const [nota, setNota] = useState(0)
@@ -34,15 +32,14 @@ export default function AvaliarClient({
       return
     }
     setEnviando(true)
-    const supabase = createClient()
-    const { error } = await supabase.from('avaliacoes').insert({
-      agendamento_id: agendamentoId,
-      prestadora_id: prestadoraId,
-      nota,
-      comentario: comentario.trim() || null,
+    const res = await fetch('/api/avaliacoes/criar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agendamentoId, nota, comentario: comentario.trim() || null }),
     })
-    if (error) {
-      toast.error('Erro ao enviar avaliação')
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}))
+      toast.error(data.error ?? 'Erro ao enviar avaliação')
       setEnviando(false)
       return
     }

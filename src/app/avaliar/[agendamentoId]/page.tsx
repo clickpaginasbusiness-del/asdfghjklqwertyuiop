@@ -23,7 +23,6 @@ export default async function AvaliarPage({ params }: { params: Promise<{ agenda
   return (
     <AvaliarClient
       agendamentoId={agendamentoId}
-      prestadoraId={agendamento.prestadora_id}
       prestadoraNome={agendamento.prestadoras?.nome ?? ''}
       corTema={agendamento.prestadoras?.cor_tema ?? null}
       servicoNome={agendamento.servicos?.nome ?? ''}

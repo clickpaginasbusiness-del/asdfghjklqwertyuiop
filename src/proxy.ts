@@ -4,7 +4,7 @@ import { updateSession } from '@/lib/supabase/middleware'
 
 const ADMIN_EMAIL = 'clickpaginasbusiness@gmail.com'
 
-// In-memory rate limiter (per Edge runtime instance — good enough for single-region deployments)
+// In-memory rate limiter (per Node.js instance — good enough for single-region deployments)
 const ipWindows = new Map<string, { count: number; resetAt: number }>()
 
 // Rotas sensíveis (login/cadastro/OTP) ficam num limite mais apertado que o
@@ -42,7 +42,7 @@ function isRateLimited(bucket: string, limit: number, windowMs: number): boolean
   return entry.count > limit
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Proteção do painel admin — só o email admin pode acessar /admin/*
