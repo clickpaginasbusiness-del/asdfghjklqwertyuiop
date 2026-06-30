@@ -33,7 +33,17 @@ export function PushNotificationPrompt({ prestadoraId }: { prestadoraId: string 
       setDenied(true)
       return
     }
-    if (Notification.permission !== 'default') return
+
+    if (Notification.permission === 'granted') {
+      // Permissão já concedida: re-subscribe silenciosamente para garantir que
+      // a subscription está salva no banco. Necessário quando a subscription
+      // expira (FCM responde 404/410 e o registro é removido) ou após
+      // re-instalação do service worker — sem isso o prompt nunca mais aparece.
+      subscribeToPush().catch(() => {})
+      return
+    }
+
+    // permission === 'default' — mostra o prompt quando o tour terminar
     if (isDismissed()) return
 
     function mostrar() {
