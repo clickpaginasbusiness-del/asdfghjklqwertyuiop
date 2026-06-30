@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
 
-const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000
-const VERSION_POLL_INTERVAL_MS = 2 * 60 * 1000
+const UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1000
 
 export function ServiceWorkerRegister() {
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null)
@@ -18,8 +17,6 @@ export function ServiceWorkerRegister() {
     function trackInstallingWorker(worker: ServiceWorker) {
       worker.addEventListener('statechange', () => {
         console.log('[sw] novo service worker mudou de estado:', worker.state)
-        // "installed" + já existir um controller ativo = isto é uma atualização
-        // (não a primeira instalação do SW neste dispositivo)
         if (worker.state === 'installed' && navigator.serviceWorker.controller) {
           console.log('[sw] novo service worker instalado e aguardando ativação — exibindo overlay obrigatório')
           setWaitingWorker(worker)
@@ -28,34 +25,12 @@ export function ServiceWorkerRegister() {
     }
 
     let updateInterval: ReturnType<typeof setInterval> | undefined
-    let versionInterval: ReturnType<typeof setInterval> | undefined
     let registration: ServiceWorkerRegistration | undefined
-    let buildIdInicial: string | null = null
-
-    async function checarVersao() {
-      try {
-        const res = await fetch('/api/version', { cache: 'no-store' })
-        const data = await res.json()
-        if (buildIdInicial === null) {
-          buildIdInicial = data.buildId
-          console.log('[version-poll] build atual desta página:', buildIdInicial)
-          return
-        }
-        console.log('[version-poll] build no servidor:', data.buildId, '| build desta página:', buildIdInicial)
-        if (data.buildId !== buildIdInicial) {
-          console.log('[version-poll] nova versão detectada — forçando checagem do service worker')
-          registration?.update().catch((err) => console.warn('[sw] falha ao checar atualização:', err))
-        }
-      } catch (err) {
-        console.warn('[version-poll] falha ao consultar /api/version:', err)
-      }
-    }
 
     const onVisible = () => {
       if (document.visibilityState !== 'visible') return
-      console.log('[sw] app voltou ao foco — checando atualização do service worker e versão')
+      console.log('[sw] app voltou ao foco — checando atualização do service worker')
       registration?.update().catch((err) => console.warn('[sw] falha ao checar atualização:', err))
-      checarVersao()
     }
 
     navigator.serviceWorker
@@ -69,18 +44,20 @@ export function ServiceWorkerRegister() {
           setWaitingWorker(reg.waiting)
         }
 
+        if (reg.installing) {
+          console.log('[sw] service worker em instalação no momento do registro')
+          trackInstallingWorker(reg.installing)
+        }
+
         reg.addEventListener('updatefound', () => {
           console.log('[sw] updatefound — novo service worker sendo instalado')
           if (reg.installing) trackInstallingWorker(reg.installing)
         })
 
         updateInterval = setInterval(() => {
-          console.log('[sw] checagem periódica de atualização (1h)')
+          console.log('[sw] checagem periódica de atualização (30min)')
           reg.update().catch((err) => console.warn('[sw] falha ao checar atualização:', err))
         }, UPDATE_CHECK_INTERVAL_MS)
-
-        checarVersao()
-        versionInterval = setInterval(checarVersao, VERSION_POLL_INTERVAL_MS)
 
         document.addEventListener('visibilitychange', onVisible)
       })
@@ -99,7 +76,6 @@ export function ServiceWorkerRegister() {
       navigator.serviceWorker.removeEventListener('controllerchange', handleControllerChange)
       document.removeEventListener('visibilitychange', onVisible)
       if (updateInterval) clearInterval(updateInterval)
-      if (versionInterval) clearInterval(versionInterval)
     }
   }, [])
 
