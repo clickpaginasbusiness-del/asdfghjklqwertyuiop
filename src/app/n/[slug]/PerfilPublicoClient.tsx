@@ -102,6 +102,7 @@ export default function PerfilPublicoClient({
   const [meusAgendamentosModal, setMeusAgendamentosModal] = useState(false)
   const [agendamentoParaCancelar, setAgendamentoParaCancelar] = useState<Agendamento | null>(null)
   const [cancelando, setCancelando] = useState(false)
+  const [googleEmail, setGoogleEmail] = useState('')
 
   const [perfilAberto, setPerfilAberto] = useState(false)
   const [editandoNome, setEditandoNome] = useState(false)
@@ -167,11 +168,37 @@ export default function PerfilPublicoClient({
     setMeusAgendamentos(ags ?? [])
   }
 
-  /* Restaura sessao do cliente a partir do token salvo (valido por 30 dias) */
+  /* Restaura sessão do cliente. Também processa o retorno do Google OAuth
+     (?ct=token para login direto, ?ge=email&gn=nome para cadastro assistido). */
   useEffect(() => {
     if (isDemo) return
-    const token = localStorage.getItem('clienteToken')
+
+    const params = new URLSearchParams(window.location.search)
+    const ct = params.get('ct')
+    const ge = params.get('ge')
+    const gn = params.get('gn')
+    const googleError = params.get('google_error')
+
+    if (ct || ge || googleError) {
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+
+    if (googleError) {
+      toast.error('Erro ao autenticar com Google. Tente novamente.')
+    }
+
+    if (ge) {
+      setGoogleEmail(decodeURIComponent(ge))
+      if (gn) setNomeAuth(decodeURIComponent(gn))
+      setAuthMode('cadastro')
+      setAuthStep('inicio')
+      setLoginModal(true)
+      return
+    }
+
+    const token = ct ? decodeURIComponent(ct) : localStorage.getItem('clienteToken')
     if (!token) return
+
     fetch('/api/clientes/auth/sessao', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -179,10 +206,15 @@ export default function PerfilPublicoClient({
     })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then(({ cliente }) => {
+        localStorage.setItem('clienteToken', token)
         setClienteLogado(cliente)
         carregarMeusAgendamentos(cliente.id)
+        if (ct) toast.success(`Olá, ${cliente.nome}!`)
       })
-      .catch(() => localStorage.removeItem('clienteToken'))
+      .catch(() => {
+        localStorage.removeItem('clienteToken')
+        if (ct) toast.error('Erro ao finalizar login com Google')
+      })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDemo])
 
@@ -305,6 +337,19 @@ export default function PerfilPublicoClient({
     setVerificationToken('')
     setPendingBooking(false)
     setNumeroNaoEncontrado(false)
+    setGoogleEmail('')
+  }
+
+  async function loginComGoogle() {
+    if (isDemo) { loginDemoInstantaneo(); return }
+    const supabase = createClient()
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/api/clientes/auth/google/callback?slug=${prestadora.slug}`,
+      },
+    })
+    if (error) toast.error('Erro ao iniciar login com Google')
   }
 
   async function aoLogarComSucesso(token: string, cliente: { id: string; nome: string; telefone: string }) {
@@ -402,7 +447,7 @@ export default function PerfilPublicoClient({
       const res = await fetch('/api/clientes/auth/finalizar-cadastro', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ verificationToken, nome: nomeAuth, senha: senhaAuth }),
+        body: JSON.stringify({ verificationToken, nome: nomeAuth, senha: senhaAuth, ...(googleEmail ? { email: googleEmail } : {}) }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -1275,7 +1320,28 @@ export default function PerfilPublicoClient({
         <div className="p-6 space-y-4">
           {authMode === 'login' && (
             <>
-              <p className="text-sm text-gray-500">Para agendar, confirme seu número de telefone.</p>
+              <p className="text-sm text-gray-500">Para agendar, entre na sua conta.</p>
+
+              {/* Google login */}
+              <button
+                onClick={loginComGoogle}
+                className="w-full flex items-center justify-center gap-3 border border-gray-200 rounded-2xl py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+              >
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                  <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908C16.658 14.013 17.64 11.705 17.64 9.2z" fill="#4285F4"/>
+                  <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
+                  <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+                  <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+                </svg>
+                Continuar com Google
+              </button>
+
+              <div className="flex items-center gap-2 text-xs text-gray-400">
+                <div className="flex-1 h-px bg-gray-100" />
+                <span>ou entre com telefone</span>
+                <div className="flex-1 h-px bg-gray-100" />
+              </div>
+
               <Input
                 label="WhatsApp"
                 type="tel"
@@ -1332,6 +1398,17 @@ export default function PerfilPublicoClient({
             </>
           ) : authMode !== 'login' && authStep === 'inicio' && (
             <>
+              {googleEmail && authMode === 'cadastro' && (
+                <div className="flex items-center gap-2 rounded-xl bg-blue-50 border border-blue-100 px-3 py-2.5 text-xs text-blue-700">
+                  <svg width="14" height="14" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0" aria-hidden>
+                    <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908C16.658 14.013 17.64 11.705 17.64 9.2z" fill="#4285F4"/>
+                    <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" fill="#34A853"/>
+                    <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+                    <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+                  </svg>
+                  <span>Google: <span className="font-medium">{googleEmail}</span> — confirme seu telefone para concluir.</span>
+                </div>
+              )}
               <p className="text-sm text-gray-500">
                 {authMode === 'cadastro'
                   ? 'Digite seu telefone para receber um código de confirmação.'
@@ -1348,7 +1425,7 @@ export default function PerfilPublicoClient({
                 Enviar código
               </Button>
               <button
-                onClick={() => { setAuthMode('login'); setAuthStep('inicio') }}
+                onClick={() => { setAuthMode('login'); setAuthStep('inicio'); setGoogleEmail('') }}
                 className="text-xs text-gray-400 hover:underline w-full text-center"
               >
                 Voltar

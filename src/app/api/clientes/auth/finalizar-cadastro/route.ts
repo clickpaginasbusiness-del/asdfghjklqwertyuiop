@@ -4,7 +4,7 @@ import { verifyVerificationToken, signClientToken } from '@/lib/clientAuth'
 import { hashSenha } from '@/lib/passwordHash'
 
 export async function POST(request: NextRequest) {
-  let body: { verificationToken?: string; nome?: string; senha?: string }
+  let body: { verificationToken?: string; nome?: string; senha?: string; email?: string }
   try {
     body = await request.json()
   } catch {
@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
 
   const nome = (body.nome ?? '').trim()
   const senha = body.senha ?? ''
+  const email = (body.email ?? '').trim() || null
   if (nome.length < 2) {
     return NextResponse.json({ error: 'Informe seu nome.' }, { status: 400 })
   }
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
   if (clienteExistente) {
     const { data, error } = await supabaseAdmin
       .from('clientes')
-      .update({ nome, senha_hash: senhaHash, verificado_em: new Date().toISOString() })
+      .update({ nome, senha_hash: senhaHash, verificado_em: new Date().toISOString(), ...(email ? { email } : {}) })
       .eq('id', clienteExistente.id)
       .select('id, nome, telefone')
       .single()
@@ -55,6 +56,7 @@ export async function POST(request: NextRequest) {
         telefone: session.telefone,
         senha_hash: senhaHash,
         verificado_em: new Date().toISOString(),
+        ...(email ? { email } : {}),
       })
       .select('id, nome, telefone')
       .single()

@@ -99,11 +99,19 @@ export async function POST(request: NextRequest) {
 
   // Precisa ser aguardado: sem o await, a função serverless pode ser
   // encerrada antes do fetch completar e a notificação nunca é enviada.
-  await fetch(new URL('/api/push/send', request.nextUrl.origin), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ agendamentoId: ag.id }),
-  }).catch((err) => console.error('[agendamentos/criar] erro ao notificar push:', err))
+  try {
+    const pushRes = await fetch(new URL('/api/push/send', request.nextUrl.origin), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agendamentoId: ag.id }),
+    })
+    if (!pushRes.ok) {
+      const pushErr = await pushRes.json().catch(() => ({}))
+      console.error('[agendamentos/criar] push/send falhou — status:', pushRes.status, pushErr)
+    }
+  } catch (err) {
+    console.error('[agendamentos/criar] erro de rede ao chamar push/send:', err)
+  }
 
   return NextResponse.json({ agendamento: ag })
 }
