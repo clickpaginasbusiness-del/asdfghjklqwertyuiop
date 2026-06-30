@@ -51,18 +51,19 @@ export default function AdminClient({
   chartData: ChartDay[]
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState<'gratis' | 'pro' | null>(null)
   const [busca, setBusca] = useState('')
 
   const maxCount = Math.max(...chartData.map(d => d.count), 1)
 
   const selectedPrestadora = prestadoras.find(p => p.id === selectedId)
 
-  async function darMesGratis() {
+  async function darBeneficio(tipo: 'gratis' | 'pro') {
     if (!selectedId) return
-    setLoading(true)
+    setLoading(tipo)
     try {
-      const res = await fetch('/api/admin/dar-mes-gratis', {
+      const endpoint = tipo === 'pro' ? '/api/admin/dar-mes-pro' : '/api/admin/dar-mes-gratis'
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prestadora_id: selectedId }),
@@ -72,10 +73,13 @@ export default function AdminClient({
         toast.error(data.error ?? 'Erro ao processar')
         return
       }
-      toast.success(`1 mês grátis concedido para ${selectedPrestadora?.nome}!`)
+      const msg = tipo === 'pro'
+        ? `30 dias de Plano Pro concedidos para ${selectedPrestadora?.nome}!`
+        : `30 dias grátis concedidos para ${selectedPrestadora?.nome}!`
+      toast.success(msg)
       setSelectedId(null)
     } finally {
-      setLoading(false)
+      setLoading(null)
     }
   }
 
@@ -281,7 +285,7 @@ export default function AdminClient({
         </Card>
       </main>
 
-      {/* Modal dar 1 mês grátis */}
+      {/* Modal dar benefício */}
       {selectedId && selectedPrestadora && (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
@@ -289,31 +293,75 @@ export default function AdminClient({
               <div className="w-10 h-10 bg-rose-50 rounded-xl flex items-center justify-center">
                 <Gift className="w-5 h-5 text-rose-400" />
               </div>
-              <button onClick={() => setSelectedId(null)} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => setSelectedId(null)} disabled={!!loading} className="text-gray-400 hover:text-gray-600 disabled:opacity-40">
                 <X className="w-5 h-5" />
               </button>
             </div>
+
             <div>
-              <h3 className="font-semibold text-gray-900">Dar 1 mês grátis</h3>
-              <p className="text-sm text-gray-500 mt-1">
-                Confirma para <span className="font-medium text-gray-800">{selectedPrestadora.nome}</span>?
-              </p>
-              <p className="text-xs text-gray-400 mt-2">
-                {selectedPrestadora.assinatura_ativa && !selectedPrestadora.e_trial && selectedPrestadora.stripe_customer_id
-                  ? `Crédito de R$${selectedPrestadora.plano === 'pro' ? '89' : '49'} será adicionado no Stripe.`
-                  : selectedPrestadora.e_trial && selectedPrestadora.trial_fim
-                  ? 'Trial será estendido por 30 dias.'
-                  : 'Trial gratuito de 30 dias será liberado.'}
+              <h3 className="font-semibold text-gray-900">Dar benefício</h3>
+              <p className="text-sm text-gray-500 mt-0.5">
+                Para <span className="font-medium text-gray-800">{selectedPrestadora.nome}</span>
               </p>
             </div>
-            <div className="flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={() => setSelectedId(null)}>
-                Cancelar
-              </Button>
-              <Button className="flex-1" loading={loading} onClick={darMesGratis}>
-                Confirmar
-              </Button>
+
+            <div className="space-y-2">
+              {/* Opção 1: 30 dias grátis no plano atual */}
+              <button
+                onClick={() => darBeneficio('gratis')}
+                disabled={!!loading}
+                className="w-full text-left rounded-xl border border-gray-200 hover:border-rose-300 hover:bg-rose-50 p-3.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed group"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-gray-900 group-hover:text-rose-600">
+                    {loading === 'gratis' ? (
+                      <span className="flex items-center gap-1.5"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Processando…</span>
+                    ) : 'Dar 30 dias grátis'}
+                  </span>
+                  <span className="text-xs font-medium text-gray-400 bg-gray-100 rounded-lg px-2 py-0.5 capitalize">
+                    {selectedPrestadora.plano ?? 'sem plano'}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  {selectedPrestadora.assinatura_ativa && !selectedPrestadora.e_trial && selectedPrestadora.stripe_customer_id
+                    ? `Crédito de R$${selectedPrestadora.plano === 'pro' ? '89' : '49'} adicionado no Stripe (plano atual).`
+                    : selectedPrestadora.e_trial && selectedPrestadora.trial_fim
+                    ? 'Estende o trial atual por 30 dias.'
+                    : 'Libera trial gratuito de 30 dias (Básico).'}
+                </p>
+              </button>
+
+              {/* Opção 2: 30 dias de Plano Pro */}
+              <button
+                onClick={() => darBeneficio('pro')}
+                disabled={!!loading}
+                className="w-full text-left rounded-xl border border-gray-200 hover:border-violet-300 hover:bg-violet-50 p-3.5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed group"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-gray-900 group-hover:text-violet-600">
+                    {loading === 'pro' ? (
+                      <span className="flex items-center gap-1.5"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Processando…</span>
+                    ) : 'Dar 30 dias de Plano Pro'}
+                  </span>
+                  <span className="text-xs font-medium text-violet-600 bg-violet-100 rounded-lg px-2 py-0.5">
+                    Pro
+                  </span>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  {selectedPrestadora.assinatura_ativa && !selectedPrestadora.e_trial && selectedPrestadora.stripe_customer_id
+                    ? selectedPrestadora.plano === 'pro'
+                      ? 'Crédito de R$89 adicionado no Stripe (+30 dias Pro).'
+                      : 'Crédito de R$89 no Stripe + plano muda para Pro.'
+                    : selectedPrestadora.e_trial && selectedPrestadora.trial_fim
+                    ? 'Plano muda para Pro e trial é estendido por 30 dias.'
+                    : 'Libera trial Pro de 30 dias.'}
+                </p>
+              </button>
             </div>
+
+            <Button variant="outline" className="w-full" onClick={() => setSelectedId(null)} disabled={!!loading}>
+              Cancelar
+            </Button>
           </div>
         </div>
       )}
