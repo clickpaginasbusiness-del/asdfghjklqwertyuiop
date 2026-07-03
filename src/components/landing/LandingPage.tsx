@@ -10,6 +10,7 @@ import {
   DollarSign, Smartphone, Camera,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { InstallAppSection } from './InstallAppSection'
 import Lenis from 'lenis'
 
 /* ─── Types ─────────────────────────────────── */
@@ -839,6 +840,9 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* ── INSTALAR APP ──────────────────────── */}
+      <InstallAppSection />
 
       {/* ── CTA FINAL ─────────────────────────── */}
       <section className="relative z-[2] bg-white px-6 py-32">

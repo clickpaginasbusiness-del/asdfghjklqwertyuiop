@@ -10,6 +10,7 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import { NotificacoesSino } from '@/components/painel/NotificacoesSino'
 import { OnboardingTour } from '@/components/painel/OnboardingTour'
+import { WelcomeModal } from '@/components/painel/WelcomeModal'
 import { PushNotificationPrompt } from '@/components/painel/PushNotificationPrompt'
 import { InstallPromptBanner } from '@/components/painel/InstallPromptBanner'
 import { cn } from '@/lib/utils'
@@ -229,11 +230,14 @@ export default function PainelLayoutClient({
       </div>
 
       {pathname === '/painel' && (
-        <OnboardingTour
-          prestadoraId={prestadora.id}
-          onOpenSidebar={() => setSidebarOpen(true)}
-          onCloseSidebar={() => setSidebarOpen(false)}
-        />
+        <>
+          <OnboardingTour
+            prestadoraId={prestadora.id}
+            onOpenSidebar={() => setSidebarOpen(true)}
+            onCloseSidebar={() => setSidebarOpen(false)}
+          />
+          <WelcomeModal prestadoraId={prestadora.id} />
+        </>
       )}
     </div>
   )
