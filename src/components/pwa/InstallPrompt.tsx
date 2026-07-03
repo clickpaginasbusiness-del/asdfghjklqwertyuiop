@@ -12,7 +12,7 @@ export function InstallPrompt() {
   const pathname = usePathname()
   const { visible, showIosHint, install, dismiss } = useInstallPrompt(DISMISS_KEY, DISMISS_DAYS)
 
-  // Dentro do painel, o InstallPromptBanner (inline, com texto contextual) assume esse papel.
+  // Dentro do painel, o InstallPwaModal (modal, mobile-only) assume esse papel.
   if (pathname?.startsWith('/painel')) return null
   if (!visible) return null
 

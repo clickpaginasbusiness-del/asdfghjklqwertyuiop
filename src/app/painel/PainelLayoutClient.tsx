@@ -12,7 +12,7 @@ import { NotificacoesSino } from '@/components/painel/NotificacoesSino'
 import { OnboardingTour } from '@/components/painel/OnboardingTour'
 import { WelcomeModal } from '@/components/painel/WelcomeModal'
 import { PushNotificationPrompt } from '@/components/painel/PushNotificationPrompt'
-import { InstallPromptBanner } from '@/components/painel/InstallPromptBanner'
+import { InstallPwaModal } from '@/components/painel/InstallPwaModal'
 import { cn } from '@/lib/utils'
 import type { Prestadora } from '@/lib/types'
 
@@ -217,9 +217,6 @@ export default function PainelLayoutClient({
           <TrialBanner dias={trialDiasRestantes} />
         )}
 
-        {/* Instalar PWA */}
-        <InstallPromptBanner />
-
         {/* Ativar notificações push */}
         <PushNotificationPrompt prestadoraId={prestadora.id} />
 
@@ -239,6 +236,8 @@ export default function PainelLayoutClient({
           <WelcomeModal prestadoraId={prestadora.id} />
         </>
       )}
+
+      <InstallPwaModal />
     </div>
   )
 }
