@@ -69,9 +69,20 @@ export async function GET(request: NextRequest) {
 
   if (cliente) {
     const token = signClientToken({ clienteId: cliente.id, telefone: cliente.telefone })
-    return applySessionCookies(
-      NextResponse.redirect(`${baseRedirect}?ct=${encodeURIComponent(token)}`)
+    const res = applySessionCookies(
+      NextResponse.redirect(`${baseRedirect}?google_login=1`)
     )
+    // Token de sessão do cliente vai num cookie httpOnly de curta duração em vez
+    // de ?ct=<token> na URL — evita que fique gravado em histórico do navegador,
+    // logs de acesso do servidor e no header Referer de terceiros.
+    res.cookies.set('cliente_google_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60,
+      path: '/',
+    })
+    return res
   }
 
   return applySessionCookies(

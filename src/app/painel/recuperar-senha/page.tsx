@@ -32,7 +32,7 @@ export default function RecuperarSenhaPage() {
     }
 
     await supabase.auth.resetPasswordForEmail(emailLimpo, {
-      redirectTo: 'https://nailbook-eta.vercel.app/api/auth/callback?next=/painel/nova-senha',
+      redirectTo: `${window.location.origin}/api/auth/callback?next=/painel/nova-senha`,
     })
     setEnviado(true)
     setLoading(false)

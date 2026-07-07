@@ -31,8 +31,11 @@ export async function POST(request: NextRequest) {
 
   try {
     await enviarCodigoVerificacao(telefone)
-  } catch (err) {
-    console.error('[google/enviar-sms]', err)
+  } catch {
+    // Não loga o erro completo: a resposta de erro do Twilio costuma incluir
+    // o próprio número de telefone (campo "To"), então logar `err` aqui
+    // vazaria o telefone do usuário nos logs do servidor.
+    console.error('[google/enviar-sms] erro ao enviar SMS')
     return NextResponse.json({ error: 'Falha ao enviar SMS' }, { status: 500 })
   }
 

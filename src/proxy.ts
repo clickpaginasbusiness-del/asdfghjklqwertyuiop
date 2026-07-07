@@ -1,8 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { type NextRequest, NextResponse } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
-
-const ADMIN_EMAIL = 'clickpaginasbusiness@gmail.com'
+import { requireAdmin } from '@/lib/admin'
 
 // In-memory rate limiter (per Node.js instance — good enough for single-region deployments)
 const ipWindows = new Map<string, { count: number; resetAt: number }>()
@@ -19,6 +18,7 @@ const SENSITIVE_PATH_PREFIXES = [
   '/api/clientes/auth/verificar-codigo',
   '/api/clientes/auth/finalizar-cadastro',
   '/api/clientes/auth/redefinir-senha',
+  '/api/push/send',
 ]
 
 function getIp(req: NextRequest): string {
@@ -57,8 +57,7 @@ export async function proxy(request: NextRequest) {
         },
       }
     )
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user || user.email !== ADMIN_EMAIL) {
+    if (!(await requireAdmin(supabase))) {
       return NextResponse.redirect(new URL('/painel', request.url))
     }
   }

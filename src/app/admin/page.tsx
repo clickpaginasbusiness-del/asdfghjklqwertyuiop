@@ -1,14 +1,12 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { requireAdmin } from '@/lib/admin'
 import AdminClient from './AdminClient'
-
-const ADMIN_EMAIL = 'clickpaginasbusiness@gmail.com'
 
 export default async function AdminPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user || user.email !== ADMIN_EMAIL) redirect('/painel')
+  if (!(await requireAdmin(supabase))) redirect('/painel')
 
   const admin = createAdminClient()
   const { data: prestadoras } = await admin

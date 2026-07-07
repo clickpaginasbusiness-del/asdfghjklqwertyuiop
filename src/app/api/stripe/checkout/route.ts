@@ -50,7 +50,8 @@ export async function POST(request: NextRequest) {
       .eq('id', prestadora.id)
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL!
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  if (!appUrl) throw new Error('NEXT_PUBLIC_APP_URL not set')
 
   // Trial de 30 dias é exclusivo do Plano Básico e apenas para quem nunca usou trial grátis
   const jaUsouTrialGratis = Boolean((prestadora as { e_trial?: boolean }).e_trial)

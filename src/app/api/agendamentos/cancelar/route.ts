@@ -57,7 +57,10 @@ export async function POST(request: NextRequest) {
   try {
     const pushRes = await fetch(new URL('/api/push/send', request.nextUrl.origin), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-internal-secret': process.env.INTERNAL_API_SECRET ?? '',
+      },
       body: JSON.stringify({ agendamentoId: agendamento.id }),
     })
     if (!pushRes.ok) {

@@ -156,30 +156,29 @@ export default function PerfilPublicoClient({
     createClient().from('visitas_pagina').insert({ prestadora_id: prestadora.id })
   }, [isDemo, prestadora.id])
 
-  async function carregarMeusAgendamentos(clienteId: string) {
-    const supabase = createClient()
-    const { data: ags } = await supabase
-      .from('agendamentos')
-      .select('*, servicos(*), profissionais(*)')
-      .eq('cliente_id', clienteId)
-      .eq('prestadora_id', prestadora.id)
-      .order('data_hora', { ascending: false })
-      .limit(10)
-    setMeusAgendamentos(ags ?? [])
+  async function carregarMeusAgendamentos(token: string) {
+    const res = await fetch('/api/agendamentos/meus', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, prestadoraId: prestadora.id }),
+    })
+    const { agendamentos } = res.ok ? await res.json() : { agendamentos: [] }
+    setMeusAgendamentos(agendamentos ?? [])
   }
 
   /* Restaura sessão do cliente. Também processa o retorno do Google OAuth
-     (?ct=token para login direto, ?ge=email&gn=nome para cadastro assistido). */
+     (?google_login=1 para login direto — o token vem num cookie httpOnly,
+     não na URL — ou ?ge=email&gn=nome para cadastro assistido). */
   useEffect(() => {
     if (isDemo) return
 
     const params = new URLSearchParams(window.location.search)
-    const ct = params.get('ct')
+    const googleLogin = params.get('google_login')
     const ge = params.get('ge')
     const gn = params.get('gn')
     const googleError = params.get('google_error')
 
-    if (ct || ge || googleError) {
+    if (googleLogin || ge || googleError) {
       window.history.replaceState({}, '', window.location.pathname)
     }
 
@@ -200,7 +199,26 @@ export default function PerfilPublicoClient({
       return
     }
 
-    const token = ct ? decodeURIComponent(ct) : localStorage.getItem('clienteToken')
+    if (googleLogin) {
+      fetch('/api/clientes/auth/sessao', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+        .then((r) => (r.ok ? r.json() : Promise.reject()))
+        .then(({ cliente, token }) => {
+          localStorage.setItem('clienteToken', token)
+          setClienteLogado(cliente)
+          carregarMeusAgendamentos(token)
+          toast.success(`Olá, ${cliente.nome}!`)
+        })
+        .catch(() => {
+          toast.error('Erro ao finalizar login com Google')
+        })
+      return
+    }
+
+    const token = localStorage.getItem('clienteToken')
     if (!token) return
 
     fetch('/api/clientes/auth/sessao', {
@@ -210,14 +228,11 @@ export default function PerfilPublicoClient({
     })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then(({ cliente }) => {
-        localStorage.setItem('clienteToken', token)
         setClienteLogado(cliente)
-        carregarMeusAgendamentos(cliente.id)
-        if (ct) toast.success(`Olá, ${cliente.nome}!`)
+        carregarMeusAgendamentos(token)
       })
       .catch(() => {
         localStorage.removeItem('clienteToken')
-        if (ct) toast.error('Erro ao finalizar login com Google')
       })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDemo])
@@ -298,29 +313,15 @@ export default function PerfilPublicoClient({
       return
     }
 
-    const supabase = createClient()
-    const inicio = startOfDay(d).toISOString()
-    const fim = addDays(startOfDay(d), 1).toISOString()
-
-    let query = supabase
-      .from('agendamentos')
-      .select('data_hora, servicos(duracao_minutos)')
-      .eq('prestadora_id', prestadora.id)
-      .gte('data_hora', inicio)
-      .lt('data_hora', fim)
-      .eq('status', 'confirmado')
-
-    if (profissionalSelecionada) {
-      query = query.eq('profissional_id', profissionalSelecionada.id)
-    }
-
-    const { data } = await query
-    const bookings = (data ?? []).map((a: any) => {
-      const startMs = new Date(a.data_hora).getTime()
-      const durMin = (a.servicos as {duracao_minutos: number} | null)?.duracao_minutos ?? 30
-      return { start: startMs, end: startMs + durMin * 60000 }
+    const params = new URLSearchParams({
+      prestadoraId: prestadora.id,
+      data: format(d, 'yyyy-MM-dd'),
     })
-    setAgendamentosExistentes(bookings)
+    if (profissionalSelecionada) params.set('profissionalId', profissionalSelecionada.id)
+
+    const res = await fetch(`/api/agendamentos/horarios-ocupados?${params.toString()}`)
+    const { ocupados } = res.ok ? await res.json() : { ocupados: [] }
+    setAgendamentosExistentes(ocupados)
     setLoadingHorarios(false)
     setStep('horario')
   }
@@ -359,7 +360,7 @@ export default function PerfilPublicoClient({
   async function aoLogarComSucesso(token: string, cliente: { id: string; nome: string; telefone: string }) {
     localStorage.setItem('clienteToken', token)
     setClienteLogado(cliente)
-    await carregarMeusAgendamentos(cliente.id)
+    await carregarMeusAgendamentos(token)
     const irParaAgendamento = pendingBooking
     fecharLoginModal()
     toast.success(`Olá, ${cliente.nome}!`)

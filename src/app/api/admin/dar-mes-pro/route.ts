@@ -1,14 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { requireAdmin } from '@/lib/admin'
 import { stripe } from '@/lib/stripe'
 import { NextRequest, NextResponse } from 'next/server'
 
-const ADMIN_EMAIL = 'clickpaginasbusiness@gmail.com'
-
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user || user.email !== ADMIN_EMAIL) {
+  if (!(await requireAdmin(supabase))) {
     return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
   }
 

@@ -17,6 +17,11 @@ if (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
 }
 
 export async function POST(request: NextRequest) {
+  const internalSecret = process.env.INTERNAL_API_SECRET
+  if (!internalSecret || request.headers.get('x-internal-secret') !== internalSecret) {
+    return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  }
+
   let body: Record<string, unknown>
   try {
     body = await request.json()

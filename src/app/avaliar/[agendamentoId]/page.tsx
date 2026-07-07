@@ -1,10 +1,10 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
 import AvaliarClient from './AvaliarClient'
 
 export default async function AvaliarPage({ params }: { params: Promise<{ agendamentoId: string }> }) {
   const { agendamentoId } = await params
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const { data: agendamento } = await supabase
     .from('agendamentos')

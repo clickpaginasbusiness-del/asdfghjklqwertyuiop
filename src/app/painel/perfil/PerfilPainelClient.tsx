@@ -20,6 +20,7 @@ import { maskTelefone, cleanTelefone, slugify } from '@/lib/utils'
 import { TEMAS, type CorTema } from '@/lib/theme'
 import { TEMPLATE_VARS, MSG_CONFIRMACAO_DEFAULT, MSG_CANCELAMENTO_DEFAULT, MSG_LEMBRETE_DEFAULT } from '@/lib/whatsappTemplates'
 import { AvaliacoesDestaqueSection } from './AvaliacoesDestaqueSection'
+import { ADMIN_EMAIL } from '@/lib/admin'
 import toast from 'react-hot-toast'
 
 type SlugStatus = 'idle' | 'checking' | 'available' | 'taken'
@@ -32,8 +33,6 @@ export type AvaliacaoComCliente = {
   created_at: string
   agendamentos: { clientes: { nome: string } | null; servicos: { nome: string } | null } | null
 }
-
-const ADMIN_EMAIL = 'clickpaginasbusiness@gmail.com'
 
 export default function PerfilPainelClient({
   prestadora: initial,
