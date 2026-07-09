@@ -41,15 +41,14 @@ export default async function ClientesPage() {
   const clienteMap = new Map<string, ClienteEntry>()
 
   agendamentos?.forEach((a) => {
-    const clientesArr = a.clientes as { id: string; nome: string; telefone: string }[] | null
-    const c = clientesArr?.[0] ?? null
+    const c = a.clientes as unknown as { id: string; nome: string; telefone: string } | null
     if (!c) return
     const isAtivo = a.status === 'confirmado' || a.status === 'concluido'
     const agItem: AgItem = {
       id: a.id,
       data_hora: a.data_hora,
       status: a.status,
-      servicos: (a.servicos as { nome: string; preco: number }[] | null)?.[0] ?? null,
+      servicos: a.servicos as unknown as { nome: string; preco: number } | null,
     }
 
     const existing = clienteMap.get(c.id)

@@ -166,7 +166,11 @@ export default function PlanosClient({
           <div className="mb-6 inline-flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4 text-left max-w-lg">
             <div className="w-2 h-2 rounded-full bg-amber-400 mt-1.5 shrink-0" />
             <p className="text-sm text-amber-800">
-              Você está no <strong>trial gratuito do Plano Básico</strong>. Para continuar após o período gratuito, assine o Básico abaixo. Para ter acesso a profissionais ilimitadas e galeria, escolha o <strong>Plano Pro</strong>.
+              {planoAtual === 'pro' ? (
+                <>Você está no <strong>trial gratuito do Plano Pro</strong>. Para continuar com profissionais ilimitadas e galeria após o período gratuito, assine o Pro abaixo.</>
+              ) : (
+                <>Você está no <strong>trial gratuito do Plano Básico</strong>. Para continuar após o período gratuito, assine o Básico abaixo. Para ter acesso a profissionais ilimitadas e galeria, escolha o <strong>Plano Pro</strong>.</>
+              )}
             </p>
           </div>
         )}

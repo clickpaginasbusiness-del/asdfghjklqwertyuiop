@@ -541,7 +541,7 @@ export default function PerfilPublicoClient({
       const servico = servicoSelecionado
       const prof = profissionalSelecionada
       setTimeout(() => {
-        setAgendamentoFeito({
+        const novoAgendamento: Agendamento = {
           id: 'demo',
           prestadora_id: 'demo',
           profissional_id: prof?.id ?? null,
@@ -555,7 +555,9 @@ export default function PerfilPublicoClient({
           servicos: servico,
           clientes: { id: 'demo-cliente', nome: clienteLogado.nome, telefone: clienteLogado.telefone, verificado_em: null, created_at: '' },
           profissionais: prof ?? undefined,
-        })
+        }
+        setAgendamentoFeito(novoAgendamento)
+        setMeusAgendamentos((prev) => [novoAgendamento, ...prev])
         setStep('confirmado')
         setAgendando(false)
       }, 900)
@@ -822,7 +824,7 @@ export default function PerfilPublicoClient({
               {profissionais.length > 0 && (
                 <div className="flex items-center justify-center gap-1 text-xs text-gray-400">
                   <UserCircle2 className="w-3.5 h-3.5" />
-                  {profissionais.length} profissional{profissionais.length > 1 ? 'is' : ''}
+                  {profissionais.length} {profissionais.length === 1 ? 'profissional' : 'profissionais'}
                 </div>
               )}
             </div>

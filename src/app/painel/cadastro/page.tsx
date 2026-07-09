@@ -366,6 +366,7 @@ export default function CadastroPage() {
             <Input
               label="Email"
               type="email"
+              autoComplete="email"
               placeholder="sua@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -374,6 +375,7 @@ export default function CadastroPage() {
             <Input
               label="Senha"
               type="password"
+              autoComplete="new-password"
               placeholder="Mínimo 6 caracteres"
               value={senha}
               onChange={(e) => setSenha(e.target.value)}
