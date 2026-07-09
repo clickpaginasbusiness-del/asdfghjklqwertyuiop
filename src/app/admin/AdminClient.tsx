@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Gift, TrendingUp, Users, Zap, DollarSign, Loader2, X } from 'lucide-react'
+import { ArrowLeft, Gift, TrendingUp, Users, Zap, DollarSign, Loader2, X, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import toast from 'react-hot-toast'
@@ -30,6 +30,15 @@ type Metrics = {
 
 type ChartDay = { date: string; count: number }
 
+type FeedbackRow = {
+  id: string
+  nome_prestadora: string
+  email_prestadora: string
+  nota: number
+  comentario: string | null
+  created_at: string
+}
+
 function statusLabel(p: PrestadoraRow): { label: string; color: string } {
   const now = new Date()
   if (p.e_trial && p.assinatura_ativa && p.trial_fim && new Date(p.trial_fim) > now) {
@@ -45,16 +54,21 @@ export default function AdminClient({
   prestadoras,
   metrics,
   chartData,
+  feedbacks,
 }: {
   prestadoras: PrestadoraRow[]
   metrics: Metrics
   chartData: ChartDay[]
+  feedbacks: FeedbackRow[]
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [loading, setLoading] = useState<'gratis' | 'pro' | null>(null)
   const [busca, setBusca] = useState('')
 
   const maxCount = Math.max(...chartData.map(d => d.count), 1)
+  const mediaFeedback = feedbacks.length > 0
+    ? feedbacks.reduce((acc, f) => acc + f.nota, 0) / feedbacks.length
+    : 0
 
   const selectedPrestadora = prestadoras.find(p => p.id === selectedId)
 
@@ -281,6 +295,58 @@ export default function AdminClient({
                 </tbody>
               </table>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Feedbacks */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <CardTitle>Feedbacks ({feedbacks.length})</CardTitle>
+              {feedbacks.length > 0 && (
+                <div className="flex items-center gap-1.5 text-sm">
+                  <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+                  <span className="font-semibold text-gray-900">{mediaFeedback.toFixed(1)}</span>
+                  <span className="text-gray-400">média geral</span>
+                </div>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            {feedbacks.length === 0 ? (
+              <div className="text-center py-12 text-gray-400">
+                <p className="text-sm">Nenhum feedback recebido ainda</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {feedbacks.map((f) => (
+                  <div key={f.id} className="p-4">
+                    <div className="flex items-center justify-between gap-3 flex-wrap mb-1">
+                      <div className="min-w-0">
+                        <p className="font-medium text-gray-900 text-sm">{f.nome_prestadora}</p>
+                        <p className="text-xs text-gray-400">{f.email_prestadora}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex items-center gap-0.5">
+                          {Array.from({ length: 5 }, (_, i) => (
+                            <Star
+                              key={i}
+                              className={`w-3.5 h-3.5 ${i < f.nota ? 'fill-amber-400 text-amber-400' : 'text-gray-200'}`}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-xs text-gray-400 whitespace-nowrap">
+                          {new Date(f.created_at).toLocaleDateString('pt-BR')}
+                        </span>
+                      </div>
+                    </div>
+                    {f.comentario && (
+                      <p className="text-sm text-gray-600 leading-relaxed mt-1.5">{f.comentario}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </main>

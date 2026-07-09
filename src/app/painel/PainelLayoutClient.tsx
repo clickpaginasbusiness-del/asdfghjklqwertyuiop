@@ -13,6 +13,7 @@ import { OnboardingTour } from '@/components/painel/OnboardingTour'
 import { WelcomeModal } from '@/components/painel/WelcomeModal'
 import { PushNotificationPrompt } from '@/components/painel/PushNotificationPrompt'
 import { InstallPwaModal } from '@/components/painel/InstallPwaModal'
+import { FeedbackModal } from '@/components/painel/FeedbackModal'
 import { cn } from '@/lib/utils'
 import type { Prestadora } from '@/lib/types'
 
@@ -238,6 +239,7 @@ export default function PainelLayoutClient({
       )}
 
       <InstallPwaModal />
+      <FeedbackModal prestadoraId={prestadora.id} />
     </div>
   )
 }

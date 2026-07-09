@@ -9,10 +9,16 @@ export default async function AdminPage() {
   if (!(await requireAdmin(supabase))) redirect('/painel')
 
   const admin = createAdminClient()
-  const { data: prestadoras } = await admin
-    .from('prestadoras')
-    .select('id, nome, email, plano, assinatura_ativa, trial_fim, e_trial, created_at, stripe_customer_id')
-    .order('created_at', { ascending: false })
+  const [{ data: prestadoras }, { data: feedbacks }] = await Promise.all([
+    admin
+      .from('prestadoras')
+      .select('id, nome, email, plano, assinatura_ativa, trial_fim, e_trial, created_at, stripe_customer_id')
+      .order('created_at', { ascending: false }),
+    admin
+      .from('feedbacks_prestadora')
+      .select('id, nome_prestadora, email_prestadora, nota, comentario, created_at')
+      .order('created_at', { ascending: false }),
+  ])
 
   const all = prestadoras ?? []
   const now = new Date()
@@ -51,6 +57,7 @@ export default async function AdminPage() {
       prestadoras={all}
       metrics={{ total: all.length, emTrialAtivo, pagasBasico, pagasPro, semPlanOuExpirado, receitaEstimada }}
       chartData={chartData}
+      feedbacks={feedbacks ?? []}
     />
   )
 }
