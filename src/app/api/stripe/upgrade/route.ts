@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
     if (msg.toLowerCase().includes('coupon') || msg.toLowerCase().includes('discount')) {
       return NextResponse.json({ error: 'Cupom inválido ou expirado', tipo: 'cupom' }, { status: 400 })
     }
+    console.error('[stripe/upgrade] erro ao atualizar assinatura:', err)
     return NextResponse.json({ error: 'Erro ao fazer upgrade' }, { status: 500 })
   }
 

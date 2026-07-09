@@ -153,7 +153,9 @@ export default function PerfilPublicoClient({
     const key = `visita_${prestadora.id}`
     if (sessionStorage.getItem(key)) return
     sessionStorage.setItem(key, '1')
-    createClient().from('visitas_pagina').insert({ prestadora_id: prestadora.id })
+    createClient().from('visitas_pagina').insert({ prestadora_id: prestadora.id }).then(({ error }) => {
+      if (error) console.error('[visitas_pagina] erro ao registrar visita:', error.message)
+    })
   }, [isDemo, prestadora.id])
 
   async function carregarMeusAgendamentos(token: string) {

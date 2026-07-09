@@ -55,6 +55,8 @@ export default function CadastroPage() {
   const [loadingGoogle, setLoadingGoogle] = useState(false)
   const [aceitouTermos, setAceitouTermos] = useState(false)
   const [refCode, setRefCode] = useState('')
+  const [codigoIndicacaoManual, setCodigoIndicacaoManual] = useState('')
+  const [codigoIndicacaoInvalido, setCodigoIndicacaoInvalido] = useState(false)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -97,6 +99,16 @@ export default function CadastroPage() {
     setLoadingOtp(true)
     try {
       const supabase = createClient()
+
+      const codigoManualLimpo = codigoIndicacaoManual.trim()
+      if (codigoManualLimpo) {
+        const { data: indicadora } = await supabase
+          .from('prestadoras')
+          .select('id')
+          .eq('codigo_indicacao', codigoManualLimpo)
+          .maybeSingle()
+        setCodigoIndicacaoInvalido(!indicadora)
+      }
 
       const { data: existing } = await supabase
         .from('prestadoras')
@@ -155,7 +167,10 @@ export default function CadastroPage() {
       const res = await fetch('/api/auth/complete-signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nome, email, senha, slug, telefone: phoneFormatted, refCode }),
+        body: JSON.stringify({
+          nome, email, senha, slug, telefone: phoneFormatted,
+          refCode: refCode || codigoIndicacaoManual.trim(),
+        }),
       })
 
       const json = await res.json()
@@ -391,6 +406,29 @@ export default function CadastroPage() {
                 <p className="text-xs text-gray-400">Receberá um SMS para verificar sua conta</p>
               )}
             </div>
+
+            {!refCode && (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-gray-700">Código de indicação (opcional)</label>
+                <input
+                  type="text"
+                  value={codigoIndicacaoManual}
+                  onChange={(e) => {
+                    setCodigoIndicacaoManual(e.target.value.toUpperCase())
+                    setCodigoIndicacaoInvalido(false)
+                  }}
+                  placeholder="Ex: CLARA1234"
+                  className={`border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 transition-all ${
+                    codigoIndicacaoInvalido
+                      ? 'border-red-300 focus:ring-red-200'
+                      : 'border-gray-200 focus:ring-rose-300 focus:border-rose-300'
+                  }`}
+                />
+                {codigoIndicacaoInvalido && (
+                  <p className="text-xs text-red-500">Código inválido</p>
+                )}
+              </div>
+            )}
 
             <label className="flex items-start gap-2.5 text-sm text-gray-600 cursor-pointer">
               <input
