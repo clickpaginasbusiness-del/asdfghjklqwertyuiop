@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { formatDateTime, formatCurrency, maskTelefone, buildWhatsappUrl } from '@/lib/utils'
-import { Users, MessageCircle, ChevronDown, Phone } from 'lucide-react'
+import { Users, MessageCircle, ChevronDown, Phone, Bell, Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type AgItem = {
@@ -57,14 +57,25 @@ function statusVariant(s: string): 'success' | 'concluido' | 'danger' {
   return 'danger'
 }
 
-function ClienteCard({ cliente, total, gasto, ultimaVisita, ultimaVisitaAtiva, historico }: ClienteEntry) {
+function ClienteCard({ cliente, total, gasto, ultimaVisita, ultimaVisitaAtiva, historico, prestadoraNome }: ClienteEntry & { prestadoraNome: string }) {
   const [expanded, setExpanded] = useState(false)
-  const [waOpen, setWaOpen] = useState(false)
   const isFrequente = total >= 3
   const ausente = isAusente(ultimaVisitaAtiva)
 
+  // historico já vem ordenado do mais recente para o mais antigo — o primeiro
+  // "concluido" encontrado é o último atendimento finalizado desse cliente.
+  const ultimoConcluido = historico.find((h) => h.status === 'concluido')
+
+  const msgLembrete = ausente
+    ? `Olá ${cliente.nome}! Sentimos sua falta 💅 Que tal agendar um horário? Estamos com novidades te esperando!`
+    : `Olá ${cliente.nome}! Temos horários disponíveis. Gostaria de agendar? 💅 - ${prestadoraNome}`
+
+  const msgAvaliacao = ultimoConcluido
+    ? `Olá ${cliente.nome}! Esperamos que tenha amado seu ${ultimoConcluido.servicos?.nome ?? 'atendimento'}. Poderia deixar uma avaliação sobre o atendimento? 🌟 ${typeof window !== 'undefined' ? window.location.origin : ''}/avaliar/${ultimoConcluido.id} - ${prestadoraNome}`
+    : null
+
   return (
-    <div className="border-b border-gray-50 last:border-0" onClick={() => waOpen && setWaOpen(false)}>
+    <div className="border-b border-gray-50 last:border-0">
       <div className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors">
         {/* Avatar */}
         <div
@@ -87,65 +98,53 @@ function ClienteCard({ cliente, total, gasto, ultimaVisita, ultimaVisitaAtiva, h
             ) : null}
           </div>
 
-          <div className="flex items-center gap-2 mt-1 flex-wrap">
-            <span className="flex items-center gap-1 text-xs text-gray-400">
+          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+            <span className="flex items-center gap-1 text-xs text-gray-400 mr-1">
               <Phone className="w-3 h-3" />
               {maskTelefone(cliente.telefone)}
             </span>
 
-            {/* WhatsApp pill */}
-            <div className="relative">
-              <button
-                onClick={(e) => { e.stopPropagation(); setWaOpen(!waOpen) }}
-                className="flex items-center gap-1 bg-green-50 hover:bg-green-100 border border-green-100 text-green-600 rounded-full px-2 py-0.5 text-xs font-medium transition-colors"
+            <a
+              href={buildWhatsappUrl(cliente.telefone, msgLembrete)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 bg-rose-50 hover:bg-rose-100 border border-rose-100 text-rose-600 rounded-full px-2.5 py-1 text-xs font-medium transition-colors"
+            >
+              <Bell className="w-3 h-3" />
+              Lembrete
+            </a>
+
+            {msgAvaliacao ? (
+              <a
+                href={buildWhatsappUrl(cliente.telefone, msgAvaliacao)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 bg-amber-50 hover:bg-amber-100 border border-amber-100 text-amber-700 rounded-full px-2.5 py-1 text-xs font-medium transition-colors"
               >
-                <MessageCircle className="w-3 h-3" />
-                WhatsApp
+                <Star className="w-3 h-3" />
+                Pedir avaliação
+              </a>
+            ) : (
+              <button
+                type="button"
+                disabled
+                title="Nenhum agendamento concluído ainda"
+                className="flex items-center gap-1 bg-gray-50 border border-gray-100 text-gray-300 rounded-full px-2.5 py-1 text-xs font-medium cursor-not-allowed"
+              >
+                <Star className="w-3 h-3" />
+                Pedir avaliação
               </button>
-              {waOpen && (
-                <div
-                  className="absolute left-0 top-full mt-1 z-20 bg-white border border-gray-100 rounded-xl shadow-xl p-1.5 space-y-0.5 w-64"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <a
-                    href={buildWhatsappUrl(cliente.telefone)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={() => setWaOpen(false)}
-                    className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-green-50 rounded-lg transition-colors"
-                  >
-                    💬 Abrir conversa
-                  </a>
-                  {ausente ? (
-                    <a
-                      href={buildWhatsappUrl(
-                        cliente.telefone,
-                        `Olá ${cliente.nome}! Sentimos sua falta 💅 Que tal agendar um horário? Estamos com novidades te esperando!`
-                      )}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={() => setWaOpen(false)}
-                      className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-amber-50 rounded-lg transition-colors"
-                    >
-                      💔 Sentimos sua falta
-                    </a>
-                  ) : (
-                    <a
-                      href={buildWhatsappUrl(
-                        cliente.telefone,
-                        `Olá ${cliente.nome}! Temos horários disponíveis. Gostaria de agendar? 💅 - BelleBook`
-                      )}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={() => setWaOpen(false)}
-                      className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-rose-50 rounded-lg transition-colors"
-                    >
-                      📅 Convidar para agendar
-                    </a>
-                  )}
-                </div>
-              )}
-            </div>
+            )}
+
+            <a
+              href={buildWhatsappUrl(cliente.telefone)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 bg-green-50 hover:bg-green-100 border border-green-100 text-green-600 rounded-full px-2.5 py-1 text-xs font-medium transition-colors"
+            >
+              <MessageCircle className="w-3 h-3" />
+              WhatsApp
+            </a>
           </div>
         </div>
 
@@ -203,7 +202,7 @@ const FILTROS: { value: FiltroCliente; label: string }[] = [
   { value: 'ausentes', label: 'Ausentes' },
 ]
 
-export default function ClientesClient({ clientes }: { clientes: ClienteEntry[] }) {
+export default function ClientesClient({ clientes, prestadoraNome }: { clientes: ClienteEntry[]; prestadoraNome: string }) {
   const [filtro, setFiltro] = useState<FiltroCliente>('todos')
 
   const clientesFiltrados = useMemo(() => {
@@ -283,7 +282,7 @@ export default function ClientesClient({ clientes }: { clientes: ClienteEntry[] 
           <CardContent className="p-0">
             <div>
               {clientesFiltrados.map((c) => (
-                <ClienteCard key={c.cliente.id} {...c} />
+                <ClienteCard key={c.cliente.id} {...c} prestadoraNome={prestadoraNome} />
               ))}
             </div>
           </CardContent>

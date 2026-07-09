@@ -172,7 +172,17 @@ export default function PainelLayoutClient({
           <a
             href={`/n/${prestadora.slug}`}
             target="_blank"
+            rel="noopener noreferrer"
             data-tour="tour-link-publico"
+            onClick={(e) => {
+              // No PWA em modo standalone (celular), uma navegação normal com
+              // target="_blank" abre o link público na MESMA janela do app —
+              // sem aba nem botão de voltar, prendendo a prestadora lá.
+              // window.open() força a abertura no navegador externo do
+              // sistema, de onde dá pra fechar e voltar ao app normalmente.
+              e.preventDefault()
+              window.open(`/n/${prestadora.slug}`, '_blank', 'noopener,noreferrer')
+            }}
             className="flex items-center gap-3 px-3 py-3 rounded-xl text-sm text-gray-500 hover:bg-gray-50 transition-all min-h-11"
           >
             <ExternalLink className="w-4 h-4" />

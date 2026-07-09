@@ -9,7 +9,7 @@ export default async function ClientesPage() {
 
   const { data: prestadora } = await supabase
     .from('prestadoras')
-    .select('id')
+    .select('id, nome')
     .eq('user_id', user.id)
     .single()
 
@@ -76,5 +76,5 @@ export default async function ClientesPage() {
 
   const clientes = Array.from(clienteMap.values()).sort((a, b) => b.total - a.total)
 
-  return <ClientesClient clientes={clientes} />
+  return <ClientesClient clientes={clientes} prestadoraNome={prestadora.nome} />
 }
