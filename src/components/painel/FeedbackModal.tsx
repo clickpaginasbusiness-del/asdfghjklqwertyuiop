@@ -17,7 +17,15 @@ function lastShownKey(prestadoraId: string) {
   return `bb_feedback_last_shown_${prestadoraId}`
 }
 
-export function FeedbackModal({ prestadoraId }: { prestadoraId: string }) {
+function tourKey(prestadoraId: string) {
+  return `bb_onboarding_done_${prestadoraId}`
+}
+
+function primeiroAcessoKey(prestadoraId: string) {
+  return `bb_primeiro_acesso_${prestadoraId}`
+}
+
+export function FeedbackModal({ prestadoraId, createdAt }: { prestadoraId: string; createdAt: string }) {
   const [open, setOpen] = useState(false)
   const [nota, setNota] = useState(0)
   const [hoverNota, setHoverNota] = useState(0)
@@ -27,11 +35,25 @@ export function FeedbackModal({ prestadoraId }: { prestadoraId: string }) {
 
   useEffect(() => {
     if (localStorage.getItem(neverKey(prestadoraId))) return
+
+    // Não mostra enquanto o tour de onboarding não tiver sido concluído (ou
+    // pulado) — evita disputar tela com o WelcomeModal/OnboardingTour.
+    if (!localStorage.getItem(tourKey(prestadoraId))) return
+
+    // Data do primeiro acesso: usa o valor já salvo localmente, ou cai para o
+    // created_at da prestadora (e persiste local para as próximas checagens).
+    let primeiroAcesso = localStorage.getItem(primeiroAcessoKey(prestadoraId))
+    if (!primeiroAcesso) {
+      primeiroAcesso = createdAt
+      localStorage.setItem(primeiroAcessoKey(prestadoraId), primeiroAcesso)
+    }
+    if (Date.now() - new Date(primeiroAcesso).getTime() < SEVEN_DAYS_MS) return
+
     const ultimaVez = Number(localStorage.getItem(lastShownKey(prestadoraId)) ?? 0)
     if (Date.now() - ultimaVez >= SEVEN_DAYS_MS) {
       setOpen(true)
     }
-  }, [prestadoraId])
+  }, [prestadoraId, createdAt])
 
   function adiarPorSeteDias() {
     if (naoMostrarMais) {

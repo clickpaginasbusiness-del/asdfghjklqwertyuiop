@@ -229,17 +229,19 @@ export default function PainelLayoutClient({
 
       {pathname === '/painel' && (
         <>
+          {/* Ordem sequencial: boas-vindas primeiro, tour só começa depois que
+              ela é fechada (ver evento 'bb-welcome-done' em cada componente). */}
+          <WelcomeModal prestadoraId={prestadora.id} />
           <OnboardingTour
             prestadoraId={prestadora.id}
             onOpenSidebar={() => setSidebarOpen(true)}
             onCloseSidebar={() => setSidebarOpen(false)}
           />
-          <WelcomeModal prestadoraId={prestadora.id} />
         </>
       )}
 
       <InstallPwaModal />
-      <FeedbackModal prestadoraId={prestadora.id} />
+      <FeedbackModal prestadoraId={prestadora.id} createdAt={prestadora.created_at} />
     </div>
   )
 }

@@ -14,13 +14,27 @@ function tourKey(prestadoraId: string) {
   return `bb_onboarding_done_${prestadoraId}`
 }
 
+function welcomeKey(prestadoraId: string) {
+  return `bb_welcome_modal_seen_${prestadoraId}`
+}
+
 export function OnboardingTour({ prestadoraId, onOpenSidebar, onCloseSidebar }: Props) {
   useEffect(() => {
     if (localStorage.getItem(tourKey(prestadoraId))) return
 
-    onOpenSidebar()
+    let cancelado = false
+    let startTimer: ReturnType<typeof setTimeout> | undefined
 
-    const timer = setTimeout(() => {
+    function iniciarTour() {
+      if (cancelado) return
+      onOpenSidebar()
+      startTimer = setTimeout(() => {
+        if (cancelado) return
+        montarDriver()
+      }, 400)
+    }
+
+    function montarDriver() {
       const driverObj = driver({
         showProgress: true,
         progressText: '{{current}} de {{total}}',
@@ -90,9 +104,22 @@ export function OnboardingTour({ prestadoraId, onOpenSidebar, onCloseSidebar }: 
       })
 
       driverObj.drive()
-    }, 400)
+    }
 
-    return () => clearTimeout(timer)
+    // O tour só começa depois que o modal de boas-vindas é fechado — se ele
+    // já foi visto antes (ex.: outro dispositivo), começa direto. Isso garante
+    // que só um overlay (modal ou tour) apareça por vez.
+    if (localStorage.getItem(welcomeKey(prestadoraId))) {
+      iniciarTour()
+    } else {
+      window.addEventListener('bb-welcome-done', iniciarTour)
+    }
+
+    return () => {
+      cancelado = true
+      if (startTimer) clearTimeout(startTimer)
+      window.removeEventListener('bb-welcome-done', iniciarTour)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prestadoraId])
 

@@ -116,7 +116,11 @@ body {
   border-radius: 10px;
   border: none;
   font-weight: 600;
-  text-shadow: none;
+  /* !important porque driver.css (importado dentro de OnboardingTour.tsx) define
+     text-shadow: 1px 1px 0 #fff nesse mesmo seletor, e a ordem de carregamento
+     dos dois arquivos não é garantida — sem isso, o texto branco do botão
+     "Próximo" ganha uma sombra branca duplicada por trás, parecendo repetido. */
+  text-shadow: none !important;
   padding: 9px 16px;
   font-size: 13px;
   transition: background-color 0.15s ease, transform 0.1s ease;

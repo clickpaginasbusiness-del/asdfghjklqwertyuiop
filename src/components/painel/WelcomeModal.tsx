@@ -8,10 +8,6 @@ import { buildWhatsappUrl } from '@/lib/utils'
 
 const SUPORTE_WHATSAPP = '5531971192930'
 
-function tourKey(prestadoraId: string) {
-  return `bb_onboarding_done_${prestadoraId}`
-}
-
 function welcomeKey(prestadoraId: string) {
   return `bb_welcome_modal_seen_${prestadoraId}`
 }
@@ -19,27 +15,18 @@ function welcomeKey(prestadoraId: string) {
 export function WelcomeModal({ prestadoraId }: { prestadoraId: string }) {
   const [open, setOpen] = useState(false)
 
+  // Primeiro passo do onboarding: aparece imediatamente no primeiro acesso.
+  // O tour (OnboardingTour) espera o evento disparado em handleClose antes
+  // de começar, garantindo que só um overlay apareça por vez.
   useEffect(() => {
     if (localStorage.getItem(welcomeKey(prestadoraId))) return
-
-    function show() {
-      setOpen(true)
-    }
-
-    // Se o tour de onboarding já rodou antes (ex.: usuária que logou em outro
-    // dispositivo), mostra direto; senão espera o tour terminar para não sobrepor.
-    if (localStorage.getItem(tourKey(prestadoraId))) {
-      show()
-      return
-    }
-
-    window.addEventListener('bb-onboarding-done', show)
-    return () => window.removeEventListener('bb-onboarding-done', show)
+    setOpen(true)
   }, [prestadoraId])
 
   function handleClose() {
     setOpen(false)
     localStorage.setItem(welcomeKey(prestadoraId), '1')
+    window.dispatchEvent(new Event('bb-welcome-done'))
   }
 
   const whatsappUrl = buildWhatsappUrl(
