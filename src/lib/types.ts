@@ -137,4 +137,5 @@ export type Avaliacao = {
   comentario: string | null
   destaque: boolean
   created_at: string
+  agendamentos?: { clientes: { nome: string } | null } | null
 }

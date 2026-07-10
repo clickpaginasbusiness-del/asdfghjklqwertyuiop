@@ -936,6 +936,9 @@ export default function PerfilPublicoClient({
                       {av.comentario}
                     </p>
                   )}
+                  {av.agendamentos?.clientes?.nome && (
+                    <p className="text-xs text-gray-400 mt-1.5 text-right">— {av.agendamentos.clientes.nome}</p>
+                  )}
                 </div>
               ))}
             </div>
