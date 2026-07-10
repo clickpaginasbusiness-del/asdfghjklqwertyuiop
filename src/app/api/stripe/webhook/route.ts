@@ -83,19 +83,23 @@ export async function POST(request: NextRequest) {
 
             const { data: referrer } = await supabaseAdmin
               .from('prestadoras')
-              .select('id, stripe_customer_id, plano, assinatura_ativa, e_trial, trial_fim')
+              .select('id, stripe_customer_id, stripe_subscription_id, plano, assinatura_ativa, e_trial, trial_fim')
               .eq('id', prestadoraAntes.indicado_por)
               .single()
 
             if (referrer) {
-              if (referrer.assinatura_ativa && !referrer.e_trial && referrer.stripe_customer_id) {
-                // Plano pago → crédito no Stripe
-                const creditCents = referrer.plano === 'pro' ? 8900 : 4900
-                await stripe.customers.createBalanceTransaction(referrer.stripe_customer_id, {
-                  amount: -creditCents,
-                  currency: 'brl',
-                  description: 'Recompensa por indicação',
+              if (referrer.assinatura_ativa && !referrer.e_trial && referrer.stripe_subscription_id) {
+                // Plano pago → pausa a cobrança por 30 dias em vez de dar crédito
+                // (crédito saía do bolso do dono do produto; pausar não custa nada,
+                // a assinante simplesmente não é cobrada no próximo ciclo).
+                const trialEndUnix = Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60
+                await stripe.subscriptions.update(referrer.stripe_subscription_id, {
+                  trial_end: trialEndUnix,
                 })
+                await supabaseAdmin
+                  .from('prestadoras')
+                  .update({ trial_fim: new Date(trialEndUnix * 1000).toISOString() })
+                  .eq('id', referrer.id)
               } else if (referrer.assinatura_ativa && referrer.e_trial && referrer.trial_fim) {
                 // Trial ativo → estende 30 dias
                 const base = new Date(referrer.trial_fim)

@@ -12,11 +12,11 @@ import { Modal } from '@/components/ui/modal'
 import {
   User, Link2, Upload, Phone, AtSign, MapPin, AlertTriangle,
   CheckCircle2, XCircle, Loader2, Palette, Lock, Check, MessageCircle,
-  Gift, Shield, Copy,
+  Gift, Shield, Copy, CalendarClock,
 } from 'lucide-react'
 import Image from 'next/image'
 import type { Prestadora } from '@/lib/types'
-import { maskTelefone, cleanTelefone, slugify } from '@/lib/utils'
+import { maskTelefone, cleanTelefone, slugify, formatDate } from '@/lib/utils'
 import { TEMAS, type CorTema } from '@/lib/theme'
 import { TEMPLATE_VARS, MSG_CONFIRMACAO_DEFAULT, MSG_CANCELAMENTO_DEFAULT, MSG_LEMBRETE_DEFAULT } from '@/lib/whatsappTemplates'
 import { AvaliacoesDestaqueSection } from './AvaliacoesDestaqueSection'
@@ -46,6 +46,7 @@ export default function PerfilPainelClient({
   conversoesCount: number
 }) {
   const [prestadora, setPrestadora] = useState(initial)
+  const [recompensaAoVivo, setRecompensaAoVivo] = useState(false)
   const [nome, setNome] = useState(initial.nome)
   const [bio, setBio] = useState(initial.bio ?? '')
   const [whatsapp, setWhatsapp] = useState(maskTelefone(initial.whatsapp ?? ''))
@@ -88,6 +89,32 @@ export default function PerfilPainelClient({
     }, 500)
     return () => clearTimeout(timer)
   }, [slug, prestadora.slug, prestadora.id])
+
+  /* Realtime: reflete na hora quando o webhook do Stripe processa uma
+     recompensa de indicação (trial estendido ou cobrança pausada) — sem
+     precisar recarregar a página. */
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`prestadora-${initial.id}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'prestadoras',
+        filter: `id=eq.${initial.id}`,
+      }, (payload) => {
+        const novo = payload.new as Partial<Prestadora>
+        setPrestadora((p) => ({ ...p, ...novo }))
+        // Um novo trial_fim enquanto a página está aberta é, na prática, a
+        // recompensa de indicação sendo processada pelo webhook — mostra o
+        // aviso na hora, mesmo que essa seja a primeira recompensa (quando
+        // conversoesCount, calculado no carregamento da página, ainda é 0).
+        if (novo.trial_fim) setRecompensaAoVivo(true)
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [initial.id])
 
   async function salvarSlug() {
     setSavingSlug(true)
@@ -543,10 +570,22 @@ export default function PerfilPainelClient({
             <p className="font-semibold">O que você ganha a cada indicação que assinar:</p>
             <ul className="list-disc list-inside space-y-0.5 text-amber-700">
               <li>Em trial → +30 dias grátis no seu trial</li>
-              <li>Plano pago → crédito de R$49 ou R$89 na sua conta Stripe</li>
+              <li>Plano pago → +30 dias sem cobrança</li>
               <li>Sem plano / expirado → 30 dias grátis de volta</li>
             </ul>
           </div>
+
+          {/* Data da recompensa ativa (trial ou pausa de cobrança) */}
+          {(conversoesCount > 0 || recompensaAoVivo) && prestadora.trial_fim && new Date(prestadora.trial_fim) > new Date() && (
+            <div className="flex items-center gap-2 bg-blue-50 rounded-xl px-4 py-3 text-sm text-blue-800">
+              <CalendarClock className="w-4 h-4 shrink-0" />
+              {prestadora.e_trial ? (
+                <span>Seu plano está gratuito até <strong>{formatDate(prestadora.trial_fim)}</strong></span>
+              ) : (
+                <span>Próxima cobrança em: <strong>{formatDate(prestadora.trial_fim)}</strong></span>
+              )}
+            </div>
+          )}
 
           {/* Link de indicação */}
           {prestadora.codigo_indicacao ? (
