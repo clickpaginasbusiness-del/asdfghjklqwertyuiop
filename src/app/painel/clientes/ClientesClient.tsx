@@ -71,7 +71,7 @@ function ClienteCard({ cliente, total, gasto, ultimaVisita, ultimaVisitaAtiva, h
     : `Olá ${cliente.nome}! Temos horários disponíveis. Gostaria de agendar? 💅 - ${prestadoraNome}`
 
   const msgAvaliacao = ultimoConcluido
-    ? `Olá ${cliente.nome}! Esperamos que tenha amado seu ${ultimoConcluido.servicos?.nome ?? 'atendimento'}. Poderia deixar uma avaliação sobre o atendimento? 🌟 ${typeof window !== 'undefined' ? window.location.origin : ''}/avaliar/${ultimoConcluido.id} - ${prestadoraNome}`
+    ? `Olá ${cliente.nome}! Esperamos que tenha amado seu ${ultimoConcluido.servicos?.nome ?? 'atendimento'}. Poderia deixar uma avaliação sobre o atendimento? 🌟 ${process.env.NEXT_PUBLIC_APP_URL}/avaliar/${ultimoConcluido.id} - ${prestadoraNome}`
     : null
 
   return (

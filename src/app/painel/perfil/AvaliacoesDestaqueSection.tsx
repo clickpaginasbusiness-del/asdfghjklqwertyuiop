@@ -1,15 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Star, Lock, MessageSquareQuote } from 'lucide-react'
+import { Star, Lock, MessageSquareQuote, ChevronDown } from 'lucide-react'
 import { cn, formatDateShort } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import toast from 'react-hot-toast'
 import type { AvaliacaoComCliente } from './PerfilPainelClient'
 
 const MAX_DESTAQUES = 3
+const QTD_PADRAO = 3
 
 export function AvaliacoesDestaqueSection({
   ehPro,
@@ -20,8 +21,20 @@ export function AvaliacoesDestaqueSection({
 }) {
   const [avaliacoes, setAvaliacoes] = useState(avaliacoesIniciais)
   const [togglingId, setTogglingId] = useState<string | null>(null)
+  const [mostrarTodas, setMostrarTodas] = useState(false)
 
   const destaquesCount = avaliacoes.filter((a) => a.destaque).length
+
+  // Marcadas primeiro, depois por nota — o padrão exibido (top 3) já reflete
+  // as melhores avaliações mesmo antes de qualquer destaque ser escolhido.
+  const avaliacoesOrdenadas = useMemo(
+    () => [...avaliacoes].sort((a, b) => {
+      if (a.destaque !== b.destaque) return a.destaque ? -1 : 1
+      return b.nota - a.nota
+    }),
+    [avaliacoes]
+  )
+  const avaliacoesVisiveis = mostrarTodas ? avaliacoesOrdenadas : avaliacoesOrdenadas.slice(0, QTD_PADRAO)
 
   async function toggleDestaque(av: AvaliacaoComCliente) {
     if (!av.destaque && destaquesCount >= MAX_DESTAQUES) {
@@ -63,7 +76,7 @@ export function AvaliacoesDestaqueSection({
             </div>
           ) : (
             <div className={cn('space-y-3', !ehPro && 'pointer-events-none')}>
-              {avaliacoes.map((av) => (
+              {avaliacoesVisiveis.map((av) => (
                 <div
                   key={av.id}
                   className={cn(
@@ -100,6 +113,17 @@ export function AvaliacoesDestaqueSection({
                 </div>
               ))}
             </div>
+          )}
+
+          {!mostrarTodas && avaliacoesOrdenadas.length > QTD_PADRAO && (
+            <button
+              type="button"
+              onClick={() => setMostrarTodas(true)}
+              className="flex items-center gap-1 mx-auto mt-4 text-sm font-medium text-rose-500 hover:text-rose-600 transition-colors"
+            >
+              Ver todas ({avaliacoesOrdenadas.length})
+              <ChevronDown className="w-4 h-4" />
+            </button>
           )}
 
           {!ehPro && avaliacoes.length > 0 && (

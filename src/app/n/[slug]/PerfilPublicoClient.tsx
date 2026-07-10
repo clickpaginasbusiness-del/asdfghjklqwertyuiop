@@ -663,7 +663,10 @@ export default function PerfilPublicoClient({
     ? avaliacoes.reduce((acc, a) => acc + a.nota, 0) / avaliacoes.length
     : null
 
-  const avaliacoesDestaque = avaliacoes.filter((a) => a.destaque)
+  // Destaque é recurso exclusivo do Plano Pro — se a prestadora não é mais Pro
+  // (ex.: downgrade após ter marcado destaques), ignora marcações antigas e
+  // sempre mostra as mais recentes.
+  const avaliacoesDestaque = prestadora.plano === 'pro' ? avaliacoes.filter((a) => a.destaque) : []
   const avaliacoesExibidas = avaliacoesDestaque.length > 0
     ? avaliacoesDestaque.slice(0, 3)
     : avaliacoes.slice(0, 6)
