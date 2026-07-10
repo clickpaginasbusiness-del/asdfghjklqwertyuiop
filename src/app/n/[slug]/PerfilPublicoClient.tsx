@@ -664,12 +664,11 @@ export default function PerfilPublicoClient({
     : null
 
   // Destaque é recurso exclusivo do Plano Pro — se a prestadora não é mais Pro
-  // (ex.: downgrade após ter marcado destaques), ignora marcações antigas e
-  // sempre mostra as mais recentes.
+  // (ex.: downgrade após ter marcado destaques), ignora marcações antigas.
+  // Sem nenhuma marcada, a seção de avaliações simplesmente não aparece —
+  // sem fallback para "mais recentes".
   const avaliacoesDestaque = prestadora.plano === 'pro' ? avaliacoes.filter((a) => a.destaque) : []
-  const avaliacoesExibidas = avaliacoesDestaque.length > 0
-    ? avaliacoesDestaque.slice(0, 3)
-    : avaliacoes.slice(0, 6)
+  const avaliacoesExibidas = avaliacoesDestaque.slice(0, 3)
 
   async function compartilharAgendamento() {
     if (!agendamentoFeito) return
@@ -912,8 +911,8 @@ export default function PerfilPublicoClient({
           </section>
         )}
 
-        {/* Avaliações */}
-        {avaliacoes.length > 0 && (
+        {/* Avaliações — só aparece com destaques marcados (Plano Pro) */}
+        {avaliacoesExibidas.length > 0 && (
           <section data-animate>
             <h2 className="font-serif text-xl font-semibold text-gray-900 mb-4">O que dizem sobre mim</h2>
             <div className="space-y-3">
