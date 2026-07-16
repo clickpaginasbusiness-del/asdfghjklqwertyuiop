@@ -273,7 +273,7 @@ export default function PlanosClient({
               disabled={loading !== null}
               className="w-full py-3.5 rounded-2xl border-2 border-gray-200 text-gray-700 font-semibold text-sm hover:border-gray-300 hover:bg-gray-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading === 'basico' ? 'Aguarde...' : trialExpirado ? 'Assinar Básico' : 'Começar grátis por 30 dias'}
+              {loading === 'basico' ? 'Aguarde...' : (trialExpirado || eTrial) ? 'Assinar Básico' : 'Começar grátis por 30 dias'}
             </button>
           </div>
 
@@ -402,6 +402,11 @@ export default function PlanosClient({
           {trialExpirado
             ? 'Plano Pro cobra imediatamente · Cancele quando quiser'
             : '30 dias grátis exclusivos do Plano Básico · Plano Pro cobra imediatamente · Cancele quando quiser'}
+        </p>
+
+        {/* Formas de pagamento */}
+        <p className="text-center text-xs text-gray-400 mt-3">
+          💳 Aceitamos: Cartão de crédito, Boleto e Apple/Google Pay
         </p>
       </div>
     </div>

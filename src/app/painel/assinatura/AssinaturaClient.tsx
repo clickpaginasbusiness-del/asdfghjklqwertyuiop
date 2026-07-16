@@ -381,6 +381,11 @@ export default function AssinaturaClient({
           </CardContent>
         </Card>
       )}
+
+      {/* Formas de pagamento */}
+      <p className="text-center text-xs text-gray-400">
+        💳 Aceitamos: Cartão de crédito, Boleto e Apple/Google Pay
+      </p>
     </div>
   )
 }
