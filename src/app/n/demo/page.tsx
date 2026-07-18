@@ -10,7 +10,7 @@ const DEMO_PRESTADORA: Prestadora = {
   email: 'ana@demo.com',
   slug: 'demo',
   bio: 'Nail designer apaixonada por unhas perfeitas. Mais de 8 anos de experiência em manicure, pedicure e nail art. Atendo com amor e dedicação cada cliente.',
-  foto_url: null,
+  foto_url: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&q=80',
   hora_abertura: '09:00',
   hora_fechamento: '18:00',
   whatsapp: '11999999999',
@@ -92,7 +92,7 @@ const DEMO_PROFISSIONAIS: Profissional[] = [
   {
     id: 'p1', prestadora_id: 'demo', ativa: true, created_at: '',
     nome: 'Ana',
-    foto_url: null,
+    foto_url: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&q=80',
     bio: 'Proprietária e especialista em nail art e alongamento de gel',
     dias_semana: [1, 2, 3, 4, 5],
     hora_abertura: null,
@@ -101,7 +101,7 @@ const DEMO_PROFISSIONAIS: Profissional[] = [
   {
     id: 'p2', prestadora_id: 'demo', ativa: true, created_at: '',
     nome: 'Camila',
-    foto_url: null,
+    foto_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&q=80',
     bio: 'Especialista em alongamento de gel e manutenção',
     dias_semana: [2, 4, 6],
     hora_abertura: null,
@@ -110,7 +110,7 @@ const DEMO_PROFISSIONAIS: Profissional[] = [
   {
     id: 'p3', prestadora_id: 'demo', ativa: true, created_at: '',
     nome: 'Letícia',
-    foto_url: null,
+    foto_url: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=400&q=80',
     bio: 'Expert em nail art e decoração artística',
     dias_semana: [1, 3, 5],
     hora_abertura: null,

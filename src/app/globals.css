@@ -58,6 +58,36 @@ body {
 [data-delay="400"] { transition-delay: 0.40s; }
 [data-delay="500"] { transition-delay: 0.50s; }
 
+/* ── Hero background — drift muito sutil dos blobs, sem novas cores ── */
+@keyframes heroDrift1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-3%, 2%) scale(1.06); }
+}
+@keyframes heroDrift2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(3%, -2%) scale(1.05); }
+}
+@keyframes heroDrift3 {
+  0%, 100% { transform: translate(-50%, 0) scale(1); }
+  50% { transform: translate(-50%, 3%) scale(1.08); }
+}
+.hero-blob-1 { animation: heroDrift1 26s ease-in-out infinite; }
+.hero-blob-2 { animation: heroDrift2 32s ease-in-out infinite; }
+.hero-blob-3 { animation: heroDrift3 22s ease-in-out infinite; }
+
+/* ── Ticker de profissões — scroll horizontal contínuo, esquerda para direita ── */
+@keyframes tickerScroll {
+  from { transform: translateX(-50%); }
+  to { transform: translateX(0); }
+}
+.ticker-track {
+  animation: tickerScroll 45s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-blob-1, .hero-blob-2, .hero-blob-3, .ticker-track { animation: none; }
+}
+
 .scrollbar-thin {
   scrollbar-width: thin;
   scrollbar-color: #fce4ec transparent;
