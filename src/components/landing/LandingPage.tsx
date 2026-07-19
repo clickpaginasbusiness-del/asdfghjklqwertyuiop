@@ -8,10 +8,11 @@ import {
   Phone, Mail, Scissors, CreditCard, LayoutDashboard, ImageIcon,
   BarChart3, UserCircle2, UserCircle, Headset, CheckCheck,
   DollarSign, Smartphone, Camera, Palette, Gift, CalendarDays,
-  Monitor, Menu,
+  Monitor, Menu, Tag, X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { InstallAppSection } from './InstallAppSection'
+import { useCupom, precoComDesconto } from '@/hooks/use-cupom'
 import Lenis from 'lenis'
 
 /* ─── Types ─────────────────────────────────── */
@@ -446,6 +447,12 @@ function Navbar({
 export default function LandingPage() {
   const [activeSection, setActiveSection] = useState<NavId>('hero')
   const [cicloPrecos, setCicloPrecos] = useState<'mensal' | 'anual'>('mensal')
+  const {
+    cupomAberto, setCupomAberto,
+    cupomInput, onCupomInputChange,
+    cupomStatus, desconto,
+    aplicarCupom,
+  } = useCupom()
   const [mockupView, setMockupView] = useState<'desktop' | 'mobile'>('desktop')
   const [screenIndex, setScreenIndex] = useState(0)
   const touchStartXRef = useRef<number | null>(null)
@@ -1227,8 +1234,15 @@ export default function LandingPage() {
               <div className="mb-6">
                 {cicloPrecos === 'mensal' ? (
                   <div>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-bold text-gray-900">R$49</span>
+                    <div className="flex items-baseline gap-1.5">
+                      {desconto ? (
+                        <>
+                          <span className="text-lg font-semibold text-gray-300 line-through">R$49</span>
+                          <span className="text-4xl font-bold text-emerald-600">{precoComDesconto('R$49', desconto)}</span>
+                        </>
+                      ) : (
+                        <span className="text-4xl font-bold text-gray-900">R$49</span>
+                      )}
                       <span className="text-gray-400 text-sm">/mês</span>
                     </div>
                     <p className="text-sm text-emerald-600 font-medium mt-1">30 dias grátis, depois R$49/mês</p>
@@ -1236,7 +1250,14 @@ export default function LandingPage() {
                 ) : (
                   <div>
                     <div className="flex items-baseline gap-2">
-                      <span className="text-4xl font-bold text-gray-900">R$470</span>
+                      {desconto ? (
+                        <>
+                          <span className="text-lg font-semibold text-gray-300 line-through">R$470</span>
+                          <span className="text-4xl font-bold text-emerald-600">{precoComDesconto('R$470', desconto)}</span>
+                        </>
+                      ) : (
+                        <span className="text-4xl font-bold text-gray-900">R$470</span>
+                      )}
                       <span className="text-gray-400 text-sm">/ano</span>
                       <span className="text-[11px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">20% off</span>
                     </div>
@@ -1282,8 +1303,15 @@ export default function LandingPage() {
               <div className="relative mb-6">
                 {cicloPrecos === 'mensal' ? (
                   <div>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-bold text-white">R$89</span>
+                    <div className="flex items-baseline gap-1.5">
+                      {desconto ? (
+                        <>
+                          <span className="text-lg font-semibold text-white/50 line-through">R$89</span>
+                          <span className="text-4xl font-bold text-white">{precoComDesconto('R$89', desconto)}</span>
+                        </>
+                      ) : (
+                        <span className="text-4xl font-bold text-white">R$89</span>
+                      )}
                       <span className="text-white/70 text-sm">/mês</span>
                     </div>
                     <p className="text-sm text-white/60 mt-1">Sem trial · R$89/mês</p>
@@ -1291,7 +1319,14 @@ export default function LandingPage() {
                 ) : (
                   <div>
                     <div className="flex items-baseline gap-2">
-                      <span className="text-4xl font-bold text-white">R$855</span>
+                      {desconto ? (
+                        <>
+                          <span className="text-lg font-semibold text-white/50 line-through">R$855</span>
+                          <span className="text-4xl font-bold text-white">{precoComDesconto('R$855', desconto)}</span>
+                        </>
+                      ) : (
+                        <span className="text-4xl font-bold text-white">R$855</span>
+                      )}
                       <span className="text-white/70 text-sm">/ano</span>
                       <span className="text-[11px] font-bold bg-white/25 text-white px-1.5 py-0.5 rounded-full">20% off</span>
                     </div>
@@ -1320,6 +1355,53 @@ export default function LandingPage() {
                 Assinar Pro
               </Link>
             </div>
+          </div>
+
+          {/* Cupom de desconto */}
+          <div data-animate className="mt-8 flex flex-col items-center gap-3">
+            {!cupomAberto ? (
+              <button
+                onClick={() => setCupomAberto(true)}
+                className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <Tag className="w-3.5 h-3.5" />
+                Tem um cupom?
+              </button>
+            ) : (
+              <div className="flex flex-col items-center gap-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={cupomInput}
+                    onChange={(e) => onCupomInputChange(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && aplicarCupom()}
+                    placeholder="CÓDIGO DO CUPOM"
+                    className="border border-gray-200 rounded-xl px-3 py-2 text-sm text-center uppercase tracking-widest w-48 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-300 transition-all"
+                    autoFocus
+                  />
+                  <button
+                    onClick={aplicarCupom}
+                    disabled={cupomStatus === 'loading' || !cupomInput.trim()}
+                    className="px-4 py-2 rounded-xl text-sm font-semibold bg-gray-900 text-white hover:bg-gray-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {cupomStatus === 'loading' ? '...' : 'Aplicar'}
+                  </button>
+                </div>
+
+                {cupomStatus === 'ok' && (
+                  <p className="flex items-center gap-1.5 text-sm text-emerald-600 font-medium">
+                    <Check className="w-4 h-4" strokeWidth={2.5} />
+                    Cupom aplicado! Ele já aparece no preço acima — informe o mesmo código ao assinar.
+                  </p>
+                )}
+                {cupomStatus === 'erro' && (
+                  <p className="flex items-center gap-1.5 text-sm text-red-500">
+                    <X className="w-4 h-4" strokeWidth={2.5} />
+                    Cupom inválido ou expirado
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </section>

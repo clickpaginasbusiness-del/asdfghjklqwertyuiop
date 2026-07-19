@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { format } from 'date-fns'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyClientToken } from '@/lib/clientAuth'
+import { formatDateShort, formatDateKey, dateKeyToDate, diaAtivoPadrao } from '@/lib/utils'
 
 type Body = {
   token?: string
@@ -41,6 +41,33 @@ export async function POST(request: NextRequest) {
 
   if (!servico) {
     return NextResponse.json({ error: 'Serviço não encontrado.' }, { status: 404 })
+  }
+
+  // Defesa em profundidade: o front-end já esconde dias fechados/bloqueados no
+  // calendário, mas sem checar de novo aqui um request direto à API (ou um bug
+  // futuro no front) conseguia criar agendamento num dia desativado — foi
+  // exatamente esse o bug relatado (domingo desativado, mas aceitava reserva).
+  const diaChave = formatDateKey(dataHora)
+  const diaSemana = dateKeyToDate(diaChave).getUTCDay()
+
+  const [{ data: horarioDia }, { data: diaBloqueado }] = await Promise.all([
+    supabaseAdmin
+      .from('horarios_funcionamento')
+      .select('ativo')
+      .eq('prestadora_id', prestadoraId)
+      .eq('dia_semana', diaSemana)
+      .maybeSingle(),
+    supabaseAdmin
+      .from('dias_bloqueados')
+      .select('id')
+      .eq('prestadora_id', prestadoraId)
+      .eq('data', diaChave)
+      .maybeSingle(),
+  ])
+
+  const diaAtivo = horarioDia ? horarioDia.ativo : diaAtivoPadrao(diaSemana)
+  if (!diaAtivo || diaBloqueado) {
+    return NextResponse.json({ error: 'Esse dia não está disponível para agendamento.' }, { status: 409 })
   }
 
   const novoInicio = new Date(dataHora).getTime()
@@ -94,7 +121,7 @@ export async function POST(request: NextRequest) {
   await supabaseAdmin.from('notificacoes').insert({
     prestadora_id: prestadoraId,
     tipo: 'agendamento',
-    mensagem: `Nova cliente! ${ag.clientes?.nome} agendou ${ag.servicos?.nome}${profNome} para ${format(new Date(dataHora), "dd/MM 'às' HH'h'mm")}`,
+    mensagem: `Nova cliente! ${ag.clientes?.nome} agendou ${ag.servicos?.nome}${profNome} para ${formatDateShort(dataHora)}`,
   })
 
   // Precisa ser aguardado: sem o await, a função serverless pode ser

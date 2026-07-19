@@ -36,6 +36,7 @@ export default function PainelDemoLayoutClient({
 }) {
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [notifBannerAberto, setNotifBannerAberto] = useState(true)
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -136,6 +137,35 @@ export default function PainelDemoLayoutClient({
               <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-400 rounded-full border border-white" />
             </button>
           </header>
+
+          {/* Prévia do banner "ativar notificações" do painel real — sem
+              permissão/subscription de verdade, só pra mostrar que a
+              funcionalidade existe. */}
+          {notifBannerAberto && (
+            <div className="px-4 lg:px-8 py-3 flex items-center justify-between gap-4 bg-rose-50 border-b border-rose-100">
+              <div className="flex items-center gap-2 min-w-0">
+                <Bell className="w-4 h-4 text-rose-400 shrink-0" />
+                <p className="text-sm text-rose-700 truncate">
+                  Ative as notificações para saber na hora quando alguém agendar!
+                </p>
+              </div>
+              <div className="flex items-center gap-3 shrink-0">
+                <button
+                  onClick={demoToast}
+                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-400 hover:bg-rose-500 text-white transition-colors"
+                >
+                  Ativar notificações
+                </button>
+                <button
+                  onClick={() => setNotifBannerAberto(false)}
+                  aria-label="Fechar"
+                  className="text-rose-300 hover:text-rose-500 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Page content */}
           <main className="flex-1 p-4 lg:p-8">

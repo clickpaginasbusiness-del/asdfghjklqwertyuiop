@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Clock, CalendarX, Plus, Trash2 } from 'lucide-react'
 import type { Prestadora, DiaBloqueado, HorarioFuncionamento } from '@/lib/types'
-import { formatDate } from '@/lib/utils'
+import { formatDate, diaAtivoPadrao } from '@/lib/utils'
 import toast from 'react-hot-toast'
 
 const DIAS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
@@ -21,7 +21,7 @@ interface HorarioDia {
 
 const DEFAULTS: HorarioDia[] = DIAS.map((_, i) => ({
   dia_semana: i,
-  ativo: i !== 0,
+  ativo: diaAtivoPadrao(i),
   hora_abertura: '09:00',
   hora_fechamento: i === 6 ? '13:00' : '18:00',
 }))

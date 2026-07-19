@@ -4,20 +4,23 @@ import { useEffect, useState } from 'react'
 import { Bell, Settings, X } from 'lucide-react'
 import { isPushSupported, subscribeToPush } from '@/lib/push'
 
-const DISMISS_KEY = 'bb_push_prompt_dismissed_until'
-const DISMISS_DAYS = 30
+const DISMISS_FOREVER_KEY = 'bb_push_prompt_never'
 
 function tourKey(prestadoraId: string) {
   return `bb_onboarding_done_${prestadoraId}`
 }
 
-function isDismissed() {
-  const until = localStorage.getItem(DISMISS_KEY)
-  return !!until && Date.now() < Number(until)
+function isDismissedForever() {
+  return localStorage.getItem(DISMISS_FOREVER_KEY) === '1'
 }
 
-function dismissForDays(days: number) {
-  localStorage.setItem(DISMISS_KEY, String(Date.now() + days * 24 * 60 * 60 * 1000))
+/** Banner só faz sentido em celular/PWA — no desktop o fluxo de permissão é outro contexto. */
+function isMobileOuPwa(): boolean {
+  const standalone =
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (navigator as unknown as { standalone?: boolean }).standalone === true
+  const mobileUA = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+  return standalone || mobileUA
 }
 
 export function PushNotificationPrompt({ prestadoraId }: { prestadoraId: string }) {
@@ -27,29 +30,27 @@ export function PushNotificationPrompt({ prestadoraId }: { prestadoraId: string 
 
   useEffect(() => {
     if (!isPushSupported()) return
-
-    if (Notification.permission === 'denied') {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- estado da permissão só é conhecido após montar (Notification API)
-      setDenied(true)
-      return
-    }
+    if (!isMobileOuPwa()) return
 
     if (Notification.permission === 'granted') {
-      // Permissão já concedida: re-subscribe silenciosamente para garantir que
-      // a subscription está salva no banco. Necessário quando a subscription
-      // expira (FCM responde 404/410 e o registro é removido) ou após
-      // re-instalação do service worker — sem isso o prompt nunca mais aparece.
+      // Re-inscreve silenciosamente: cobre tanto subscription expirada (FCM
+      // rotaciona o token) quanto o caso de a prestadora ter ativado a permissão
+      // direto nas configurações do celular — sem passar pelo botão "Ativar"
+      // daqui, a permissão fica concedida mas nenhuma subscription é salva no
+      // banco e a notificação nunca chega.
       subscribeToPush().catch(() => {})
       return
     }
 
-    // permission === 'default' — mostra o prompt quando o tour terminar
-    if (isDismissed()) return
+    if (isDismissedForever()) return
 
     function mostrar() {
+      setDenied(Notification.permission === 'denied')
       setVisible(true)
     }
 
+    // Mostra assim que o tour de boas-vindas já foi concluído; se ainda não foi,
+    // espera o evento de conclusão em vez de competir com o tour na tela.
     if (localStorage.getItem(tourKey(prestadoraId))) {
       mostrar()
       return
@@ -66,26 +67,41 @@ export function PushNotificationPrompt({ prestadoraId }: { prestadoraId: string 
     if (ok) {
       setVisible(false)
     } else if (Notification.permission === 'denied') {
-      setVisible(false)
       setDenied(true)
     }
   }
 
-  function dismiss() {
+  // Fecha só desta vez — sem persistir nada, o banner volta a aparecer na
+  // próxima vez que o app for aberto (enquanto a permissão continuar desativada).
+  function fechar() {
     setVisible(false)
-    dismissForDays(DISMISS_DAYS)
   }
 
-  if (denied) {
-    return (
-      <div className="px-4 lg:px-8 py-2 flex items-center gap-2 bg-gray-50 border-b border-gray-100 text-xs text-gray-400">
-        <Settings className="w-3.5 h-3.5 shrink-0" />
-        Notificações bloqueadas. Para ativar, permita notificações para o BelleBook nas configurações do seu celular.
-      </div>
-    )
+  function naoMostrarMais() {
+    localStorage.setItem(DISMISS_FOREVER_KEY, '1')
+    setVisible(false)
   }
 
   if (!visible) return null
+
+  if (denied) {
+    return (
+      <div className="px-4 lg:px-8 py-2 flex items-center justify-between gap-3 bg-gray-50 border-b border-gray-100 text-xs text-gray-400">
+        <span className="flex items-center gap-2 min-w-0">
+          <Settings className="w-3.5 h-3.5 shrink-0" />
+          Notificações bloqueadas. Para ativar, permita notificações para o BelleBook nas configurações do seu celular.
+        </span>
+        <div className="flex items-center gap-3 shrink-0">
+          <button onClick={naoMostrarMais} className="font-semibold text-gray-500 hover:text-gray-700 transition-colors whitespace-nowrap">
+            Não mostrar mais
+          </button>
+          <button onClick={fechar} aria-label="Fechar" className="text-gray-300 hover:text-gray-500 transition-colors">
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="px-4 lg:px-8 py-3 flex items-center justify-between gap-4 bg-rose-50 border-b border-rose-100">
@@ -103,7 +119,10 @@ export function PushNotificationPrompt({ prestadoraId }: { prestadoraId: string 
         >
           {ativando ? 'Ativando...' : 'Ativar notificações'}
         </button>
-        <button onClick={dismiss} aria-label="Fechar" className="text-rose-300 hover:text-rose-500 transition-colors">
+        <button onClick={naoMostrarMais} className="text-xs font-medium text-rose-400 hover:text-rose-600 transition-colors whitespace-nowrap hidden sm:block">
+          Não mostrar mais
+        </button>
+        <button onClick={fechar} aria-label="Fechar" className="text-rose-300 hover:text-rose-500 transition-colors">
           <X className="w-4 h-4" />
         </button>
       </div>

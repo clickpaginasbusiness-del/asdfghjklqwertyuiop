@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { format } from 'date-fns'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyClientToken } from '@/lib/clientAuth'
+import { formatDateShort } from '@/lib/utils'
 
 export async function POST(request: NextRequest) {
   let body: { token?: string; agendamentoId?: string }
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
   await supabaseAdmin.from('notificacoes').insert({
     prestadora_id: agendamento.prestadora_id,
     tipo: 'cancelamento',
-    mensagem: `${agendamento.clientes?.nome} cancelou o agendamento - ${agendamento.servicos?.nome}${profNome} em ${format(new Date(agendamento.data_hora), "dd/MM 'às' HH'h'mm")}`,
+    mensagem: `${agendamento.clientes?.nome} cancelou o agendamento - ${agendamento.servicos?.nome}${profNome} em ${formatDateShort(agendamento.data_hora)}`,
   })
 
   // Precisa ser aguardado: sem o await, a função serverless pode ser

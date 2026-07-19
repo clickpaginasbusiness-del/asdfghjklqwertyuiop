@@ -1,7 +1,7 @@
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import webpush from 'web-push'
-import { format } from 'date-fns'
+import { formatDateShort } from '@/lib/utils'
 
 const supabaseAdmin = createAdminClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
   const { servicos: servico, clientes: cliente, profissionais: profissional } = agendamento
 
   const profNome = profissional?.nome ? ` com ${profissional.nome}` : ''
-  const dataFormatada = format(new Date(agendamento.data_hora), "dd/MM 'às' HH'h'mm")
+  const dataFormatada = formatDateShort(agendamento.data_hora)
   const isCancelamento = agendamento.status === 'cancelado'
 
   const payload = JSON.stringify({

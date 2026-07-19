@@ -104,6 +104,16 @@ export function dateKeyToDate(key: string): Date {
   return new Date(Date.UTC(y, m - 1, d, 3, 0, 0))
 }
 
+/**
+ * Quando a prestadora nunca salvou horarios_funcionamento para um dia (sem linha
+ * no banco), esse é o padrão assumido — precisa bater com o DEFAULTS mostrado em
+ * HorariosClient.tsx (domingo desativado, resto ativo), senão a página pública
+ * libera agendamento em dias que a prestadora nunca teve como "ativos" de fato.
+ */
+export function diaAtivoPadrao(diaSemana: number): boolean {
+  return diaSemana !== 0
+}
+
 export function generateTimeSlots(
   horaAbertura: string,
   horaFechamento: string,

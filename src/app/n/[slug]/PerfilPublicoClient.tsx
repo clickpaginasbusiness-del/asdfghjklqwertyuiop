@@ -10,7 +10,7 @@ import { Modal } from '@/components/ui/modal'
 import { Badge } from '@/components/ui/badge'
 import {
   formatCurrency, formatDateTime, formatDateShort, generateTimeSlots,
-  maskTelefone, cleanTelefone, buildWhatsappUrl,
+  maskTelefone, cleanTelefone, buildWhatsappUrl, diaAtivoPadrao,
 } from '@/lib/utils'
 import {
   Clock, CheckCircle2, Calendar, ChevronLeft, ChevronRight, X,
@@ -257,7 +257,10 @@ export default function PerfilPublicoClient({
   const horarioHoje = horariosFuncionamento.find((h) => h.dia_semana === diaHoje)
   const aberturaHoje = horarioHoje?.hora_abertura ?? prestadora.hora_abertura
   const fechamentoHoje = horarioHoje?.hora_fechamento ?? prestadora.hora_fechamento
-  const abertoHoje = horarioHoje ? horarioHoje.ativo : true
+  // Sem linha salva pra esse dia (prestadora nunca configurou Horários), assume
+  // o mesmo padrão mostrado no painel — domingo fechado, resto aberto — em vez
+  // de tratar "sem configuração" como "sempre aberto".
+  const abertoHoje = horarioHoje ? horarioHoje.ativo : diaAtivoPadrao(diaHoje)
 
   function getHorarioDia(d: Date): HorarioFuncionamento | undefined {
     return horariosFuncionamento.find((h) => h.dia_semana === getDay(d))
@@ -267,7 +270,8 @@ export default function PerfilPublicoClient({
     if (isBefore(d, today)) return true
     if (diasBloqueados.includes(format(d, 'yyyy-MM-dd'))) return true
     const horario = getHorarioDia(d)
-    if (horario && !horario.ativo) return true
+    const ativo = horario ? horario.ativo : diaAtivoPadrao(getDay(d))
+    if (!ativo) return true
     if (profissionalSelecionada?.dias_semana && !profissionalSelecionada.dias_semana.includes(getDay(d))) return true
     return false
   }
