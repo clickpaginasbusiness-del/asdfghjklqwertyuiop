@@ -10,6 +10,7 @@ import type { GaleriaItem } from '@/lib/types'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
 import Image from 'next/image'
+import { ImageWithSkeleton } from '@/components/ui/image-with-skeleton'
 
 export default function GaleriaClient({
   galeria: initial,
@@ -136,7 +137,12 @@ export default function GaleriaClient({
               {item.tipo === 'video' ? (
                 <video src={item.url} className="w-full h-full object-cover" muted />
               ) : (
-                <Image src={item.url} alt="Trabalho" fill className="object-cover transition-transform group-hover:scale-105" />
+                <ImageWithSkeleton
+                  src={item.url}
+                  alt="Trabalho"
+                  fill
+                  className="object-cover transition-transform group-hover:scale-105"
+                />
               )}
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
               <button

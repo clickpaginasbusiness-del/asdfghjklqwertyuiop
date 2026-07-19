@@ -1,13 +1,23 @@
 'use client'
 
 import { Fragment, useMemo, useState } from 'react'
-import { addDays, format, getDay, isSameDay, parseISO, startOfDay } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+import { parseISO } from 'date-fns'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Modal } from '@/components/ui/modal'
 import { Badge } from '@/components/ui/badge'
 import { CalendarDays, Phone, Scissors, UserCircle2, DollarSign } from 'lucide-react'
-import { cn, formatCurrency, maskTelefone } from '@/lib/utils'
+import {
+  cn,
+  formatCurrency,
+  maskTelefone,
+  formatTime,
+  formatDateTime,
+  formatDateKey,
+  formatDayMonth,
+  formatWeekdayShort,
+  startOfTodaySP,
+  dateKeyToDate,
+} from '@/lib/utils'
 import type { Prestadora, HorarioFuncionamento } from '@/lib/types'
 import type { AgendaSlotAg } from './page'
 
@@ -44,26 +54,26 @@ export function AgendaDoDiaSection({
   profissionais: ProfissionalLite[]
   agendamentos: AgendaSlotAg[]
 }) {
-  const hoje = startOfDay(new Date())
-  const [selectedDate, setSelectedDate] = useState(format(hoje, 'yyyy-MM-dd'))
+  const hoje = startOfTodaySP()
+  const [selectedDate, setSelectedDate] = useState(formatDateKey(hoje))
   const [modalAg, setModalAg] = useState<AgendaSlotAg | null>(null)
 
   const diasFiltro = useMemo(
-    () => Array.from({ length: DIAS_BUTTON }, (_, i) => addDays(hoje, i)),
+    () => Array.from({ length: DIAS_BUTTON }, (_, i) => new Date(hoje.getTime() + i * 86400000)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   )
 
-  const dataSelecionada = parseISO(selectedDate)
-  const diaSemana = getDay(dataSelecionada)
+  const dataSelecionada = dateKeyToDate(selectedDate)
+  const diaSemana = dataSelecionada.getUTCDay()
   const horarioDoDia = horariosFuncionamento.find((h) => h.dia_semana === diaSemana)
   const ativo = horarioDoDia ? horarioDoDia.ativo : true
   const abertura = horarioDoDia?.hora_abertura ?? prestadora.hora_abertura
   const fechamento = horarioDoDia?.hora_fechamento ?? prestadora.hora_fechamento
 
   const agendamentosDoDia = useMemo(
-    () => agendamentos.filter((a) => isSameDay(parseISO(a.data_hora), dataSelecionada)),
-    [agendamentos, dataSelecionada]
+    () => agendamentos.filter((a) => formatDateKey(a.data_hora) === selectedDate),
+    [agendamentos, selectedDate]
   )
 
   // Slots padrão de 30 em 30 min (mostram os horários livres) + horários
@@ -72,7 +82,7 @@ export function AgendaDoDiaSection({
   const slots = useMemo(() => {
     if (!ativo) return []
     const padrao = gerarSlots(abertura, fechamento)
-    const horariosAgendados = agendamentosDoDia.map((a) => format(parseISO(a.data_hora), 'HH:mm'))
+    const horariosAgendados = agendamentosDoDia.map((a) => formatTime(a.data_hora))
     return Array.from(new Set([...padrao, ...horariosAgendados])).sort()
   }, [ativo, abertura, fechamento, agendamentosDoDia])
 
@@ -82,7 +92,7 @@ export function AgendaDoDiaSection({
 
   function agendamentoNoSlot(slot: string, colunaId: string): AgendaSlotAg | undefined {
     return agendamentosDoDia.find((a) => {
-      const horaAg = format(parseISO(a.data_hora), 'HH:mm')
+      const horaAg = formatTime(a.data_hora)
       if (horaAg !== slot) return false
       if (profissionais.length === 0) return true
       return a.profissional_id === colunaId
@@ -92,7 +102,7 @@ export function AgendaDoDiaSection({
   function formatFaixaHorario(ag: AgendaSlotAg): string {
     const inicio = parseISO(ag.data_hora)
     const fim = new Date(inicio.getTime() + (ag.servicos?.duracao_minutos ?? 30) * 60000)
-    return `${format(inicio, 'HH:mm')} - ${format(fim, 'HH:mm')}`
+    return `${formatTime(inicio)} - ${formatTime(fim)}`
   }
 
   return (
@@ -108,7 +118,7 @@ export function AgendaDoDiaSection({
         {/* Filtro de dias */}
         <div className="flex items-center gap-2 overflow-x-auto pb-3 -mx-1 px-1">
           {diasFiltro.map((d) => {
-            const valor = format(d, 'yyyy-MM-dd')
+            const valor = formatDateKey(d)
             const selecionado = valor === selectedDate
             return (
               <button
@@ -119,8 +129,8 @@ export function AgendaDoDiaSection({
                   selecionado ? 'bg-rose-400 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 )}
               >
-                <span className="capitalize">{format(d, 'EEE', { locale: ptBR })}</span>
-                <span className="text-sm font-semibold">{format(d, 'dd/MM')}</span>
+                <span className="capitalize">{formatWeekdayShort(d)}</span>
+                <span className="text-sm font-semibold">{formatDayMonth(d)}</span>
               </button>
             )
           })}
@@ -214,7 +224,7 @@ export function AgendaDoDiaSection({
               </p>
               <p className="flex items-center gap-2">
                 <CalendarDays className="w-4 h-4 text-gray-400 shrink-0" />
-                {format(parseISO(modalAg.data_hora), "dd/MM/yyyy 'às' HH:mm")}
+                {formatDateTime(modalAg.data_hora)}
               </p>
             </div>
           </div>

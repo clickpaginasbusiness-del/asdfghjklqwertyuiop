@@ -20,7 +20,7 @@ type FiltroStatus = 'todos' | 'confirmado' | 'concluido' | 'cancelado'
 type Ordenacao = 'recente' | 'antigo' | 'proximo'
 
 function buildMsgAvaliacao(a: Agendamento, prestadoraNome: string): string {
-  return `Olá ${a.clientes?.nome}! Esperamos que tenha amado seu ${a.servicos?.nome}. Poderia deixar uma avaliação sobre o atendimento? 🌟 ${window.location.origin}/avaliar/${a.id} - ${prestadoraNome}`
+  return `Olá ${a.clientes?.nome}! Esperamos que tenha amado seu ${a.servicos?.nome}. Poderia deixar uma avaliação sobre o atendimento? \u{1F31F} ${window.location.origin}/avaliar/${a.id} - ${prestadoraNome}`
 }
 
 const FILTROS_STATUS: { value: FiltroStatus; label: string }[] = [

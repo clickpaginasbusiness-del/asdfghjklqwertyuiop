@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react'
 import Image from 'next/image'
+import { ImageWithSkeleton } from '@/components/ui/image-with-skeleton'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -775,7 +776,7 @@ export default function PerfilPublicoClient({
               >
                 <div className="w-full h-full rounded-full overflow-hidden border-2 border-white bg-rose-100">
                   {prestadora.foto_url ? (
-                    <Image
+                    <ImageWithSkeleton
                       src={prestadora.foto_url}
                       alt={prestadora.nome}
                       width={112}
@@ -900,7 +901,13 @@ export default function PerfilPublicoClient({
                   ) : (
                     /* Inner div for scale — absolute fills parent, Image fills this div */
                     <div className="absolute inset-0 transition-transform duration-300 group-hover:scale-110">
-                      <Image src={item.url} alt={`Trabalho ${i + 1} de ${prestadora.nome}`} fill className="object-cover" sizes="33vw" />
+                      <ImageWithSkeleton
+                        src={item.url}
+                        alt={`Trabalho ${i + 1} de ${prestadora.nome}`}
+                        fill
+                        className="object-cover"
+                        sizes="33vw"
+                      />
                     </div>
                   )}
                   {/* Subtle overlay */}

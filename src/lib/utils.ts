@@ -1,7 +1,6 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
-import { format, parseISO, isValid } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+import { parseISO, isValid } from 'date-fns'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -20,24 +19,89 @@ function parseDate(date: string | Date | null | undefined): Date | null {
   return isValid(d) ? d : null
 }
 
+/*
+ * Datas sempre formatadas fixando o fuso de São Paulo via Intl.DateTimeFormat.
+ * O servidor (Vercel/Node roda em UTC) e o navegador da cliente (horário local)
+ * produziam textos diferentes para o mesmo instante — isso gerava erro de
+ * hidratação do React (#418) nas páginas que mostram data/hora de agendamento.
+ */
+const FUSO_SP = 'America/Sao_Paulo'
+
+function partesDataSP(d: Date) {
+  const parts = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: FUSO_SP,
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(d)
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? ''
+  return { dd: get('day'), MM: get('month'), yyyy: get('year'), HH: get('hour'), mm: get('minute') }
+}
+
 export function formatDate(date: string | Date | null | undefined): string {
   const d = parseDate(date)
-  return d ? format(d, 'dd/MM/yyyy', { locale: ptBR }) : '—'
+  if (!d) return '—'
+  const { dd, MM, yyyy } = partesDataSP(d)
+  return `${dd}/${MM}/${yyyy}`
 }
 
 export function formatDateTime(date: string | Date | null | undefined): string {
   const d = parseDate(date)
-  return d ? format(d, "dd/MM/yyyy 'às' HH'h'mm", { locale: ptBR }) : '—'
+  if (!d) return '—'
+  const { dd, MM, yyyy, HH, mm } = partesDataSP(d)
+  return `${dd}/${MM}/${yyyy} às ${HH}h${mm}`
 }
 
 export function formatDateShort(date: string | Date | null | undefined): string {
   const d = parseDate(date)
-  return d ? format(d, "dd/MM 'às' HH'h'mm", { locale: ptBR }) : '—'
+  if (!d) return '—'
+  const { dd, MM, HH, mm } = partesDataSP(d)
+  return `${dd}/${MM} às ${HH}h${mm}`
+}
+
+export function formatDayMonth(date: string | Date | null | undefined): string {
+  const d = parseDate(date)
+  if (!d) return '—'
+  const { dd, MM } = partesDataSP(d)
+  return `${dd}/${MM}`
 }
 
 export function formatTime(date: string | Date | null | undefined): string {
   const d = parseDate(date)
-  return d ? format(d, 'HH:mm', { locale: ptBR }) : '—'
+  if (!d) return '—'
+  const { HH, mm } = partesDataSP(d)
+  return `${HH}:${mm}`
+}
+
+/** Chave 'yyyy-MM-dd' do dia calendário em São Paulo (para agrupar/comparar dias sem depender do fuso do runtime). */
+export function formatDateKey(date: string | Date | null | undefined): string {
+  const d = parseDate(date)
+  if (!d) return ''
+  const { dd, MM, yyyy } = partesDataSP(d)
+  return `${yyyy}-${MM}-${dd}`
+}
+
+export function formatWeekdayShort(date: string | Date | null | undefined): string {
+  const d = parseDate(date)
+  if (!d) return ''
+  return new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO_SP, weekday: 'short' })
+    .format(d)
+    .replace('.', '')
+}
+
+/** Meia-noite de "hoje" em São Paulo, representada como instante UTC estável (independe do fuso do runtime). */
+export function startOfTodaySP(): Date {
+  const { yyyy, MM, dd } = partesDataSP(new Date())
+  return new Date(Date.UTC(Number(yyyy), Number(MM) - 1, Number(dd), 3, 0, 0))
+}
+
+/** Converte uma chave 'yyyy-MM-dd' de volta para o instante de meia-noite em São Paulo daquele dia. */
+export function dateKeyToDate(key: string): Date {
+  const [y, m, d] = key.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d, 3, 0, 0))
 }
 
 export function generateTimeSlots(
