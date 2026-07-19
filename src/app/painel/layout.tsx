@@ -10,8 +10,9 @@ export default async function PainelLayout({ children }: { children: React.React
   const headersList = await headers()
   const pathname = headersList.get('x-pathname') ?? ''
 
-  // Login e cadastro não precisam de auth
-  if (PUBLIC_PATHS.includes(pathname)) {
+  // Login e cadastro não precisam de auth — /painel/demo/* também é público
+  // (demo interativa com dados fictícios, sem sessão real)
+  if (PUBLIC_PATHS.includes(pathname) || pathname.startsWith('/painel/demo')) {
     return <>{children}</>
   }
 

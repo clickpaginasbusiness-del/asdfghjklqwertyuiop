@@ -2,10 +2,21 @@
 
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
+import { usePathname } from 'next/navigation'
 
 const UPDATE_CHECK_INTERVAL_MS = 30 * 60 * 1000
 
+// Overlay obrigatório só faz sentido pra quem já está "dentro" do app —
+// mostrar pra visitante da landing/página pública interrompe o fluxo à toa.
+function podeExibirOverlay(pathname: string | null) {
+  if (!pathname) return false
+  return ['/painel', '/admin'].some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))
+}
+
 export function ServiceWorkerRegister() {
+  const pathname = usePathname()
+  const overlayPermitidoNaRota = podeExibirOverlay(pathname)
+
   const [waitingWorker, setWaitingWorker] = useState<ServiceWorker | null>(null)
   const [updating, setUpdating] = useState(false)
   const [forcedDevOverlay, setForcedDevOverlay] = useState(false)
@@ -93,11 +104,11 @@ export function ServiceWorkerRegister() {
     // assumir o controle (clients.claim()).
   }
 
-  const mostrarOverlay = forcedDevOverlay || (!!waitingWorker && !updating)
+  const mostrarOverlay = overlayPermitidoNaRota && (forcedDevOverlay || (!!waitingWorker && !updating))
 
   return (
     <>
-      {process.env.NODE_ENV === 'development' && (
+      {process.env.NODE_ENV === 'development' && overlayPermitidoNaRota && (
         <button
           onClick={() => setForcedDevOverlay(true)}
           className="fixed bottom-4 right-4 z-[250] text-xs font-semibold text-white bg-gray-800 hover:bg-gray-900 rounded-lg px-3 py-2 shadow-lg"

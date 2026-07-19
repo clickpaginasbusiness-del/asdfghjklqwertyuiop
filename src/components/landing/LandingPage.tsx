@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type TouchEvent } from 'react'
 import Link from 'next/link'
 import {
   Calendar, Globe, Users, Bell, Clock, MessageCircle,
-  Check, Star, Zap, Sparkles, ArrowRight, ChevronRight,
+  Check, Star, Zap, Sparkles, ArrowRight, ChevronRight, ChevronLeft,
   Phone, Mail, Scissors, CreditCard, LayoutDashboard, ImageIcon,
   BarChart3, UserCircle2, UserCircle, Headset, CheckCheck,
   DollarSign, Smartphone, Camera, Palette, Gift, CalendarDays,
@@ -123,6 +123,200 @@ const TESTIMONIALS = [
     role: 'Profissional de beleza · Belo Horizonte',
     rating: 5,
   },
+]
+
+/* ─── Telas do carrossel mobile (Painel BelleBook) ────── */
+function MockupScreenDashboard() {
+  return (
+    <div className="h-full flex flex-col bg-gray-50">
+      <div className="shrink-0 bg-white px-3 pt-5 pb-2.5 flex items-center justify-between border-b border-gray-100">
+        <Menu className="w-3.5 h-3.5 text-gray-400" />
+        <span className="font-serif text-xs font-bold text-rose-400">BelleBook</span>
+        <div className="relative w-6 h-6 rounded-full bg-rose-50 flex items-center justify-center shrink-0">
+          <Bell className="w-3 h-3 text-rose-400" />
+          <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-rose-400 rounded-full border border-white" />
+        </div>
+      </div>
+      <div className="flex-1 min-h-0 overflow-hidden p-2.5">
+        <p className="text-[9px] text-gray-400">Boa tarde</p>
+        <p className="text-xs font-semibold text-gray-900 mb-2">Olá, Ana</p>
+        <div className="grid grid-cols-2 gap-1.5 mb-2">
+          <div className="bg-white rounded-lg p-2 border border-gray-100 shadow-sm">
+            <p className="text-[7px] text-gray-400 uppercase tracking-wide font-medium">Agendamentos</p>
+            <p className="text-sm font-bold text-gray-900 leading-tight">8</p>
+          </div>
+          <div className="bg-white rounded-lg p-2 border border-gray-100 shadow-sm">
+            <p className="text-[7px] text-gray-400 uppercase tracking-wide font-medium">Receita</p>
+            <p className="text-sm font-bold text-gray-900 leading-tight">R$360</p>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+          <div className="px-2.5 py-2 border-b border-gray-50">
+            <p className="text-[9px] font-semibold text-gray-900">Agenda de hoje</p>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {MOCKUP_APPOINTMENTS.slice(0, 3).map((a, i) => (
+              <div key={i} className="flex items-center gap-1.5 px-2.5 py-1.5">
+                <div className="bg-rose-100 text-rose-700 text-[8px] font-bold px-1.5 py-0.5 rounded shrink-0">{a.time}</div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[9px] font-medium text-gray-900 truncate">{a.nome}</p>
+                </div>
+                <span className="text-[8px] font-semibold text-gray-600 shrink-0">{a.preco}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="shrink-0 bg-white border-t border-gray-100 flex items-center justify-around py-2">
+        {[LayoutDashboard, Calendar, Users, UserCircle].map((Icon, i) => (
+          <div
+            key={i}
+            className={cn(
+              'flex items-center justify-center w-6 h-6 rounded-full',
+              i === 0 ? 'bg-rose-50 text-rose-500' : 'text-gray-300'
+            )}
+          >
+            <Icon className="w-3.5 h-3.5" />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function MockupScreenCalendario() {
+  const dias = Array.from({ length: 31 }, (_, i) => i + 1)
+  const comAgendamento = new Set([3, 8, 12, 17, 22, 25])
+  const diaSelecionado = 17
+
+  return (
+    <div className="h-full flex flex-col bg-gray-50">
+      <div className="shrink-0 bg-white px-3 pt-5 pb-2.5 flex items-center justify-between border-b border-gray-100">
+        <Menu className="w-3.5 h-3.5 text-gray-400" />
+        <span className="font-serif text-xs font-bold text-rose-400">BelleBook</span>
+        <div className="w-6 h-6" />
+      </div>
+      <div className="shrink-0 px-3 pt-2.5 pb-1.5 flex items-center justify-between">
+        <ChevronLeft className="w-3.5 h-3.5 text-gray-300" />
+        <p className="text-[10px] font-semibold text-gray-900">Julho 2026</p>
+        <ChevronRight className="w-3.5 h-3.5 text-gray-300" />
+      </div>
+      <div className="shrink-0 px-3">
+        <div className="grid grid-cols-7 gap-1 mb-1">
+          {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((d, i) => (
+            <div key={i} className="text-center text-[7px] font-semibold text-gray-400">{d}</div>
+          ))}
+        </div>
+        <div className="grid grid-cols-7 gap-1">
+          {Array.from({ length: 3 }).map((_, i) => <div key={`blank${i}`} />)}
+          {dias.map((d) => (
+            <div
+              key={d}
+              className={cn(
+                'aspect-square flex items-center justify-center rounded-md text-[8px] font-medium relative',
+                d === diaSelecionado ? 'bg-rose-400 text-white' : 'text-gray-600'
+              )}
+            >
+              {d}
+              {comAgendamento.has(d) && d !== diaSelecionado && (
+                <span className="absolute bottom-0.5 w-0.5 h-0.5 rounded-full bg-rose-400" />
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="flex-1 min-h-0 overflow-hidden px-3 pt-2.5 pb-2.5">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden h-full">
+          <div className="px-2.5 py-2 border-b border-gray-50">
+            <p className="text-[9px] font-semibold text-gray-900">17 de julho</p>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {MOCKUP_APPOINTMENTS.slice(0, 2).map((a, i) => (
+              <div key={i} className="flex items-center gap-1.5 px-2.5 py-1.5">
+                <div className="bg-rose-100 text-rose-700 text-[8px] font-bold px-1.5 py-0.5 rounded shrink-0">{a.time}</div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[9px] font-medium text-gray-900 truncate">{a.nome}</p>
+                  <p className="text-[8px] text-gray-500 truncate">{a.servico}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function MockupScreenPerfilPublico() {
+  const servicos = [
+    { nome: 'Manicure', preco: 'R$35' },
+    { nome: 'Pedicure', preco: 'R$55' },
+    { nome: 'Nail art básica', preco: 'R$70' },
+  ]
+
+  return (
+    <div className="h-full flex flex-col bg-white">
+      <div className="shrink-0 bg-gradient-to-b from-rose-50 to-white px-4 pt-6 pb-3 flex flex-col items-center text-center">
+        <div className="w-12 h-12 rounded-full bg-rose-100 border-2 border-white shadow-sm flex items-center justify-center mb-1.5">
+          <span className="font-serif text-base font-bold text-rose-400">A</span>
+        </div>
+        <p className="font-serif text-xs font-bold text-gray-900">Ana Nails Studio</p>
+        <div className="flex items-center gap-1 mt-1">
+          <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />
+          <span className="text-[9px] font-semibold text-gray-700">4.9</span>
+          <span className="text-[8px] text-gray-400">(38 avaliações)</span>
+        </div>
+      </div>
+      <div className="flex-1 min-h-0 overflow-hidden px-3 pt-3 space-y-1.5">
+        {servicos.map((s) => (
+          <div key={s.nome} className="flex items-center justify-between bg-gray-50 rounded-lg px-2.5 py-2">
+            <p className="text-[9px] font-medium text-gray-800">{s.nome}</p>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[9px] font-semibold text-gray-700">{s.preco}</span>
+              <span className="bg-rose-400 text-white text-[7px] font-semibold px-1.5 py-0.5 rounded-full">Agendar</span>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="shrink-0 p-2.5 border-t border-gray-100">
+        <div className="bg-rose-400 text-white text-center text-[9px] font-semibold rounded-lg py-2">
+          Agendar horário
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function MockupScreenNotificacao() {
+  return (
+    <div className="h-full flex flex-col justify-between px-3 py-6 bg-gradient-to-b from-rose-200 via-rose-300 to-rose-400">
+      <div className="text-center pt-3">
+        <p className="text-white text-2xl font-light tracking-tight">09:41</p>
+        <p className="text-white/80 text-[9px] mt-1">Quinta-feira, 17 de julho</p>
+      </div>
+      <div className="bg-white/95 rounded-xl shadow-lg p-2.5 flex items-start gap-2 mb-4">
+        <div className="w-7 h-7 rounded-lg bg-rose-400 flex items-center justify-center shrink-0">
+          <Bell className="w-3.5 h-3.5 text-white" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between">
+            <p className="text-[9px] font-bold text-gray-900">BelleBook</p>
+            <span className="text-[8px] text-gray-400">agora</span>
+          </div>
+          <p className="text-[8px] text-gray-600 mt-0.5 leading-snug">
+            🔔 Novo agendamento! Maria Silva marcou Manicure às 14:00.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+const MOCKUP_SCREENS = [
+  { label: 'Dashboard', Component: MockupScreenDashboard },
+  { label: 'Calendário', Component: MockupScreenCalendario },
+  { label: 'Página pública', Component: MockupScreenPerfilPublico },
+  { label: 'Notificação push', Component: MockupScreenNotificacao },
 ]
 
 /* ─── Navbar ─────────────────────────────────── */
@@ -253,8 +447,31 @@ export default function LandingPage() {
   const [activeSection, setActiveSection] = useState<NavId>('hero')
   const [cicloPrecos, setCicloPrecos] = useState<'mensal' | 'anual'>('mensal')
   const [mockupView, setMockupView] = useState<'desktop' | 'mobile'>('desktop')
+  const [screenIndex, setScreenIndex] = useState(0)
+  const touchStartXRef = useRef<number | null>(null)
   const lenisRef = useRef<Lenis | null>(null)
   const rafRef = useRef<number>(0)
+
+  function goToScreen(i: number) {
+    setScreenIndex(Math.max(0, Math.min(MOCKUP_SCREENS.length - 1, i)))
+  }
+
+  function handleScreenTouchStart(e: TouchEvent<HTMLDivElement>) {
+    const touch = e.touches[0]
+    touchStartXRef.current = touch ? touch.clientX : null
+  }
+
+  function handleScreenTouchEnd(e: TouchEvent<HTMLDivElement>) {
+    if (touchStartXRef.current === null) return
+    const touch = e.changedTouches[0]
+    const startX = touchStartXRef.current
+    touchStartXRef.current = null
+    if (!touch) return
+    const deltaX = touch.clientX - startX
+    const SWIPE_THRESHOLD = 40
+    if (deltaX > SWIPE_THRESHOLD) goToScreen(screenIndex - 1)
+    else if (deltaX < -SWIPE_THRESHOLD) goToScreen(screenIndex + 1)
+  }
 
   /* Lenis smooth scroll — guarda instância no ref para uso no scrollTo */
   useEffect(() => {
@@ -331,7 +548,7 @@ export default function LandingPage() {
       {/* ── HERO ─────────────────────────────── */}
       <section
         id="hero"
-        className="sticky top-0 z-[1] bg-white min-h-screen flex flex-col items-center justify-center text-center px-6 pt-0 md:pt-36 lg:pt-40 pb-5 overflow-hidden"
+        className="sticky top-0 z-[1] bg-white min-h-screen flex flex-col items-center justify-center text-center px-6 pt-24 md:pt-36 lg:pt-40 pb-5 overflow-hidden"
       >
         {/* Decorative orbs — drift muito sutil, mesmas cores do fundo */}
         <div aria-hidden className="pointer-events-none select-none absolute inset-0 overflow-hidden">
@@ -384,6 +601,14 @@ export default function LandingPage() {
               className="flex items-center gap-2 text-gray-600 hover:text-gray-900 px-6 py-4 rounded-2xl border border-gray-200 hover:border-gray-300 bg-white text-base font-medium transition-all hover:shadow-sm"
             >
               Ver exemplo de perfil
+              <ChevronRight className="w-4 h-4" />
+            </Link>
+            <Link
+              href="/painel/demo"
+              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 px-6 py-4 rounded-2xl border border-gray-200 hover:border-gray-300 bg-white text-base font-medium transition-all hover:shadow-sm"
+            >
+              <LayoutDashboard className="w-4 h-4" />
+              Ver o sistema
               <ChevronRight className="w-4 h-4" />
             </Link>
           </div>
@@ -502,6 +727,70 @@ export default function LandingPage() {
 
           {/* 60 / 40 split */}
           <div className="flex flex-col lg:flex-row items-center gap-10 lg:gap-16">
+
+            {/* ── Carrossel mobile (só até lg — mockup desktop não cabe na tela) ── */}
+            <div data-animate className="lg:hidden w-full flex flex-col items-center">
+              <div className="relative" style={{ width: 250 }}>
+                <div className="relative bg-gray-900 rounded-[2.2rem] p-2.5 shadow-[0_30px_80px_rgba(0,0,0,0.22),0_8px_24px_rgba(249,168,201,0.20)]">
+                  {/* Notch */}
+                  <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-20 h-4 bg-gray-900 rounded-full z-10" />
+
+                  <div
+                    className="relative bg-gray-50 rounded-[1.7rem] overflow-hidden select-none"
+                    style={{ height: 500 }}
+                    onTouchStart={handleScreenTouchStart}
+                    onTouchEnd={handleScreenTouchEnd}
+                  >
+                    <div
+                      className="flex h-full transition-transform duration-500 ease-out"
+                      style={{ transform: `translateX(-${screenIndex * 100}%)` }}
+                    >
+                      {MOCKUP_SCREENS.map(({ label, Component }) => (
+                        <div key={label} className="w-full h-full shrink-0">
+                          <Component />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Setas de navegação */}
+                <button
+                  onClick={() => goToScreen(screenIndex - 1)}
+                  disabled={screenIndex === 0}
+                  aria-label="Tela anterior"
+                  className="absolute top-1/2 -left-3 -translate-y-1/2 w-9 h-9 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center text-gray-500 disabled:opacity-0 disabled:pointer-events-none transition-opacity"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => goToScreen(screenIndex + 1)}
+                  disabled={screenIndex === MOCKUP_SCREENS.length - 1}
+                  aria-label="Próxima tela"
+                  className="absolute top-1/2 -right-3 -translate-y-1/2 w-9 h-9 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center text-gray-500 disabled:opacity-0 disabled:pointer-events-none transition-opacity"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Label + dots */}
+              <div className="flex flex-col items-center gap-3 mt-5">
+                <p className="text-sm font-medium text-gray-600">{MOCKUP_SCREENS[screenIndex].label}</p>
+                <div className="flex items-center gap-2">
+                  {MOCKUP_SCREENS.map((s, i) => (
+                    <button
+                      key={s.label}
+                      onClick={() => goToScreen(i)}
+                      aria-label={`Ver tela ${s.label}`}
+                      className={cn(
+                        'h-2 rounded-full transition-all duration-300',
+                        i === screenIndex ? 'w-6 bg-rose-400' : 'w-2 bg-gray-200'
+                      )}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
 
             {/* ── Mockup do painel (60%, escondido no mobile — vira lista de features) ── */}
             <div data-animate className="hidden lg:block w-full lg:w-[60%] shrink-0">
