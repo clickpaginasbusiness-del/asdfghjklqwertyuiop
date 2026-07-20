@@ -50,7 +50,7 @@ function formatData(iso: string | null): string {
 }
 
 function StatusBadge({ status, cancelAtPeriodEnd }: { status: string | null; cancelAtPeriodEnd: boolean }) {
-  if (cancelAtPeriodEnd) return <Badge variant="danger">Cancela no fim do período</Badge>
+  if (cancelAtPeriodEnd) return <Badge variant="danger">Cancelado</Badge>
   if (status === 'trialing')  return <Badge variant="pink">Trial gratuito</Badge>
   if (status === 'active')    return <Badge variant="success">Ativo</Badge>
   if (status === 'past_due')  return <Badge variant="danger">Pagamento pendente</Badge>
@@ -190,18 +190,27 @@ export default function AssinaturaClient({
         <CardContent className="space-y-5">
           {/* Datas */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {emTrial && dataChave && (
+            {cancelAtPeriodEnd && dataChave && (
+              <div className="bg-red-50 border border-red-100 rounded-2xl px-4 py-3 sm:col-span-2">
+                <p className="text-xs text-red-500 font-medium mb-0.5">{renovacaoLabel}</p>
+                <p className="text-sm font-semibold text-red-800">{formatData(dataChave)}</p>
+                <p className="text-xs text-red-500 mt-0.5">
+                  Seu acesso continua até {formatData(dataChave)} — sem renovação automática
+                </p>
+              </div>
+            )}
+            {!cancelAtPeriodEnd && emTrial && dataChave && (
               <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3">
                 <p className="text-xs text-amber-600 font-medium mb-0.5">Trial gratuito termina em</p>
                 <p className="text-sm font-semibold text-amber-800">{formatData(dataChave)}</p>
                 <p className="text-xs text-amber-500 mt-0.5">Você será cobrada automaticamente</p>
               </div>
             )}
-            {!emTrial && dataChave && (
+            {!cancelAtPeriodEnd && !emTrial && dataChave && (
               <div className="bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3">
                 <p className="text-xs text-gray-500 font-medium mb-0.5">{renovacaoLabel}</p>
                 <p className="text-sm font-semibold text-gray-800">{formatData(dataChave)}</p>
-                {cicloAtual === 'anual' && !cancelAtPeriodEnd && (
+                {cicloAtual === 'anual' && (
                   <p className="text-xs text-emerald-600 mt-0.5">Cobrança anual — 20% de economia</p>
                 )}
               </div>
@@ -251,7 +260,11 @@ export default function AssinaturaClient({
                 </Button>
               )}
               <p className="text-xs text-gray-400 self-center">
-                {(eTrial || !stripeStatus) ? 'Inicie sua assinatura' : 'Ver faturas, atualizar cartão e cancelar'}
+                {(eTrial || !stripeStatus)
+                  ? 'Inicie sua assinatura'
+                  : cancelAtPeriodEnd
+                    ? 'Reative sua assinatura ou veja faturas'
+                    : 'Ver faturas, atualizar cartão e cancelar'}
               </p>
             </div>
           )}
