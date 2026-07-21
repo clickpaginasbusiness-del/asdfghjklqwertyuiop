@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { stripe, isAnualByPrice } from '@/lib/stripe'
+import { ADMIN_EMAIL } from '@/lib/admin'
 import AssinaturaClient from './AssinaturaClient'
 
 export const metadata = { title: 'Assinatura — BelleBook' }
@@ -12,7 +13,7 @@ export default async function AssinaturaPage() {
 
   const { data: prestadora } = await supabase
     .from('prestadoras')
-    .select('id, plano, assinatura_ativa, trial_fim, stripe_subscription_id, stripe_customer_id, e_trial')
+    .select('id, plano, assinatura_ativa, trial_fim, stripe_subscription_id, stripe_customer_id, e_trial, trial_pro_usado')
     .eq('user_id', user.id)
     .single()
 
@@ -48,6 +49,7 @@ export default async function AssinaturaPage() {
       temCustomer={!!prestadora.stripe_customer_id}
       cicloAtual={cicloAtual}
       eTrial={Boolean(prestadora.e_trial)}
+      isAdmin={user.email === ADMIN_EMAIL}
     />
   )
 }

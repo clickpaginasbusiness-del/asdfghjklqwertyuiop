@@ -2,11 +2,13 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { CreditCard, Check, X, Zap, Sparkles, AlertCircle, RefreshCw, ArrowUpRight, Tag } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { CreditCard, Check, X, Zap, Sparkles, AlertCircle, RefreshCw, ArrowUpRight, Tag, FlaskConical } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { useCupom, precoComDesconto } from '@/hooks/use-cupom'
+import { cn } from '@/lib/utils'
 import toast from 'react-hot-toast'
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -58,6 +60,103 @@ function StatusBadge({ status, cancelAtPeriodEnd }: { status: string | null; can
   return <Badge variant="default">—</Badge>
 }
 
+type EstadoSimulado = 'trial' | 'basico' | 'pro'
+
+const ESTADO_LABEL: Record<EstadoSimulado, string> = {
+  trial: 'Trial',
+  basico: 'Básico',
+  pro: 'Pro',
+}
+
+function estadoSimuladoAtual(plano: 'basico' | 'pro' | null, eTrial: boolean): EstadoSimulado | null {
+  if (eTrial && plano === 'basico') return 'trial'
+  if (!eTrial && plano === 'basico') return 'basico'
+  if (!eTrial && plano === 'pro') return 'pro'
+  return null
+}
+
+/**
+ * Ferramenta de QA visível só pra conta admin — troca plano/trial direto no
+ * banco (sem mexer no Stripe de verdade) pra testar os estados da página e os
+ * gates de feature sem precisar de contas de teste separadas.
+ */
+function SimuladorPlanoAdmin({ plano, eTrial }: { plano: 'basico' | 'pro' | null; eTrial: boolean }) {
+  const router = useRouter()
+  const [loading, setLoading] = useState<EstadoSimulado | 'real' | null>(null)
+  const atual = estadoSimuladoAtual(plano, eTrial)
+
+  async function simular(estado: EstadoSimulado | 'real') {
+    setLoading(estado)
+    try {
+      const res = await fetch('/api/admin/simular-plano', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? 'Erro ao simular plano')
+        return
+      }
+      toast.success(estado === 'real' ? 'Resetado para o status real do Stripe' : `Simulando: ${ESTADO_LABEL[estado]}`)
+      router.refresh()
+    } catch {
+      toast.error('Erro de conexão')
+    } finally {
+      setLoading(null)
+    }
+  }
+
+  return (
+    <Card className="border-2 border-dashed border-purple-300 bg-purple-50/40">
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <FlaskConical className="w-5 h-5 text-purple-500" />
+          <CardTitle className="text-base">🧪 Modo de teste (Admin)</CardTitle>
+        </div>
+        <p className="text-sm text-gray-500">
+          Simula o plano só no banco — não mexe na assinatura real do Stripe.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Estado de plano simulado">
+          {(['trial', 'basico', 'pro'] as const).map((estado) => (
+            <button
+              key={estado}
+              type="button"
+              role="radio"
+              aria-checked={atual === estado}
+              onClick={() => simular(estado)}
+              disabled={loading !== null}
+              className={cn(
+                'px-4 py-2 rounded-xl text-sm font-semibold border-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
+                atual === estado
+                  ? 'bg-purple-500 border-purple-500 text-white'
+                  : 'bg-white border-gray-200 text-gray-600 hover:border-purple-300'
+              )}
+            >
+              {loading === estado ? 'Aplicando...' : ESTADO_LABEL[estado]}
+            </button>
+          ))}
+        </div>
+
+        <p className="text-xs text-gray-500">
+          Simulando agora: <strong className="text-gray-700">{atual ? ESTADO_LABEL[atual] : 'nenhum dos 3 estados (estado real ou personalizado)'}</strong>
+        </p>
+
+        <button
+          type="button"
+          onClick={() => simular('real')}
+          disabled={loading !== null}
+          className="text-xs font-semibold text-purple-600 hover:text-purple-700 underline underline-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading === 'real' ? 'Resetando...' : 'Resetar para real'}
+        </button>
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function AssinaturaClient({
   plano,
   assinaturaAtiva,
@@ -68,6 +167,7 @@ export default function AssinaturaClient({
   temCustomer,
   cicloAtual,
   eTrial,
+  isAdmin,
 }: {
   plano: 'basico' | 'pro' | null
   assinaturaAtiva: boolean
@@ -78,6 +178,7 @@ export default function AssinaturaClient({
   temCustomer: boolean
   cicloAtual: Ciclo
   eTrial: boolean
+  isAdmin: boolean
 }) {
   const [loadingPortal, setLoadingPortal] = useState(false)
   const [loadingUpgrade, setLoadingUpgrade] = useState(false)
@@ -159,6 +260,8 @@ export default function AssinaturaClient({
         <CreditCard className="w-6 h-6 text-rose-400" />
         <h1 className="font-serif text-2xl font-semibold text-gray-900">Assinatura</h1>
       </div>
+
+      {isAdmin && <SimuladorPlanoAdmin plano={plano} eTrial={eTrial} />}
 
       {/* Card do plano atual */}
       <Card>
