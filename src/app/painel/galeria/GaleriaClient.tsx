@@ -69,32 +69,6 @@ export default function GaleriaClient({
     setDeleteId(null)
   }
 
-  // Plano Básico não tem acesso à galeria
-  if (plano === 'basico') {
-    return (
-      <div className="space-y-6">
-        <h1 className="font-serif text-2xl font-semibold text-gray-900">Galeria</h1>
-        <div className="bg-white rounded-3xl border border-gray-100 p-12 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto mb-4">
-            <Lock className="w-7 h-7 text-amber-400" />
-          </div>
-          <h2 className="font-serif text-xl font-semibold text-gray-900 mb-2">
-            Galeria disponível no Plano Pro
-          </h2>
-          <p className="text-gray-500 text-sm max-w-xs mx-auto mb-6">
-            Publique fotos e vídeos dos seus trabalhos para impressionar as clientes antes de agendarem.
-          </p>
-          <Link
-            href="/planos"
-            className="inline-flex items-center gap-2 bg-rose-400 text-white px-6 py-3 rounded-2xl font-semibold text-sm hover:bg-rose-500 transition-colors"
-          >
-            Fazer upgrade para Pro
-          </Link>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -112,6 +86,19 @@ export default function GaleriaClient({
           onChange={handleUpload}
         />
       </div>
+
+      {plano === 'basico' && (
+        <div className="flex items-center gap-3 bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 text-sm">
+          <Lock className="w-4 h-4 text-amber-500 shrink-0" />
+          <span className="text-amber-700">
+            Sua galeria está oculta na sua página pública.{' '}
+            <Link href="/planos" className="font-semibold underline underline-offset-2">
+              Faça upgrade para o Pro
+            </Link>
+            {' '}para exibi-la.
+          </span>
+        </div>
+      )}
 
       {galeria.length === 0 ? (
         <Card>

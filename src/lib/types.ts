@@ -21,6 +21,8 @@ export type Prestadora = {
   trial_fim: string | null
   e_trial: boolean
   downgrade_aviso: boolean
+  trial_pro_usado: boolean
+  trial_pro_fim: string | null
   cor_tema: string | null
   mensagem_confirmacao: string | null
   mensagem_cancelamento: string | null

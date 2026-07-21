@@ -1,4 +1,5 @@
 import { stripe, planByPrice } from '@/lib/stripe'
+import { aplicarDowngradeParaBasico } from '@/lib/downgrade'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { headers } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
@@ -161,21 +162,7 @@ export async function POST(request: NextRequest) {
 
         // Downgrade: Pro → Básico
         if (planoAnterior === 'pro' && novoPlano === 'basico' && ativa) {
-          // Mantém só a profissional mais antiga; desativa as demais
-          const { data: ativas } = await supabaseAdmin
-            .from('profissionais')
-            .select('id')
-            .eq('prestadora_id', prestadora_id)
-            .eq('ativa', true)
-            .order('created_at', { ascending: true })
-
-          if (ativas && ativas.length > 1) {
-            const idsDesativar = ativas.slice(1).map((p: { id: string }) => p.id)
-            await supabaseAdmin
-              .from('profissionais')
-              .update({ ativa: false })
-              .in('id', idsDesativar)
-          }
+          await aplicarDowngradeParaBasico(supabaseAdmin, prestadora_id)
 
           await supabaseAdmin.from('prestadoras').update({
             assinatura_ativa: true,

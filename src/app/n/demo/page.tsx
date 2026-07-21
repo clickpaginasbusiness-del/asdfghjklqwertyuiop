@@ -24,6 +24,8 @@ const DEMO_PRESTADORA: Prestadora = {
   trial_fim: null,
   e_trial: false,
   downgrade_aviso: false,
+  trial_pro_usado: false,
+  trial_pro_fim: null,
   cor_tema: 'rosa',
   mensagem_confirmacao: null,
   mensagem_cancelamento: null,

@@ -675,6 +675,10 @@ export default function PerfilPublicoClient({
   const avaliacoesDestaque = prestadora.plano === 'pro' ? avaliacoes.filter((a) => a.destaque) : []
   const avaliacoesExibidas = avaliacoesDestaque.slice(0, 3)
 
+  // Galeria é recurso exclusivo do Plano Pro — as fotos continuam salvas no
+  // banco num downgrade, só ficam ocultas aqui na página pública.
+  const galeriaVisivel = prestadora.plano === 'pro' ? galeria : []
+
   async function compartilharAgendamento() {
     if (!agendamentoFeito) return
     const texto = `Acabei de agendar ${agendamentoFeito.servicos?.nome} com ${prestadora.nome}! Agenda você também:`
@@ -886,11 +890,11 @@ export default function PerfilPublicoClient({
         )}
 
         {/* Gallery */}
-        {galeria.length > 0 && (
+        {galeriaVisivel.length > 0 && (
           <section data-animate>
             <h2 className="font-serif text-xl font-semibold text-gray-900 mb-4">Trabalhos</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {galeria.slice(0, 9).map((item, i) => (
+              {galeriaVisivel.slice(0, 9).map((item, i) => (
                 <div
                   key={item.id}
                   className="aspect-square rounded-2xl overflow-hidden bg-gray-100 cursor-pointer relative group"
@@ -1625,11 +1629,11 @@ export default function PerfilPublicoClient({
             <ChevronLeft className="w-6 h-6" />
           </button>
           <div className="max-w-xl w-full" onClick={(e) => e.stopPropagation()}>
-            {galeria[galeriaIndex].tipo === 'video' ? (
-              <video src={galeria[galeriaIndex].url} controls className="rounded-2xl w-full max-h-[80vh]" />
+            {galeriaVisivel[galeriaIndex].tipo === 'video' ? (
+              <video src={galeriaVisivel[galeriaIndex].url} controls className="rounded-2xl w-full max-h-[80vh]" />
             ) : (
               <Image
-                src={galeria[galeriaIndex].url}
+                src={galeriaVisivel[galeriaIndex].url}
                 alt={`Trabalho ${galeriaIndex + 1} de ${prestadora.nome}`}
                 width={600}
                 height={600}
@@ -1639,13 +1643,13 @@ export default function PerfilPublicoClient({
           </div>
           <button
             className="absolute right-4 top-1/2 -translate-y-1/2 text-white p-2 hover:bg-white/10 rounded-xl transition-colors"
-            onClick={(e) => { e.stopPropagation(); setGaleriaIndex(Math.min(galeria.length - 1, galeriaIndex + 1)) }}
+            onClick={(e) => { e.stopPropagation(); setGaleriaIndex(Math.min(galeriaVisivel.length - 1, galeriaIndex + 1)) }}
           >
             <ChevronRight className="w-6 h-6" />
           </button>
           {/* Counter */}
           <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/50 text-xs">
-            {galeriaIndex + 1} / {galeria.length}
+            {galeriaIndex + 1} / {galeriaVisivel.length}
           </div>
         </div>
       )}

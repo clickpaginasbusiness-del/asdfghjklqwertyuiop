@@ -53,6 +53,7 @@ export default function ProfissionaisClient({
   // Disponibilidade
   const [dispModal, setDispModal] = useState(false)
   const [dispProfId, setDispProfId] = useState<string | null>(null)
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false)
   const [dispForm, setDispForm] = useState<DispForm>({
     usarDiasEstabelecimento: true,
     dias: [1, 2, 3, 4, 5, 6],
@@ -130,6 +131,10 @@ export default function ProfissionaisClient({
   }
 
   async function toggleAtiva(p: Profissional) {
+    if (!p.ativa && plano === 'basico' && profissionais.some((x) => x.ativa)) {
+      toast.error('Seu plano permite apenas 1 profissional ativa. Faça upgrade para o Pro para ter profissionais ilimitadas.')
+      return
+    }
     const supabase = createClient()
     await supabase.from('profissionais').update({ ativa: !p.ativa }).eq('id', p.id)
     setProfissionais((prev) => prev.map((x) => x.id === p.id ? { ...x, ativa: !x.ativa } : x))
@@ -226,7 +231,9 @@ export default function ProfissionaisClient({
         </Card>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {profissionais.map((p) => (
+          {profissionais.map((p) => {
+            const bloqueadaPeloPlano = !p.ativa && plano === 'basico' && profissionais.some((x) => x.ativa)
+            return (
             <Card key={p.id} className={`transition-all ${!p.ativa ? 'opacity-60' : 'hover:shadow-md'}`}>
               <CardContent className="p-5">
                 {/* Foto + info */}
@@ -253,9 +260,16 @@ export default function ProfissionaisClient({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold text-gray-900 truncate">{p.nome}</h3>
-                      <Badge variant={p.ativa ? 'success' : 'default'} className="shrink-0">
-                        {p.ativa ? 'Ativa' : 'Inativa'}
-                      </Badge>
+                      {bloqueadaPeloPlano ? (
+                        <Badge variant="warning" className="shrink-0 flex items-center gap-1">
+                          <Lock className="w-2.5 h-2.5" />
+                          Pro necessário
+                        </Badge>
+                      ) : (
+                        <Badge variant={p.ativa ? 'success' : 'default'} className="shrink-0">
+                          {p.ativa ? 'Ativa' : 'Inativa'}
+                        </Badge>
+                      )}
                     </div>
                     {p.bio && <p className="text-xs text-gray-500 mt-1 leading-relaxed line-clamp-2">{p.bio}</p>}
                     {/* Resumo disponibilidade */}
@@ -275,16 +289,26 @@ export default function ProfissionaisClient({
 
                 {/* Botões */}
                 <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
-                  <button
-                    onClick={() => toggleAtiva(p)}
-                    className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors"
-                  >
-                    {p.ativa
-                      ? <ToggleRight className="w-4 h-4 text-emerald-500" />
-                      : <ToggleLeft className="w-4 h-4 text-gray-400" />
-                    }
-                    {p.ativa ? 'Desativar' : 'Ativar'}
-                  </button>
+                  {bloqueadaPeloPlano ? (
+                    <button
+                      onClick={() => setUpgradeModalOpen(true)}
+                      className="flex items-center gap-1.5 text-xs text-amber-600 hover:text-amber-700 transition-colors font-medium"
+                    >
+                      <Lock className="w-4 h-4" />
+                      Reativar
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => toggleAtiva(p)}
+                      className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                    >
+                      {p.ativa
+                        ? <ToggleRight className="w-4 h-4 text-emerald-500" />
+                        : <ToggleLeft className="w-4 h-4 text-gray-400" />
+                      }
+                      {p.ativa ? 'Desativar' : 'Ativar'}
+                    </button>
+                  )}
                   <div className="ml-auto flex gap-1">
                     <button
                       onClick={() => openDisp(p)}
@@ -309,7 +333,8 @@ export default function ProfissionaisClient({
                 </div>
               </CardContent>
             </Card>
-          ))}
+            )
+          })}
         </div>
       )}
 
@@ -450,6 +475,26 @@ export default function ProfissionaisClient({
             <Button variant="danger" onClick={() => deleteId && handleDelete(deleteId)} className="flex-1">
               Remover
             </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal upgrade — tentativa de reativar além do limite do Básico */}
+      <Modal open={upgradeModalOpen} onClose={() => setUpgradeModalOpen(false)} title="Exclusivo do Plano Pro">
+        <div className="p-6 space-y-4 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto">
+            <Lock className="w-6 h-6 text-amber-400" />
+          </div>
+          <p className="text-sm text-gray-600">
+            Seu plano permite apenas 1 profissional ativa. Faça upgrade para o Pro para ter profissionais ilimitadas.
+          </p>
+          <div className="flex gap-3 pt-2">
+            <Button variant="outline" onClick={() => setUpgradeModalOpen(false)} className="flex-1">
+              Agora não
+            </Button>
+            <Link href="/planos" className="flex-1">
+              <Button className="w-full">Fazer upgrade</Button>
+            </Link>
           </div>
         </div>
       </Modal>
