@@ -158,6 +158,62 @@ function TrialProBanner() {
   )
 }
 
+const TRIAL_PRO_ATIVO_DISMISS_KEY = 'bb_trial_pro_ativo_banner_dismissed_until'
+
+function trialProAtivoBannerEstaDispensado() {
+  const until = localStorage.getItem(TRIAL_PRO_ATIVO_DISMISS_KEY)
+  return !!until && Date.now() < Number(until)
+}
+
+function dispensarTrialProAtivoBannerPor24h() {
+  localStorage.setItem(TRIAL_PRO_ATIVO_DISMISS_KEY, String(Date.now() + 24 * 60 * 60 * 1000))
+}
+
+function TrialProAtivoBanner({ dias }: { dias: number }) {
+  // Mesmo motivo do TrialProBanner: começa fechado, só aparece via useEffect
+  // (localStorage não existe no servidor) — evita mismatch de hidratação.
+  const [visivel, setVisivel] = useState(false)
+
+  useEffect(() => {
+    function checar() {
+      if (trialProAtivoBannerEstaDispensado()) return
+      setVisivel(true)
+    }
+    checar()
+  }, [])
+
+  function fechar() {
+    setVisivel(false)
+    dispensarTrialProAtivoBannerPor24h()
+  }
+
+  if (!visivel) return null
+
+  const prazo = dias === 0 ? 'hoje' : dias === 1 ? 'amanhã' : `em ${dias} dias`
+
+  return (
+    <div className="px-4 lg:px-8 py-3 flex items-center justify-between gap-4 bg-gradient-to-r from-purple-500 via-fuchsia-500 to-rose-400 text-white">
+      <div className="flex items-center gap-2 min-w-0">
+        <Sparkles className="w-4 h-4 shrink-0" />
+        <p className="text-sm font-medium truncate">
+          ✨ Seu trial Pro gratuito encerra {prazo} — Assine o Pro para continuar com todas as funcionalidades
+        </p>
+      </div>
+      <div className="flex items-center gap-3 shrink-0">
+        <Link
+          href="/planos"
+          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-fuchsia-600 hover:bg-white/90 transition-colors"
+        >
+          Assinar Pro
+        </Link>
+        <button onClick={fechar} aria-label="Fechar" className="text-white/70 hover:text-white transition-colors">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function TrialProExpiradoBanner() {
   const [visivel, setVisivel] = useState(true)
 
@@ -213,11 +269,13 @@ export default function PainelLayoutClient({
   prestadora,
   trialDiasRestantes,
   trialProAcabouDeExpirar,
+  trialProDiasRestantes,
 }: {
   children: React.ReactNode
   prestadora: Prestadora
   trialDiasRestantes: number | null
   trialProAcabouDeExpirar: boolean
+  trialProDiasRestantes: number | null
 }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -332,6 +390,9 @@ export default function PainelLayoutClient({
 
         {/* Trial Pro acabou de expirar (checado no servidor ao carregar a página) */}
         {trialProAcabouDeExpirar && <TrialProExpiradoBanner />}
+
+        {/* Trial Pro em andamento — dias restantes até encerrar */}
+        {trialProDiasRestantes !== null && <TrialProAtivoBanner dias={trialProDiasRestantes} />}
 
         {/* Oferta de trial Pro grátis — só quem está no Básico e nunca usou */}
         {prestadora.plano === 'basico' && !prestadora.trial_pro_usado && <TrialProBanner />}

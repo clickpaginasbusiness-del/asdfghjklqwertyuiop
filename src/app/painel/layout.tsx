@@ -70,11 +70,18 @@ export default async function PainelLayout({ children }: { children: React.React
     ? Math.max(0, differenceInCalendarDays(new Date(prestadora.trial_fim), new Date()))
     : null
 
+  // Idem, mas pro trial Pro de 7 dias — a checagem de expiração acima já
+  // garante que, se chegou aqui, trial_pro_fim (quando existe) está no futuro.
+  const trialProDiasRestantes = prestadora.plano === 'pro' && prestadora.trial_pro_fim
+    ? Math.max(0, differenceInCalendarDays(new Date(prestadora.trial_pro_fim), new Date()))
+    : null
+
   return (
     <PainelLayoutClient
       prestadora={prestadora}
       trialDiasRestantes={trialDiasRestantes}
       trialProAcabouDeExpirar={trialProAcabouDeExpirar}
+      trialProDiasRestantes={trialProDiasRestantes}
     >
       {children}
     </PainelLayoutClient>
