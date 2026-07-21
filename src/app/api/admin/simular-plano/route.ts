@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAdmin } from '@/lib/admin'
+import { aplicarDowngradeParaBasico } from '@/lib/downgrade'
 import { stripe, planByPrice } from '@/lib/stripe'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -68,6 +69,13 @@ export async function POST(request: NextRequest) {
       update = { ...update, assinatura_ativa: false, plano: null, trial_fim: null, e_trial: false }
     }
 
+    // Se o status real não é Pro, reaplica as mesmas restrições do downgrade
+    // (profissionais extras, avaliações em destaque, cor do tema) — senão o
+    // reset só troca o rótulo do plano e deixa as features Pro liberadas.
+    if (update.plano !== 'pro') {
+      await aplicarDowngradeParaBasico(admin, prestadora.id)
+    }
+
     const { error } = await admin.from('prestadoras').update(update).eq('id', prestadora.id)
     if (error) return NextResponse.json({ error: 'Erro ao resetar' }, { status: 500 })
     return NextResponse.json({ ok: true, estado: 'real' })
@@ -94,6 +102,14 @@ export async function POST(request: NextRequest) {
       assinatura_ativa: true,
       trial_pro_fim: null,
     },
+  }
+
+  // Trial e Básico não têm acesso às features Pro — reaplica as mesmas
+  // restrições do downgrade real (profissionais extras, destaques, cor do
+  // tema). Sem isso a simulação só troca o rótulo do plano na tela, mas as
+  // features Pro continuam liberadas por baixo.
+  if (estado === 'trial' || estado === 'basico') {
+    await aplicarDowngradeParaBasico(admin, prestadora.id)
   }
 
   const { error } = await admin
