@@ -12,7 +12,7 @@ export default async function AdminPage() {
   const [{ data: prestadoras }, { data: feedbacks }] = await Promise.all([
     admin
       .from('prestadoras')
-      .select('id, nome, email, plano, assinatura_ativa, trial_fim, e_trial, created_at, stripe_customer_id')
+      .select('id, nome, email, plano, assinatura_ativa, trial_fim, e_trial, created_at, stripe_customer_id, last_seen_at')
       .order('created_at', { ascending: false }),
     admin
       .from('feedbacks_prestadora')

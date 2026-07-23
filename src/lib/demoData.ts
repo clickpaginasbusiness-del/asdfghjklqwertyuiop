@@ -44,6 +44,7 @@ export const DEMO_PRESTADORA: Prestadora = {
   codigo_indicacao: null,
   indicado_por: null,
   indicacao_recompensa_processada: false,
+  last_seen_at: null,
   created_at: '2025-01-15T12:00:00Z',
 }
 

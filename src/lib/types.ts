@@ -30,6 +30,7 @@ export type Prestadora = {
   codigo_indicacao: string | null
   indicado_por: string | null
   indicacao_recompensa_processada: boolean
+  last_seen_at: string | null
   created_at: string
 }
 

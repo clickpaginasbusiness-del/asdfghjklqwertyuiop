@@ -281,6 +281,13 @@ export default function PainelLayoutClient({
   const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
+  // Marca a prestadora como "online" pro indicador em tempo real do painel
+  // admin — dispara uma vez quando o painel é aberto (o layout não remonta
+  // entre navegações internas de /painel).
+  useEffect(() => {
+    fetch('/api/ping', { method: 'POST' }).catch(() => {})
+  }, [])
+
   async function handleLogout() {
     const supabase = createClient()
     await supabase.auth.signOut()

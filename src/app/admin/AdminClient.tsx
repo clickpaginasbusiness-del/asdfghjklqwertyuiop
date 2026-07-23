@@ -1,10 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Gift, TrendingUp, Users, Zap, DollarSign, Loader2, X, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { createClient } from '@/lib/supabase/client'
+import { cn } from '@/lib/utils'
 import toast from 'react-hot-toast'
 
 type PrestadoraRow = {
@@ -17,6 +19,13 @@ type PrestadoraRow = {
   e_trial: boolean
   created_at: string
   stripe_customer_id: string | null
+  last_seen_at: string | null
+}
+
+const ONLINE_THRESHOLD_MS = 5 * 60 * 1000
+
+function isOnline(lastSeenAt: string | null | undefined, now: number) {
+  return !!lastSeenAt && now - new Date(lastSeenAt).getTime() < ONLINE_THRESHOLD_MS
 }
 
 type Metrics = {
@@ -65,6 +74,33 @@ export default function AdminClient({
   const [loading, setLoading] = useState<'gratis' | 'pro' | null>(null)
   const [busca, setBusca] = useState('')
 
+  // Indicador de online em tempo real: mapa id -> last_seen_at, atualizado via
+  // realtime (assim que /api/ping grava um novo horário) e recalculado a cada
+  // 30s pra "expirar" quem passou dos 5 minutos sem dar um novo ping.
+  const [lastSeenMap, setLastSeenMap] = useState<Record<string, string | null>>(() =>
+    Object.fromEntries(prestadoras.map(p => [p.id, p.last_seen_at]))
+  )
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 30_000)
+    return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    const supabase = createClient()
+    const channel = supabase
+      .channel('admin-prestadoras-online')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'prestadoras' }, (payload) => {
+        const novo = payload.new as { id: string; last_seen_at: string | null }
+        setLastSeenMap(m => ({ ...m, [novo.id]: novo.last_seen_at }))
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [])
+
+  const onlineCount = prestadoras.filter(p => isOnline(lastSeenMap[p.id], now)).length
+
   const maxCount = Math.max(...chartData.map(d => d.count), 1)
   const mediaFeedback = feedbacks.length > 0
     ? feedbacks.reduce((acc, f) => acc + f.nota, 0) / feedbacks.length
@@ -112,6 +148,10 @@ export default function AdminClient({
           <span className="font-serif text-xl font-bold text-rose-400">BelleBook</span>
           <span className="text-gray-300">|</span>
           <span className="text-sm font-semibold text-gray-700">Painel Admin</span>
+          <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 bg-emerald-50 rounded-full px-2.5 py-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            {onlineCount} online agora
+          </span>
         </div>
         <Link
           href="/painel"
@@ -261,7 +301,18 @@ export default function AdminClient({
                     const { label, color } = statusLabel(p)
                     return (
                       <tr key={p.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="py-3 pr-4 font-medium text-gray-900 whitespace-nowrap">{p.nome}</td>
+                        <td className="py-3 pr-4 font-medium text-gray-900 whitespace-nowrap">
+                          <Link href={`/admin/prestadora/${p.id}`} className="flex items-center gap-2 hover:text-rose-600 transition-colors">
+                            <span
+                              title={isOnline(lastSeenMap[p.id], now) ? 'Online' : 'Offline'}
+                              className={cn(
+                                'w-2 h-2 rounded-full shrink-0',
+                                isOnline(lastSeenMap[p.id], now) ? 'bg-emerald-500' : 'bg-gray-300'
+                              )}
+                            />
+                            {p.nome}
+                          </Link>
+                        </td>
                         <td className="py-3 pr-4 text-gray-500">{p.email}</td>
                         <td className="py-3 pr-4 text-gray-600 capitalize">{p.plano ?? '—'}</td>
                         <td className="py-3 pr-4">
