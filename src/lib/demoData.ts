@@ -136,13 +136,13 @@ export const DEMO_AGENDAMENTOS: Agendamento[] = [
 ]
 
 export const DEMO_HORARIOS_FUNCIONAMENTO: HorarioFuncionamento[] = [
-  { id: 'demo-h0', prestadora_id: 'demo-prestadora', dia_semana: 0, ativo: false, hora_abertura: '09:00', hora_fechamento: '18:00' },
-  { id: 'demo-h1', prestadora_id: 'demo-prestadora', dia_semana: 1, ativo: true, hora_abertura: '09:00', hora_fechamento: '18:00' },
-  { id: 'demo-h2', prestadora_id: 'demo-prestadora', dia_semana: 2, ativo: true, hora_abertura: '09:00', hora_fechamento: '18:00' },
-  { id: 'demo-h3', prestadora_id: 'demo-prestadora', dia_semana: 3, ativo: true, hora_abertura: '09:00', hora_fechamento: '18:00' },
-  { id: 'demo-h4', prestadora_id: 'demo-prestadora', dia_semana: 4, ativo: true, hora_abertura: '09:00', hora_fechamento: '18:00' },
-  { id: 'demo-h5', prestadora_id: 'demo-prestadora', dia_semana: 5, ativo: true, hora_abertura: '09:00', hora_fechamento: '18:00' },
-  { id: 'demo-h6', prestadora_id: 'demo-prestadora', dia_semana: 6, ativo: true, hora_abertura: '09:00', hora_fechamento: '13:00' },
+  { id: 'demo-h0', prestadora_id: 'demo-prestadora', dia_semana: 0, ativo: false, hora_abertura: '09:00', hora_fechamento: '18:00', turno2_inicio: null, turno2_fim: null },
+  { id: 'demo-h1', prestadora_id: 'demo-prestadora', dia_semana: 1, ativo: true, hora_abertura: '09:00', hora_fechamento: '18:00', turno2_inicio: null, turno2_fim: null },
+  { id: 'demo-h2', prestadora_id: 'demo-prestadora', dia_semana: 2, ativo: true, hora_abertura: '09:00', hora_fechamento: '18:00', turno2_inicio: null, turno2_fim: null },
+  { id: 'demo-h3', prestadora_id: 'demo-prestadora', dia_semana: 3, ativo: true, hora_abertura: '09:00', hora_fechamento: '18:00', turno2_inicio: null, turno2_fim: null },
+  { id: 'demo-h4', prestadora_id: 'demo-prestadora', dia_semana: 4, ativo: true, hora_abertura: '09:00', hora_fechamento: '18:00', turno2_inicio: null, turno2_fim: null },
+  { id: 'demo-h5', prestadora_id: 'demo-prestadora', dia_semana: 5, ativo: true, hora_abertura: '09:00', hora_fechamento: '18:00', turno2_inicio: null, turno2_fim: null },
+  { id: 'demo-h6', prestadora_id: 'demo-prestadora', dia_semana: 6, ativo: true, hora_abertura: '09:00', hora_fechamento: '13:00', turno2_inicio: null, turno2_fim: null },
 ]
 
 export const DEMO_AVALIACOES: (Avaliacao & { agendamentos: { clientes: { nome: string } | null; servicos: { nome: string } | null } | null })[] = [

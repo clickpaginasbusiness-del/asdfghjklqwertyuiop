@@ -39,13 +39,13 @@ const DEMO_PRESTADORA: Prestadora = {
 
 // 0=Dom, 1=Seg, 2=Ter, 3=Qua, 4=Qui, 5=Sex, 6=Sáb
 const DEMO_HORARIOS: HorarioFuncionamento[] = [
-  { id: 'h0', prestadora_id: 'demo', dia_semana: 0, ativo: false, hora_abertura: '09:00', hora_fechamento: '18:00' },
-  { id: 'h1', prestadora_id: 'demo', dia_semana: 1, ativo: true,  hora_abertura: '09:00', hora_fechamento: '18:00' },
-  { id: 'h2', prestadora_id: 'demo', dia_semana: 2, ativo: true,  hora_abertura: '09:00', hora_fechamento: '18:00' },
-  { id: 'h3', prestadora_id: 'demo', dia_semana: 3, ativo: true,  hora_abertura: '09:00', hora_fechamento: '18:00' },
-  { id: 'h4', prestadora_id: 'demo', dia_semana: 4, ativo: true,  hora_abertura: '09:00', hora_fechamento: '18:00' },
-  { id: 'h5', prestadora_id: 'demo', dia_semana: 5, ativo: true,  hora_abertura: '09:00', hora_fechamento: '18:00' },
-  { id: 'h6', prestadora_id: 'demo', dia_semana: 6, ativo: true,  hora_abertura: '09:00', hora_fechamento: '13:00' },
+  { id: 'h0', prestadora_id: 'demo', dia_semana: 0, ativo: false, hora_abertura: '09:00', hora_fechamento: '18:00', turno2_inicio: null, turno2_fim: null },
+  { id: 'h1', prestadora_id: 'demo', dia_semana: 1, ativo: true,  hora_abertura: '09:00', hora_fechamento: '18:00', turno2_inicio: null, turno2_fim: null },
+  { id: 'h2', prestadora_id: 'demo', dia_semana: 2, ativo: true,  hora_abertura: '09:00', hora_fechamento: '18:00', turno2_inicio: null, turno2_fim: null },
+  { id: 'h3', prestadora_id: 'demo', dia_semana: 3, ativo: true,  hora_abertura: '09:00', hora_fechamento: '18:00', turno2_inicio: null, turno2_fim: null },
+  { id: 'h4', prestadora_id: 'demo', dia_semana: 4, ativo: true,  hora_abertura: '09:00', hora_fechamento: '18:00', turno2_inicio: null, turno2_fim: null },
+  { id: 'h5', prestadora_id: 'demo', dia_semana: 5, ativo: true,  hora_abertura: '09:00', hora_fechamento: '18:00', turno2_inicio: null, turno2_fim: null },
+  { id: 'h6', prestadora_id: 'demo', dia_semana: 6, ativo: true,  hora_abertura: '09:00', hora_fechamento: '13:00', turno2_inicio: null, turno2_fim: null },
 ]
 
 const DEMO_SERVICOS: ServicoComProfissionais[] = [

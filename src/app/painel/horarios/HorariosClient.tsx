@@ -17,6 +17,9 @@ interface HorarioDia {
   ativo: boolean
   hora_abertura: string
   hora_fechamento: string
+  temIntervalo: boolean
+  turno2_inicio: string
+  turno2_fim: string
 }
 
 const DEFAULTS: HorarioDia[] = DIAS.map((_, i) => ({
@@ -24,14 +27,24 @@ const DEFAULTS: HorarioDia[] = DIAS.map((_, i) => ({
   ativo: diaAtivoPadrao(i),
   hora_abertura: '09:00',
   hora_fechamento: i === 6 ? '13:00' : '18:00',
+  temIntervalo: false,
+  turno2_inicio: '13:00',
+  turno2_fim: '18:00',
 }))
 
 function initHorarios(loaded: HorarioFuncionamento[]): HorarioDia[] {
   return DEFAULTS.map((def) => {
     const found = loaded.find((h) => h.dia_semana === def.dia_semana)
-    return found
-      ? { dia_semana: found.dia_semana, ativo: found.ativo, hora_abertura: found.hora_abertura, hora_fechamento: found.hora_fechamento }
-      : def
+    if (!found) return def
+    return {
+      dia_semana: found.dia_semana,
+      ativo: found.ativo,
+      hora_abertura: found.hora_abertura,
+      hora_fechamento: found.hora_fechamento,
+      temIntervalo: Boolean(found.turno2_inicio && found.turno2_fim),
+      turno2_inicio: found.turno2_inicio ?? def.turno2_inicio,
+      turno2_fim: found.turno2_fim ?? def.turno2_fim,
+    }
   })
 }
 
@@ -55,7 +68,15 @@ export default function HorariosClient({
     setHorarios((prev) => prev.map((h, i) => i === index ? { ...h, ativo: !h.ativo } : h))
   }
 
-  function updateHora(index: number, field: 'hora_abertura' | 'hora_fechamento', value: string) {
+  function toggleIntervalo(index: number) {
+    setHorarios((prev) => prev.map((h, i) => i === index ? { ...h, temIntervalo: !h.temIntervalo } : h))
+  }
+
+  function updateHora(
+    index: number,
+    field: 'hora_abertura' | 'hora_fechamento' | 'turno2_inicio' | 'turno2_fim',
+    value: string
+  ) {
     setHorarios((prev) => prev.map((h, i) => i === index ? { ...h, [field]: value } : h))
   }
 
@@ -68,6 +89,11 @@ export default function HorariosClient({
       ativo: h.ativo,
       hora_abertura: h.hora_abertura,
       hora_fechamento: h.hora_fechamento,
+      // Só grava o turno 2 se o checkbox estiver marcado — senão a página
+      // pública continuaria bloqueando o "intervalo" mesmo com o checkbox
+      // desmarcado, porque os valores dos campos ficam guardados no state.
+      turno2_inicio: h.temIntervalo ? h.turno2_inicio : null,
+      turno2_fim: h.temIntervalo ? h.turno2_fim : null,
     }))
     const { error } = await supabase
       .from('horarios_funcionamento')
@@ -122,7 +148,7 @@ export default function HorariosClient({
         </CardHeader>
         <CardContent className="space-y-3">
           {horarios.map((h, i) => (
-            <div key={h.dia_semana} className="flex flex-wrap items-center gap-3 py-1">
+            <div key={h.dia_semana} className="flex flex-col gap-2 py-2 border-b border-gray-50 last:border-0">
               <div className="flex items-center gap-3 shrink-0">
                 {/* Toggle */}
                 <button
@@ -145,23 +171,59 @@ export default function HorariosClient({
                 </span>
               </div>
 
-              {/* Horários */}
-              <div className={`flex items-center gap-2 flex-wrap transition-opacity ${h.ativo ? 'opacity-100' : 'opacity-30 pointer-events-none'}`}>
-                <input
-                  type="time"
-                  value={h.hora_abertura}
-                  onChange={(e) => updateHora(i, 'hora_abertura', e.target.value)}
-                  disabled={!h.ativo}
-                  className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm w-[6.5rem] focus:outline-none focus:ring-1 focus:ring-rose-300 focus:border-rose-300"
-                />
-                <span className="text-gray-400 text-xs shrink-0">até</span>
-                <input
-                  type="time"
-                  value={h.hora_fechamento}
-                  onChange={(e) => updateHora(i, 'hora_fechamento', e.target.value)}
-                  disabled={!h.ativo}
-                  className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm w-[6.5rem] focus:outline-none focus:ring-1 focus:ring-rose-300 focus:border-rose-300"
-                />
+              <div className={`flex flex-col gap-2 pl-12 transition-opacity ${h.ativo ? 'opacity-100' : 'opacity-30 pointer-events-none'}`}>
+                {/* Turno 1 */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-gray-400 text-xs w-14 shrink-0">Turno 1</span>
+                  <input
+                    type="time"
+                    value={h.hora_abertura}
+                    onChange={(e) => updateHora(i, 'hora_abertura', e.target.value)}
+                    disabled={!h.ativo}
+                    className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm w-[6.5rem] focus:outline-none focus:ring-1 focus:ring-rose-300 focus:border-rose-300"
+                  />
+                  <span className="text-gray-400 text-xs shrink-0">até</span>
+                  <input
+                    type="time"
+                    value={h.hora_fechamento}
+                    onChange={(e) => updateHora(i, 'hora_fechamento', e.target.value)}
+                    disabled={!h.ativo}
+                    className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm w-[6.5rem] focus:outline-none focus:ring-1 focus:ring-rose-300 focus:border-rose-300"
+                  />
+
+                  <label className="flex items-center gap-1.5 text-xs text-gray-500 ml-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={h.temIntervalo}
+                      onChange={() => toggleIntervalo(i)}
+                      disabled={!h.ativo}
+                      className="rounded border-gray-300 text-rose-400 focus:ring-rose-300"
+                    />
+                    Tem intervalo?
+                  </label>
+                </div>
+
+                {/* Turno 2 (opcional) */}
+                {h.temIntervalo && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-gray-400 text-xs w-14 shrink-0">Turno 2</span>
+                    <input
+                      type="time"
+                      value={h.turno2_inicio}
+                      onChange={(e) => updateHora(i, 'turno2_inicio', e.target.value)}
+                      disabled={!h.ativo}
+                      className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm w-[6.5rem] focus:outline-none focus:ring-1 focus:ring-rose-300 focus:border-rose-300"
+                    />
+                    <span className="text-gray-400 text-xs shrink-0">até</span>
+                    <input
+                      type="time"
+                      value={h.turno2_fim}
+                      onChange={(e) => updateHora(i, 'turno2_fim', e.target.value)}
+                      disabled={!h.ativo}
+                      className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm w-[6.5rem] focus:outline-none focus:ring-1 focus:ring-rose-300 focus:border-rose-300"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           ))}

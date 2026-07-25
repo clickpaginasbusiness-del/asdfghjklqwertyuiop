@@ -54,6 +54,8 @@ export type HorarioFuncionamento = {
   ativo: boolean
   hora_abertura: string
   hora_fechamento: string
+  turno2_inicio: string | null
+  turno2_fim: string | null
 }
 
 export type Servico = {

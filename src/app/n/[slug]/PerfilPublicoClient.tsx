@@ -80,9 +80,16 @@ export default function PerfilPublicoClient({
   const [horarioSelecionado, setHorarioSelecionado] = useState<string | null>(null)
   const [agendamentosExistentes, setAgendamentosExistentes] = useState<{start: number; end: number}[]>([])
   const [loadingHorarios, setLoadingHorarios] = useState(false)
-  const [horasDodia, setHorasDodia] = useState({
+  const [horasDodia, setHorasDodia] = useState<{
+    abertura: string
+    fechamento: string
+    turno2Inicio: string | null
+    turno2Fim: string | null
+  }>({
     abertura: prestadora.hora_abertura,
     fechamento: prestadora.hora_fechamento,
+    turno2Inicio: null,
+    turno2Fim: null,
   })
 
   const [agendando, setAgendando] = useState(false)
@@ -285,9 +292,15 @@ export default function PerfilPublicoClient({
 
   function computeHorasDia(d: Date, prof: Profissional | null) {
     const horario = getHorarioDia(d)
+    // Profissional com horário próprio substitui a janela do dia inteira (ex:
+    // só atende de manhã) — nesse caso o intervalo de almoço da prestadora não
+    // se aplica, já que a agenda dela já é um recorte específico do dia.
+    const temHorarioProprio = Boolean(prof?.hora_abertura && prof?.hora_fechamento)
     return {
       abertura: prof?.hora_abertura ?? horario?.hora_abertura ?? prestadora.hora_abertura,
       fechamento: prof?.hora_fechamento ?? horario?.hora_fechamento ?? prestadora.hora_fechamento,
+      turno2Inicio: temHorarioProprio ? null : horario?.turno2_inicio ?? null,
+      turno2Fim: temHorarioProprio ? null : horario?.turno2_fim ?? null,
     }
   }
 
@@ -635,7 +648,10 @@ export default function PerfilPublicoClient({
   }
 
   const horariosDisponiveis = servicoSelecionado && dataSelecionada
-    ? generateTimeSlots(horasDodia.abertura, horasDodia.fechamento, servicoSelecionado.duracao_minutos)
+    ? generateTimeSlots(
+        horasDodia.abertura, horasDodia.fechamento, servicoSelecionado.duracao_minutos,
+        horasDodia.turno2Inicio, horasDodia.turno2Fim
+      )
         .filter((h) => {
           const [hh, mm] = h.split(':').map(Number)
           const slotStart = new Date(
@@ -880,6 +896,9 @@ export default function PerfilPublicoClient({
                 <div className="flex items-center justify-center gap-1.5 text-xs text-gray-500">
                   <Clock className="w-3.5 h-3.5" style={{ color: tema.hex }} />
                   Hoje: {formatHora(aberturaHoje)} – {formatHora(fechamentoHoje)}
+                  {horarioHoje?.turno2_inicio && horarioHoje?.turno2_fim && (
+                    <>, {formatHora(horarioHoje.turno2_inicio)} – {formatHora(horarioHoje.turno2_fim)}</>
+                  )}
                 </div>
               )}
 

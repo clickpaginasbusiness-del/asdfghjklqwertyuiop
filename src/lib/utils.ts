@@ -114,14 +114,10 @@ export function diaAtivoPadrao(diaSemana: number): boolean {
   return diaSemana !== 0
 }
 
-export function generateTimeSlots(
-  horaAbertura: string,
-  horaFechamento: string,
-  duracaoMinutos: number
-): string[] {
+function slotsDaJanela(inicio: string, fim: string, duracaoMinutos: number): string[] {
   const slots: string[] = []
-  const [startH, startM] = horaAbertura.split(':').map(Number)
-  const [endH, endM] = horaFechamento.split(':').map(Number)
+  const [startH, startM] = inicio.split(':').map(Number)
+  const [endH, endM] = fim.split(':').map(Number)
 
   let currentMinutes = startH * 60 + startM
   const endMinutes = endH * 60 + endM
@@ -133,6 +129,22 @@ export function generateTimeSlots(
     currentMinutes += duracaoMinutos
   }
 
+  return slots
+}
+
+/** turno2Inicio/turno2Fim são opcionais — quando presentes, geram um segundo
+ * bloco de horários (ex: turno da tarde), pulando o intervalo entre os turnos. */
+export function generateTimeSlots(
+  horaAbertura: string,
+  horaFechamento: string,
+  duracaoMinutos: number,
+  turno2Inicio?: string | null,
+  turno2Fim?: string | null
+): string[] {
+  const slots = slotsDaJanela(horaAbertura, horaFechamento, duracaoMinutos)
+  if (turno2Inicio && turno2Fim) {
+    slots.push(...slotsDaJanela(turno2Inicio, turno2Fim, duracaoMinutos))
+  }
   return slots
 }
 
