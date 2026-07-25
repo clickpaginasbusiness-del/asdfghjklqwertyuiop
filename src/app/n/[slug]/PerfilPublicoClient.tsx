@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { ImageWithSkeleton } from '@/components/ui/image-with-skeleton'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -15,7 +16,7 @@ import {
 import {
   Clock, CheckCircle2, Calendar, ChevronLeft, ChevronRight, X,
   UserCircle2, MessageCircle, AtSign, MapPin, Star, Scissors,
-  CalendarPlus, Share2, Quote, Trash2,
+  CalendarPlus, Share2, Quote, Trash2, Home, Eye, Sparkles,
 } from 'lucide-react'
 import type { Prestadora, Servico, GaleriaItem, Agendamento, Profissional, HorarioFuncionamento, Avaliacao } from '@/lib/types'
 import { getTema } from '@/lib/theme'
@@ -110,6 +111,9 @@ export default function PerfilPublicoClient({
   const [novoNome, setNovoNome] = useState('')
   const [salvandoNome, setSalvandoNome] = useState(false)
   const perfilRef = useRef<HTMLDivElement>(null)
+
+  const [logoMenuAberto, setLogoMenuAberto] = useState(false)
+  const logoMenuRef = useRef<HTMLDivElement>(null)
 
   /* Exibe: confirmados futuros + últimos 7 dias (não deleta do banco) */
   const meusAgendamentosVisiveis = useMemo(() => {
@@ -240,12 +244,15 @@ export default function PerfilPublicoClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDemo])
 
-  /* Fecha o dropdown de perfil ao clicar fora */
+  /* Fecha os dropdowns (perfil e logo) ao clicar fora */
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (perfilRef.current && !perfilRef.current.contains(e.target as Node)) {
         setPerfilAberto(false)
         setEditandoNome(false)
+      }
+      if (logoMenuRef.current && !logoMenuRef.current.contains(e.target as Node)) {
+        setLogoMenuAberto(false)
       }
     }
     document.addEventListener('mousedown', handleClick)
@@ -710,7 +717,52 @@ export default function PerfilPublicoClient({
         <div className="max-w-2xl mx-auto px-4 pt-8">
           {/* Top bar */}
           <div className="flex items-center justify-between gap-2 flex-wrap mb-10">
-            <span className="font-serif text-xl font-bold text-rose-400 shrink-0">BelleBook</span>
+            <div className="relative shrink-0" ref={logoMenuRef}>
+              <button
+                onClick={() => setLogoMenuAberto((v) => !v)}
+                aria-expanded={logoMenuAberto}
+                aria-haspopup="menu"
+                className="font-serif text-xl font-bold text-rose-400 rounded-lg -mx-1 -my-1 px-1 py-1 hover:text-rose-500 transition-colors"
+              >
+                BelleBook
+              </button>
+
+              {logoMenuAberto && (
+                <div
+                  role="menu"
+                  className="animate-dropdown-in absolute left-0 mt-2 w-64 bg-white rounded-xl border border-gray-100 shadow-lg z-30 p-2"
+                >
+                  <Link
+                    href="/"
+                    role="menuitem"
+                    onClick={() => setLogoMenuAberto(false)}
+                    className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <Home className="w-4 h-4 text-gray-400 shrink-0" />
+                    Conheça o BelleBook
+                  </Link>
+                  <Link
+                    href="/painel/demo"
+                    role="menuitem"
+                    onClick={() => setLogoMenuAberto(false)}
+                    className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    <Eye className="w-4 h-4 text-gray-400 shrink-0" />
+                    Ver demonstração
+                  </Link>
+                  <div className="my-1 border-t border-gray-100" />
+                  <Link
+                    href="/painel/cadastro"
+                    role="menuitem"
+                    onClick={() => setLogoMenuAberto(false)}
+                    className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-semibold text-white bg-rose-400 hover:bg-rose-500 transition-colors"
+                  >
+                    <Sparkles className="w-4 h-4 shrink-0" />
+                    Crie sua página grátis
+                  </Link>
+                </div>
+              )}
+            </div>
             <div className="flex gap-2 flex-wrap">
               {clienteLogado && (
                 <Button variant="outline" size="sm" onClick={() => setMeusAgendamentosModal(true)}>
