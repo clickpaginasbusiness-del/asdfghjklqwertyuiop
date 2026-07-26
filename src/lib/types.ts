@@ -30,6 +30,7 @@ export type Prestadora = {
   codigo_indicacao: string | null
   indicado_por: string | null
   indicacao_recompensa_processada: boolean
+  indicacao_cadastro_processada: boolean
   last_seen_at: string | null
   created_at: string
 }
@@ -114,7 +115,7 @@ export type Notificacao = {
   prestadora_id: string
   mensagem: string
   lida: boolean
-  tipo: 'agendamento' | 'cancelamento'
+  tipo: 'agendamento' | 'cancelamento' | 'indicacao'
   created_at: string
 }
 

@@ -545,7 +545,7 @@ export default function PerfilPainelClient({
             <CardTitle>Indique e Ganhe</CardTitle>
           </div>
           <p className="text-sm text-gray-400">
-            Indique amigas e ganhe recompensas quando elas assinarem um plano
+            Indique amigas e ganhe recompensas quando elas criarem conta e quando assinarem um plano
           </p>
         </CardHeader>
         <CardContent className="space-y-5">
@@ -560,19 +560,20 @@ export default function PerfilPainelClient({
               <p className="text-xs text-gray-500 mt-0.5">Assinaram</p>
             </div>
             <div className="bg-blue-50 rounded-xl p-4 text-center">
-              <p className="text-2xl font-bold text-blue-600">{conversoesCount}</p>
+              <p className="text-2xl font-bold text-blue-600">{indicacoesCount + conversoesCount}</p>
               <p className="text-xs text-gray-500 mt-0.5">Recompensas</p>
             </div>
           </div>
 
           {/* Recompensas info */}
-          <div className="bg-amber-50 rounded-xl p-4 text-sm text-amber-800 space-y-1">
-            <p className="font-semibold">O que você ganha a cada indicação que assinar:</p>
-            <ul className="list-disc list-inside space-y-0.5 text-amber-700">
-              <li>Em trial → +30 dias grátis no seu trial</li>
-              <li>Plano pago → +30 dias sem cobrança</li>
-              <li>Sem plano / expirado → 30 dias grátis de volta</li>
-            </ul>
+          <div className="bg-amber-50 rounded-xl p-4 text-sm text-amber-800 space-y-1.5">
+            <p className="font-semibold">O que você ganha a cada indicação:</p>
+            <p className="text-amber-700 flex items-start gap-1.5">
+              <span aria-hidden>✓</span> Indicada cria conta → <strong>+7 dias grátis</strong>
+            </p>
+            <p className="text-amber-700 flex items-start gap-1.5">
+              <span aria-hidden>✓</span> Indicada assina um plano → <strong>+30 dias grátis</strong>
+            </p>
           </div>
 
           {/* Data da recompensa ativa (trial ou pausa de cobrança) */}

@@ -1,5 +1,6 @@
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
+import { processarRecompensaCadastro } from '@/lib/indicacao'
 import { NextRequest, NextResponse } from 'next/server'
 
 const supabaseAdmin = createAdminClient(
@@ -130,25 +131,34 @@ export async function POST(request: NextRequest) {
     if (!colisao) { codigoIndicacao = tentativa; break }
   }
 
-  const { error: insertError } = await supabaseAdmin.from('prestadoras').insert({
-    user_id: user.id,
-    nome: nomeLimpo,
-    email: emailLimpo,
-    slug: slugLimpo,
-    telefone: telefoneLimpo,
-    plano: 'basico',
-    assinatura_ativa: !semTrial,
-    trial_fim: semTrial ? null : trialFim,
-    e_trial: !semTrial,
-    codigo_indicacao: codigoIndicacao,
-    indicado_por: referrerId,
-  })
+  const { data: novaPrestadora, error: insertError } = await supabaseAdmin
+    .from('prestadoras')
+    .insert({
+      user_id: user.id,
+      nome: nomeLimpo,
+      email: emailLimpo,
+      slug: slugLimpo,
+      telefone: telefoneLimpo,
+      plano: 'basico',
+      assinatura_ativa: !semTrial,
+      trial_fim: semTrial ? null : trialFim,
+      e_trial: !semTrial,
+      codigo_indicacao: codigoIndicacao,
+      indicado_por: referrerId,
+    })
+    .select('id')
+    .single()
 
   if (insertError) {
     const mensagem = insertError.code === '23505'
       ? 'Esse link já está em uso. Escolha outro.'
       : insertError.message
     return NextResponse.json({ error: mensagem }, { status: 400 })
+  }
+
+  // Recompensa de indicação — estágio 1 (+7 dias para quem indicou)
+  if (referrerId && novaPrestadora) {
+    await processarRecompensaCadastro(supabaseAdmin, novaPrestadora.id, nomeLimpo, referrerId)
   }
 
   return NextResponse.json({ ok: true, semTrial })
