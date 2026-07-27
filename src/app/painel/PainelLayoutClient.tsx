@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Calendar, CalendarDays, Scissors, ImageIcon,
-  Clock, Users, LogOut, Menu, X, ExternalLink, UserCircle, UserCircle2, CreditCard, AlertCircle, BarChart3, Headset, Sparkles,
+  Clock, Users, LogOut, Menu, X, ExternalLink, UserCircle, UserCircle2, CreditCard, AlertCircle, BarChart3, Headset, Sparkles, Settings,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { createClient } from '@/lib/supabase/client'
@@ -262,6 +262,7 @@ const navItems = [
   { href: '/painel/perfil', label: 'Meu Perfil', icon: UserCircle },
   { href: '/painel/assinatura', label: 'Assinatura', icon: CreditCard },
   { href: '/painel/suporte', label: 'Suporte', icon: Headset },
+  { href: '/painel/configuracoes', label: 'Configurações', icon: Settings },
 ]
 
 export default function PainelLayoutClient({
