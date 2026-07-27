@@ -7,7 +7,7 @@ import {
   Check, Star, Zap, Sparkles, ArrowRight, ChevronRight, ChevronLeft,
   Phone, Mail, Scissors, CreditCard, LayoutDashboard, ImageIcon,
   BarChart3, UserCircle2, UserCircle, Headset, CheckCheck,
-  DollarSign, Smartphone, Camera, Palette, Gift, CalendarDays,
+  DollarSign, Smartphone, Camera, Palette, Gift,
   Monitor, Menu, Tag, X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -16,13 +16,12 @@ import { useCupom, precoComDesconto } from '@/hooks/use-cupom'
 import Lenis from 'lenis'
 
 /* ─── Types ─────────────────────────────────── */
-type NavId = 'hero' | 'como-funciona' | 'funcionalidades' | 'depoimentos' | 'precos'
+type NavId = 'hero' | 'como-funciona' | 'depoimentos' | 'precos'
 
 const NAV_ITEMS: { id: NavId; label: string }[] = [
   { id: 'como-funciona', label: 'Como funciona' },
-  { id: 'funcionalidades', label: 'Recursos' },
+  { id: 'precos', label: 'Planos' },
   { id: 'depoimentos', label: 'Depoimentos' },
-  { id: 'precos', label: 'Preços' },
 ]
 
 /* ─── Data ───────────────────────────────────── */
@@ -53,21 +52,20 @@ const STEPS = [
   },
 ]
 
-const FEATURES = [
+const RECURSOS_CARROSSEL = [
   { icon: Calendar, title: 'Agenda inteligente', desc: 'Horários ocupados bloqueados automaticamente, sem conflitos.' },
   { icon: Globe, title: 'Página pública', desc: 'Seu link /n/seu-nome com galeria, serviços e agendamento.' },
   { icon: Users, title: 'Gestão de clientes', desc: 'Histórico completo de cada cliente, com filtros e busca.' },
-  { icon: Bell, title: 'Notificações real-time', desc: 'Saiba imediatamente quando alguém agendar ou cancelar.' },
+  { icon: Bell, title: 'Notificações em tempo real', desc: 'Saiba imediatamente quando alguém agendar ou cancelar.' },
   { icon: Clock, title: 'Horários flexíveis', desc: 'Configure disponibilidade por dia da semana e profissional.' },
   { icon: MessageCircle, title: 'WhatsApp integrado', desc: 'Envie confirmações e lembretes direto pelo WhatsApp.' },
-  { icon: CalendarDays, title: 'Calendário de agendamentos', desc: 'Visão completa da agenda por dia, semana ou mês.' },
+  { icon: BarChart3, title: 'Relatórios', desc: 'Acompanhe receita, agendamentos e desempenho do negócio.' },
+  { icon: Camera, title: 'Galeria', desc: 'Mostre seus melhores trabalhos direto na sua página pública.' },
   { icon: UserCircle2, title: 'Múltiplas profissionais', desc: 'Cada profissional com agenda e disponibilidade próprias.' },
-  { icon: Star, title: 'Avaliações de clientes', desc: 'Receba avaliações e mostre sua reputação na página pública.' },
-  { icon: Palette, title: 'Personalização de cor', desc: 'Deixe sua página com a cara do seu negócio.' },
-  { icon: Gift, title: 'Indique e Ganhe', desc: 'Indique outras profissionais e ganhe dias grátis de assinatura.' },
-  { icon: Smartphone, title: 'Aplicativo instalável', desc: 'Instale como app na tela inicial, sem loja de aplicativos.' },
-  { icon: BarChart3, title: 'Relatórios e métricas', desc: 'Acompanhe receita, agendamentos e desempenho do negócio.', pro: true },
-  { icon: Camera, title: 'Galeria de fotos e vídeos', desc: 'Mostre seus melhores trabalhos direto na sua página.', pro: true },
+  { icon: Star, title: 'Avaliações', desc: 'Receba avaliações de clientes e mostre sua reputação na página pública.' },
+  { icon: Palette, title: 'Personalização de cor', desc: 'Deixe sua página pública com a cara do seu negócio.' },
+  { icon: Gift, title: 'Sistema de indicação', desc: 'Indique outras profissionais e ganhe dias grátis de assinatura.' },
+  { icon: Smartphone, title: 'PWA', desc: 'Instale como app na tela inicial do celular, sem loja de aplicativos.' },
 ]
 
 const SIDEBAR_ITEMS = [
@@ -250,35 +248,67 @@ function MockupScreenCalendario() {
 
 function MockupScreenPerfilPublico() {
   const servicos = [
-    { nome: 'Manicure', preco: 'R$35' },
-    { nome: 'Pedicure', preco: 'R$55' },
-    { nome: 'Nail art básica', preco: 'R$70' },
+    { nome: 'Manicure completa', preco: 'R$45', duracao: '60 min', icon: Scissors },
+    { nome: 'Nail art básica', preco: 'R$70', duracao: '90 min', icon: Sparkles },
+  ]
+  const dias = [
+    { dia: 'seg', num: 15, selecionado: false },
+    { dia: 'ter', num: 16, selecionado: false },
+    { dia: 'qua', num: 17, selecionado: true },
+    { dia: 'qui', num: 18, selecionado: false },
+    { dia: 'sex', num: 19, selecionado: false },
   ]
 
   return (
     <div className="h-full flex flex-col bg-white">
-      <div className="shrink-0 bg-gradient-to-b from-rose-50 to-white px-4 pt-6 pb-3 flex flex-col items-center text-center">
-        <div className="w-12 h-12 rounded-full bg-rose-100 border-2 border-white shadow-sm flex items-center justify-center mb-1.5">
-          <span className="font-serif text-base font-bold text-rose-400">A</span>
+      <div className="shrink-0 bg-gradient-to-b from-rose-100 to-white px-4 pt-6 pb-4 flex flex-col items-center text-center">
+        <div className="w-14 h-14 rounded-full p-[2px] shadow-sm" style={{ background: 'linear-gradient(135deg, #fb7185, #e11d48)' }}>
+          <div className="w-full h-full rounded-full bg-rose-100 border-2 border-white flex items-center justify-center">
+            <span className="font-serif text-base font-bold text-rose-500">A</span>
+          </div>
         </div>
-        <p className="font-serif text-xs font-bold text-gray-900">Ana Nails Studio</p>
-        <div className="flex items-center gap-1 mt-1">
+        <p className="font-serif text-xs font-bold text-gray-900 mt-2">Ana Nails Studio</p>
+        <span className="inline-flex items-center gap-1 bg-amber-50 border border-amber-100 text-amber-600 rounded-full px-2 py-0.5 mt-1.5">
           <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400" />
-          <span className="text-[9px] font-semibold text-gray-700">4.9</span>
-          <span className="text-[8px] text-gray-400">(38 avaliações)</span>
-        </div>
+          <span className="text-[8px] font-semibold">4.9 (38 avaliações)</span>
+        </span>
       </div>
+
       <div className="flex-1 min-h-0 overflow-hidden px-3 pt-3 space-y-1.5">
+        <p className="text-[8px] font-semibold text-gray-400 uppercase tracking-wide px-0.5">Serviços</p>
         {servicos.map((s) => (
-          <div key={s.nome} className="flex items-center justify-between bg-gray-50 rounded-lg px-2.5 py-2">
-            <p className="text-[9px] font-medium text-gray-800">{s.nome}</p>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[9px] font-semibold text-gray-700">{s.preco}</span>
-              <span className="bg-rose-400 text-white text-[7px] font-semibold px-1.5 py-0.5 rounded-full">Agendar</span>
+          <div key={s.nome} className="flex items-center gap-2 bg-gray-50 rounded-xl px-2.5 py-2">
+            <div className="w-7 h-7 rounded-lg bg-rose-100 flex items-center justify-center shrink-0">
+              <s.icon className="w-3.5 h-3.5 text-rose-500" />
             </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[9px] font-semibold text-gray-800 truncate">{s.nome}</p>
+              <div className="flex items-center gap-0.5 text-[7px] text-gray-400 mt-0.5">
+                <Clock className="w-2 h-2" />
+                {s.duracao}
+              </div>
+            </div>
+            <span className="text-[9px] font-bold text-rose-600 shrink-0">{s.preco}</span>
           </div>
         ))}
+
+        <p className="text-[8px] font-semibold text-gray-400 uppercase tracking-wide px-0.5 pt-1.5">Escolha o dia</p>
+        <div className="flex items-center gap-1">
+          {dias.map((d) => (
+            <div
+              key={d.num}
+              className={cn(
+                'flex-1 flex flex-col items-center py-1.5 rounded-lg',
+                d.selecionado ? 'bg-rose-400 text-white' : 'bg-gray-50 text-gray-600'
+              )}
+            >
+              <span className="text-[6px] uppercase opacity-70">{d.dia}</span>
+              <span className="text-[9px] font-semibold">{d.num}</span>
+            </div>
+          ))}
+        </div>
       </div>
+
       <div className="shrink-0 p-2.5 border-t border-gray-100">
         <div className="bg-rose-400 text-white text-center text-[9px] font-semibold rounded-lg py-2">
           Agendar horário
@@ -455,12 +485,51 @@ export default function LandingPage() {
   } = useCupom()
   const [mockupView, setMockupView] = useState<'desktop' | 'mobile'>('desktop')
   const [screenIndex, setScreenIndex] = useState(0)
+  const [recursoIndex, setRecursoIndex] = useState(0)
+  const [recursoItensPorPagina, setRecursoItensPorPagina] = useState(1)
   const touchStartXRef = useRef<number | null>(null)
+  const touchStartXRecursoRef = useRef<number | null>(null)
   const lenisRef = useRef<Lenis | null>(null)
   const rafRef = useRef<number>(0)
 
+  const recursoTotalPaginas = Math.ceil(RECURSOS_CARROSSEL.length / recursoItensPorPagina)
+
+  /* 3 recursos por página no desktop (md+), 1 por página no mobile */
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px)')
+    function aplicar() {
+      setRecursoItensPorPagina(mq.matches ? 3 : 1)
+      setRecursoIndex(0)
+    }
+    aplicar()
+    mq.addEventListener('change', aplicar)
+    return () => mq.removeEventListener('change', aplicar)
+  }, [])
+
   function goToScreen(i: number) {
     setScreenIndex(Math.max(0, Math.min(MOCKUP_SCREENS.length - 1, i)))
+  }
+
+  function goToRecurso(i: number) {
+    const total = recursoTotalPaginas
+    setRecursoIndex(((i % total) + total) % total)
+  }
+
+  function handleRecursoTouchStart(e: TouchEvent<HTMLDivElement>) {
+    const touch = e.touches[0]
+    touchStartXRecursoRef.current = touch ? touch.clientX : null
+  }
+
+  function handleRecursoTouchEnd(e: TouchEvent<HTMLDivElement>) {
+    if (touchStartXRecursoRef.current === null) return
+    const touch = e.changedTouches[0]
+    const startX = touchStartXRecursoRef.current
+    touchStartXRecursoRef.current = null
+    if (!touch) return
+    const deltaX = touch.clientX - startX
+    const SWIPE_THRESHOLD = 40
+    if (deltaX > SWIPE_THRESHOLD) goToRecurso(recursoIndex - 1)
+    else if (deltaX < -SWIPE_THRESHOLD) goToRecurso(recursoIndex + 1)
   }
 
   function handleScreenTouchStart(e: TouchEvent<HTMLDivElement>) {
@@ -521,7 +590,7 @@ export default function LandingPage() {
 
   /* Active section tracker */
   useEffect(() => {
-    const ids: NavId[] = ['hero', 'como-funciona', 'funcionalidades', 'depoimentos', 'precos']
+    const ids: NavId[] = ['hero', 'como-funciona', 'precos', 'depoimentos']
     const handler = () => {
       for (const id of [...ids].reverse()) {
         const el = document.getElementById(id)
@@ -641,11 +710,6 @@ export default function LandingPage() {
             </span>
           </div>
         </div>
-
-        {/* Scroll cue */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-40">
-          <div className="w-px h-10 bg-gray-400 animate-[scrollCue_1.6s_ease-in-out_infinite]" />
-        </div>
       </section>
 
       {/* ── TICKER DE PROFISSÕES ──────────────── */}
@@ -657,8 +721,7 @@ export default function LandingPage() {
           {[...PROFISSOES, ...PROFISSOES].map((profissao, i) => (
             <span
               key={i}
-              className="flex items-center shrink-0 text-sm sm:text-base font-medium px-4 sm:px-6"
-              style={{ color: '#f472b6' }}
+              className="flex items-center shrink-0 text-sm sm:text-base font-medium px-4 sm:px-6 text-rose-400"
             >
               {profissao}
               <span className="ml-4 sm:ml-6 text-gray-400">✦</span>
@@ -1079,97 +1142,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── FUNCIONALIDADES ───────────────────── */}
-      <section
-        id="funcionalidades"
-        className="relative z-[2] bg-white min-h-screen flex flex-col items-center justify-center px-6 py-24 rounded-t-[40px] shadow-[0_-4px_60px_rgba(0,0,0,0.04)]"
-      >
-        <div className="max-w-5xl mx-auto w-full">
-          <div className="text-center mb-16">
-            <p data-animate className="text-rose-400 text-sm font-semibold uppercase tracking-widest mb-4">
-              Recursos
-            </p>
-            <h2 data-animate data-delay="100" className="font-serif text-[clamp(2rem,5vw,3.5rem)] font-bold text-gray-900 leading-tight">
-              Tudo que você precisa,
-              <br />
-              nada que não precisa
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {FEATURES.map((f, i) => (
-              <div
-                key={f.title}
-                data-animate
-                data-delay={String((i % 3) * 100)}
-                className="group p-6 rounded-2xl border border-gray-100 hover:border-rose-100 bg-white hover:bg-rose-50/30 transition-all duration-300 cursor-default"
-              >
-                <div className="w-10 h-10 rounded-xl bg-rose-50 group-hover:bg-rose-100 flex items-center justify-center mb-4 transition-colors">
-                  <f.icon className="w-5 h-5 text-rose-400" />
-                </div>
-                <div className="flex items-center gap-2 mb-2">
-                  <h3 className="font-semibold text-gray-900">{f.title}</h3>
-                  {f.pro && (
-                    <span className="bg-rose-400 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wide">
-                      Pro
-                    </span>
-                  )}
-                </div>
-                <p className="text-sm text-gray-500 leading-relaxed">{f.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── DEPOIMENTOS ───────────────────────── */}
-      <section
-        id="depoimentos"
-        className="relative z-[2] bg-[#0f0f0f] min-h-screen flex flex-col items-center justify-center px-6 py-24 rounded-t-[40px]"
-      >
-        {/* Subtle glow */}
-        <div aria-hidden className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] rounded-full bg-rose-500/10 blur-3xl" />
-
-        <div className="relative max-w-5xl mx-auto w-full">
-          <div className="text-center mb-16">
-            <p data-animate className="text-rose-400 text-sm font-semibold uppercase tracking-widest mb-4">
-              Depoimentos
-            </p>
-            <h2 data-animate data-delay="100" className="font-serif text-[clamp(2rem,5vw,3.5rem)] font-bold text-white leading-tight">
-              Quem usa, não<br />
-              consegue largar
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {TESTIMONIALS.map((t, i) => (
-              <div
-                key={t.name}
-                data-animate
-                data-delay={String(i * 120)}
-                className="bg-white/[0.06] border border-white/10 rounded-2xl p-7 flex flex-col gap-5 hover:bg-white/10 transition-colors"
-              >
-                {/* Stars */}
-                <div className="flex gap-1">
-                  {Array.from({ length: t.rating }).map((_, j) => (
-                    <Star key={j} className="w-4 h-4 fill-rose-400 text-rose-400" />
-                  ))}
-                </div>
-
-                <p className="text-gray-300 text-sm leading-relaxed flex-1">
-                  &ldquo;{t.text}&rdquo;
-                </p>
-
-                <div className="border-t border-white/10 pt-5">
-                  <p className="text-white font-medium text-sm">{t.name}</p>
-                  <p className="text-gray-500 text-xs mt-0.5">{t.role}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* ── PREÇOS ────────────────────────────── */}
       <section
         id="precos"
@@ -1178,13 +1150,13 @@ export default function LandingPage() {
         <div className="max-w-4xl mx-auto w-full">
           <div className="text-center mb-16">
             <p data-animate className="text-rose-400 text-sm font-semibold uppercase tracking-widest mb-4">
-              Preços
+              Planos e Recursos
             </p>
             <h2 data-animate data-delay="100" className="font-serif text-[clamp(2rem,5vw,3.5rem)] font-bold text-gray-900 leading-tight">
-              Simples e transparente
+              Simples, transparente e completo
             </h2>
             <p data-animate data-delay="200" className="text-gray-500 mt-4">
-              30 dias grátis em qualquer plano. Sem surpresas.
+              30 dias grátis em qualquer plano. Veja tudo que está incluído.
             </p>
 
             {/* Toggle mensal / anual */}
@@ -1402,6 +1374,124 @@ export default function LandingPage() {
                 )}
               </div>
             )}
+          </div>
+        </div>
+      </section>
+
+      {/* ── RECURSOS EM DETALHE ───────────────── */}
+      <section className="relative z-[2] bg-white px-6 py-20 rounded-t-[40px] shadow-[0_-4px_60px_rgba(0,0,0,0.04)]">
+        <div className="max-w-lg md:max-w-4xl mx-auto w-full">
+          <div className="text-center mb-10">
+            <p data-animate className="text-rose-400 text-sm font-semibold uppercase tracking-widest mb-4">
+              Recursos
+            </p>
+            <h2 data-animate data-delay="100" className="font-serif text-[clamp(1.75rem,4vw,2.5rem)] font-bold text-gray-900 leading-tight">
+              Conheça cada recurso em detalhe
+            </h2>
+          </div>
+
+          <div data-animate data-delay="200" className="relative">
+            <div
+              className="relative overflow-hidden select-none"
+              onTouchStart={handleRecursoTouchStart}
+              onTouchEnd={handleRecursoTouchEnd}
+            >
+              <div
+                className="flex transition-transform duration-500 ease-out"
+                style={{ transform: `translateX(-${recursoIndex * 100}%)` }}
+              >
+                {RECURSOS_CARROSSEL.map((r) => (
+                  <div key={r.title} className="w-full md:w-1/3 shrink-0 px-1 md:px-3">
+                    <div className="min-h-[230px] bg-white rounded-3xl border border-gray-100 shadow-sm p-8 flex flex-col items-center justify-center text-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-rose-50 flex items-center justify-center">
+                        <r.icon className="w-6 h-6 text-rose-400" />
+                      </div>
+                      <h3 className="font-semibold text-gray-900 text-lg">{r.title}</h3>
+                      <p className="text-sm text-gray-500 leading-relaxed max-w-xs">{r.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Setas de navegação */}
+            <button
+              onClick={() => goToRecurso(recursoIndex - 1)}
+              aria-label="Recurso anterior"
+              className="absolute top-1/2 -left-4 -translate-y-1/2 w-9 h-9 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center text-gray-500 hover:text-rose-500 transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => goToRecurso(recursoIndex + 1)}
+              aria-label="Próximo recurso"
+              className="absolute top-1/2 -right-4 -translate-y-1/2 w-9 h-9 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center text-gray-500 hover:text-rose-500 transition-colors"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Dots */}
+          <div className="flex flex-wrap items-center justify-center gap-2 mt-6 max-w-[260px] md:max-w-none mx-auto">
+            {Array.from({ length: recursoTotalPaginas }).map((_, i) => (
+              <button
+                key={i}
+                onClick={() => goToRecurso(i)}
+                aria-label={`Ver página ${i + 1} de recursos`}
+                className={cn(
+                  'h-1.5 rounded-full transition-all duration-300',
+                  i === recursoIndex ? 'w-5 bg-rose-400' : 'w-1.5 bg-gray-200'
+                )}
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── DEPOIMENTOS ───────────────────────── */}
+      <section
+        id="depoimentos"
+        className="relative z-[2] bg-[#0f0f0f] min-h-screen flex flex-col items-center justify-center px-6 py-24 rounded-t-[40px]"
+      >
+        {/* Subtle glow */}
+        <div aria-hidden className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] rounded-full bg-rose-500/10 blur-3xl" />
+
+        <div className="relative max-w-5xl mx-auto w-full">
+          <div className="text-center mb-16">
+            <p data-animate className="text-rose-400 text-sm font-semibold uppercase tracking-widest mb-4">
+              Depoimentos
+            </p>
+            <h2 data-animate data-delay="100" className="font-serif text-[clamp(2rem,5vw,3.5rem)] font-bold text-white leading-tight">
+              Quem usa, não<br />
+              consegue largar
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {TESTIMONIALS.map((t, i) => (
+              <div
+                key={t.name}
+                data-animate
+                data-delay={String(i * 120)}
+                className="bg-white/[0.06] border border-white/10 rounded-2xl p-7 flex flex-col gap-5 hover:bg-white/10 transition-colors"
+              >
+                {/* Stars */}
+                <div className="flex gap-1">
+                  {Array.from({ length: t.rating }).map((_, j) => (
+                    <Star key={j} className="w-4 h-4 fill-rose-400 text-rose-400" />
+                  ))}
+                </div>
+
+                <p className="text-gray-300 text-sm leading-relaxed flex-1">
+                  &ldquo;{t.text}&rdquo;
+                </p>
+
+                <div className="border-t border-white/10 pt-5">
+                  <p className="text-white font-medium text-sm">{t.name}</p>
+                  <p className="text-gray-500 text-xs mt-0.5">{t.role}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
