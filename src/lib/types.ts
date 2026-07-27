@@ -67,6 +67,7 @@ export type Servico = {
   duracao_minutos: number
   descricao: string | null
   ativo: boolean
+  icone: string | null
   created_at: string
 }
 

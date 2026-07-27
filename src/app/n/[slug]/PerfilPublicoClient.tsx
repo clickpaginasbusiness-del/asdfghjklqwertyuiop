@@ -15,9 +15,10 @@ import {
 } from '@/lib/utils'
 import {
   Clock, CheckCircle2, Calendar, ChevronLeft, ChevronRight, X,
-  UserCircle2, MessageCircle, AtSign, MapPin, Star, Scissors,
+  UserCircle2, MessageCircle, AtSign, MapPin, Star,
   CalendarPlus, Share2, Quote, Trash2, Home, Eye, Sparkles,
 } from 'lucide-react'
+import { getServicoIcone } from '@/lib/servicoIcones'
 import type { Prestadora, Servico, GaleriaItem, Agendamento, Profissional, HorarioFuncionamento, Avaliacao } from '@/lib/types'
 import { getTema } from '@/lib/theme'
 import toast from 'react-hot-toast'
@@ -1116,7 +1117,9 @@ export default function PerfilPublicoClient({
                   {servicos.length === 0 ? (
                     <p className="text-center text-gray-400 py-8 text-sm">Nenhum serviço disponível</p>
                   ) : (
-                    servicos.map((s) => (
+                    servicos.map((s) => {
+                      const IconeServico = getServicoIcone(s.icone)
+                      return (
                       <div
                         key={s.id}
                         onClick={() => selecionarServico(s)}
@@ -1126,7 +1129,7 @@ export default function PerfilPublicoClient({
                       >
                         <div className="flex items-center gap-4">
                           <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-colors" style={{ backgroundColor: tema.hexLight }}>
-                            <Scissors className="w-5 h-5" style={{ color: tema.hex }} />
+                            <IconeServico className="w-5 h-5" style={{ color: tema.hex }} />
                           </div>
                           <div className="flex-1 min-w-0">
                             <h4 className="font-semibold text-gray-900">{s.nome}</h4>
@@ -1139,7 +1142,8 @@ export default function PerfilPublicoClient({
                           <span className="font-bold text-lg shrink-0" style={{ color: tema.hexDark }}>{formatCurrency(s.preco)}</span>
                         </div>
                       </div>
-                    ))
+                      )
+                    })
                   )}
                 </div>
               )}

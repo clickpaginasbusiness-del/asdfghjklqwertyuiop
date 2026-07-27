@@ -85,10 +85,10 @@ export const DEMO_CLIENTES: Cliente[] = [
 ]
 
 export const DEMO_SERVICOS: Servico[] = [
-  { id: 'demo-serv-manicure', prestadora_id: 'demo-prestadora', nome: 'Manicure completa', preco: 45, duracao_minutos: 60, descricao: 'Cutilagem, esmaltação e hidratação das mãos.', ativo: true, created_at: '2025-01-15T12:00:00Z' },
-  { id: 'demo-serv-pedicure', prestadora_id: 'demo-prestadora', nome: 'Pedicure completa', preco: 55, duracao_minutos: 60, descricao: 'Cutilagem, esmaltação e esfoliação dos pés.', ativo: true, created_at: '2025-01-15T12:00:00Z' },
-  { id: 'demo-serv-alongamento', prestadora_id: 'demo-prestadora', nome: 'Alongamento em gel', preco: 180, duracao_minutos: 120, descricao: 'Extensão das unhas em gel com formato e comprimento personalizados.', ativo: true, created_at: '2025-01-15T12:00:00Z' },
-  { id: 'demo-serv-esmaltacao', prestadora_id: 'demo-prestadora', nome: 'Esmaltação em gel', preco: 70, duracao_minutos: 60, descricao: 'Esmaltação em gel com maior durabilidade e brilho.', ativo: true, created_at: '2025-01-15T12:00:00Z' },
+  { id: 'demo-serv-manicure', prestadora_id: 'demo-prestadora', nome: 'Manicure completa', preco: 45, duracao_minutos: 60, descricao: 'Cutilagem, esmaltação e hidratação das mãos.', ativo: true, icone: 'Hand', created_at: '2025-01-15T12:00:00Z' },
+  { id: 'demo-serv-pedicure', prestadora_id: 'demo-prestadora', nome: 'Pedicure completa', preco: 55, duracao_minutos: 60, descricao: 'Cutilagem, esmaltação e esfoliação dos pés.', ativo: true, icone: 'Hand', created_at: '2025-01-15T12:00:00Z' },
+  { id: 'demo-serv-alongamento', prestadora_id: 'demo-prestadora', nome: 'Alongamento em gel', preco: 180, duracao_minutos: 120, descricao: 'Extensão das unhas em gel com formato e comprimento personalizados.', ativo: true, icone: 'Gem', created_at: '2025-01-15T12:00:00Z' },
+  { id: 'demo-serv-esmaltacao', prestadora_id: 'demo-prestadora', nome: 'Esmaltação em gel', preco: 70, duracao_minutos: 60, descricao: 'Esmaltação em gel com maior durabilidade e brilho.', ativo: true, icone: 'Sparkles', created_at: '2025-01-15T12:00:00Z' },
 ]
 
 const [manicure, pedicure, alongamento, esmaltacao] = DEMO_SERVICOS

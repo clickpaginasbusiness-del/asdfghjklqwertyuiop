@@ -37,6 +37,7 @@ create table if not exists servicos (
   duracao_minutos int not null,
   descricao text,
   ativo boolean default true,
+  icone text default 'Scissors',
   created_at timestamptz default now()
 );
 

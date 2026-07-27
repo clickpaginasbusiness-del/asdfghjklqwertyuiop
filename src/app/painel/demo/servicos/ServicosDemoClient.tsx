@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Modal } from '@/components/ui/modal'
 import { formatCurrency } from '@/lib/utils'
 import { Plus, Pencil, Trash2, Clock, Scissors } from 'lucide-react'
+import { SERVICO_ICONE_OPTIONS, SERVICO_ICONE_PADRAO, getServicoIcone, type ServicoIcone } from '@/lib/servicoIcones'
 import type { Servico } from '@/lib/types'
 import { demoToast } from '@/lib/demoData'
 
@@ -16,6 +17,7 @@ interface ServicoForm {
   preco: string
   duracao_minutos: string
   descricao: string
+  icone: ServicoIcone
 }
 
 export type ServicoComProfissionais = Servico & {
@@ -27,7 +29,7 @@ interface ProfissionalLite {
   nome: string
 }
 
-const emptyForm: ServicoForm = { nome: '', preco: '', duracao_minutos: '', descricao: '' }
+const emptyForm: ServicoForm = { nome: '', preco: '', duracao_minutos: '', descricao: '', icone: SERVICO_ICONE_PADRAO }
 
 export default function ServicosDemoClient({
   servicos,
@@ -61,6 +63,7 @@ export default function ServicosDemoClient({
       preco: String(s.preco),
       duracao_minutos: String(s.duracao_minutos),
       descricao: s.descricao ?? '',
+      icone: (s.icone as ServicoIcone) ?? SERVICO_ICONE_PADRAO,
     })
     setProfissionaisSelecionadas(s.servico_profissionais.map((sp) => sp.profissional_id))
     setEditId(s.id)
@@ -102,11 +105,18 @@ export default function ServicosDemoClient({
         </Card>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {servicos.map((s) => (
+          {servicos.map((s) => {
+            const IconeServico = getServicoIcone(s.icone)
+            return (
             <Card key={s.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-5">
                 <div className="flex items-start justify-between mb-3">
-                  <h3 className="font-semibold text-gray-900">{s.nome}</h3>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-9 h-9 rounded-lg bg-rose-50 flex items-center justify-center shrink-0">
+                      <IconeServico className="w-4 h-4 text-rose-500" />
+                    </div>
+                    <h3 className="font-semibold text-gray-900 truncate">{s.nome}</h3>
+                  </div>
                   <div className="flex gap-1">
                     <button onClick={() => openEdit(s)} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
                       <Pencil className="w-4 h-4" />
@@ -126,7 +136,8 @@ export default function ServicosDemoClient({
                 </div>
               </CardContent>
             </Card>
-          ))}
+            )
+          })}
         </div>
       )}
 
@@ -172,6 +183,32 @@ export default function ServicosDemoClient({
             value={form.descricao}
             onChange={(e) => setForm({ ...form, descricao: e.target.value })}
           />
+
+          <div>
+            <label className="text-sm font-medium text-gray-700">Ícone do serviço</label>
+            <div className="grid grid-cols-8 gap-2 mt-2">
+              {SERVICO_ICONE_OPTIONS.map((nomeIcone) => {
+                const IconeOpcao = getServicoIcone(nomeIcone)
+                const selecionado = form.icone === nomeIcone
+                return (
+                  <button
+                    key={nomeIcone}
+                    type="button"
+                    title={nomeIcone}
+                    aria-label={nomeIcone}
+                    onClick={() => setForm({ ...form, icone: nomeIcone })}
+                    className={`aspect-square rounded-xl border flex items-center justify-center transition-colors ${
+                      selecionado
+                        ? 'border-rose-400 bg-rose-50 text-rose-500'
+                        : 'border-gray-200 text-gray-400 hover:border-rose-200 hover:text-rose-400'
+                    }`}
+                  >
+                    <IconeOpcao className="w-5 h-5" />
+                  </button>
+                )
+              })}
+            </div>
+          </div>
 
           {profissionais.length > 0 && (
             <div>
