@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { formatCurrency, formatDateShort, buildWhatsappUrl } from '@/lib/utils'
 import { Calendar, DollarSign, Clock, MessageCircle, CheckCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { VoceBadge } from '@/components/painel/VoceBadge'
 import {
   format, isToday, startOfDay, endOfDay, parseISO, subDays, addDays,
 } from 'date-fns'
@@ -26,6 +27,7 @@ type Ag = {
   servicos: { nome: string; preco: number; duracao_minutos: number } | null
   clientes: { id: string; nome: string; telefone: string } | null
   profissionais: { nome: string } | null
+  cliente_e_prestadora: boolean
 }
 
 interface Props {
@@ -74,7 +76,10 @@ function AgendamentoItem({
         </div>
 
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-gray-900 text-sm">{a.clientes?.nome}</p>
+          <p className="font-medium text-gray-900 text-sm">
+            {a.clientes?.nome}
+            {a.cliente_e_prestadora && <VoceBadge />}
+          </p>
           <p className="text-xs text-gray-500 truncate">
             {a.servicos?.nome}
             {a.servicos?.duracao_minutos && <span className="text-gray-400"> · {a.servicos.duracao_minutos} min</span>}

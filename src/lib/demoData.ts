@@ -111,6 +111,7 @@ function montarAgendamento(
     status,
     cancelado_por: status === 'cancelado' ? 'prestadora' : null,
     arquivado: false,
+    cliente_e_prestadora: false,
     created_at: em(offset - 3, 9, 0),
     servicos: servico,
     clientes: cliente,

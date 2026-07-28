@@ -15,6 +15,7 @@ type ClienteEntry = {
   gasto: number
   ultimaVisita: string
   ultimaVisitaAtiva: string | null
+  ehPrestadora: boolean
   historico: AgItem[]
 }
 
@@ -35,11 +36,13 @@ function buildClienteEntries(agendamentos: Agendamento[]): ClienteEntry[] {
         gasto: 0,
         ultimaVisita: a.data_hora,
         ultimaVisitaAtiva: null,
+        ehPrestadora: false,
         historico: [],
       }
       map.set(id, entry)
     }
     entry.total += 1
+    if (a.cliente_e_prestadora) entry.ehPrestadora = true
     if (a.status !== 'cancelado') {
       entry.gasto += a.servicos?.preco ?? 0
       if (!entry.ultimaVisitaAtiva) entry.ultimaVisitaAtiva = a.data_hora

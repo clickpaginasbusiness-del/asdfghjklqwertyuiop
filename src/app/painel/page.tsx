@@ -21,7 +21,7 @@ export default async function PainelPage() {
   // 60 dias atrás → cobre filtros "30 dias" + resto do ano
   const { data: agendamentosAno } = await supabase
     .from('agendamentos')
-    .select('id, data_hora, status, servicos(nome, preco, duracao_minutos), clientes(id, nome, telefone), profissionais(nome)')
+    .select('id, data_hora, status, cliente_e_prestadora, servicos(nome, preco, duracao_minutos), clientes(id, nome, telefone), profissionais(nome)')
     .eq('prestadora_id', prestadora.id)
     .in('status', ['confirmado', 'concluido'])
     .gte('data_hora', subDays(hoje, 60).toISOString())

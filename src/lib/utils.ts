@@ -170,6 +170,25 @@ export function cleanTelefone(value: string): string {
   return value.replace(/\D/g, '')
 }
 
+/**
+ * Normaliza um telefone pros dígitos locais (DDD + número), removendo o DDI
+ * 55 quando presente. Precisa desse passo extra porque clientes.telefone é
+ * salvo só com dígitos locais e prestadoras.telefone é salvo em E.164
+ * (+55DDD...) — sem normalizar os dois pro mesmo formato, a comparação
+ * direta nunca bate mesmo quando é o mesmo número.
+ */
+export function telefoneLocal(value: string | null | undefined): string {
+  const digits = cleanTelefone(value ?? '')
+  return digits.length > 11 && digits.startsWith('55') ? digits.slice(2) : digits
+}
+
+/** Compara dois telefones ignorando formatação/DDI. Vazio nunca "bate" com vazio. */
+export function mesmoTelefone(a: string | null | undefined, b: string | null | undefined): boolean {
+  const na = telefoneLocal(a)
+  const nb = telefoneLocal(b)
+  return na.length > 0 && na === nb
+}
+
 export function toE164(telefoneDigits: string): string {
   const digits = telefoneDigits.replace(/\D/g, '')
   return digits.startsWith('55') && digits.length >= 12 ? `+${digits}` : `+55${digits}`

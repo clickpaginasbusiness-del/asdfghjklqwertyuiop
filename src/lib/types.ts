@@ -89,6 +89,7 @@ export type Agendamento = {
   status: 'confirmado' | 'cancelado' | 'concluido'
   cancelado_por: 'prestadora' | 'cliente' | null
   arquivado: boolean
+  cliente_e_prestadora: boolean
   created_at: string
   servicos?: Servico
   clientes?: Cliente

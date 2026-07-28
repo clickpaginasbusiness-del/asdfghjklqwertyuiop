@@ -18,7 +18,7 @@ export default async function ClientesPage() {
   // Busca todos os agendamentos com joins — sem filtro de status para ter histórico completo
   const { data: agendamentos } = await supabase
     .from('agendamentos')
-    .select('id, data_hora, status, servicos(nome, preco), clientes(id, nome, telefone)')
+    .select('id, data_hora, status, cliente_e_prestadora, servicos(nome, preco), clientes(id, nome, telefone)')
     .eq('prestadora_id', prestadora.id)
     .order('data_hora', { ascending: false })
 
@@ -35,6 +35,7 @@ export default async function ClientesPage() {
     gasto: number
     ultimaVisita: string        // qualquer agendamento (para exibição)
     ultimaVisitaAtiva: string | null  // só confirmado/concluido (para "ausente")
+    ehPrestadora: boolean       // algum agendamento desse cliente bateu com o telefone da prestadora
     historico: AgItem[]
   }
 
@@ -61,6 +62,7 @@ export default async function ClientesPage() {
         }
       }
       if (a.data_hora > existing.ultimaVisita) existing.ultimaVisita = a.data_hora
+      if (a.cliente_e_prestadora) existing.ehPrestadora = true
       existing.historico.push(agItem)
     } else {
       clienteMap.set(c.id, {
@@ -69,6 +71,7 @@ export default async function ClientesPage() {
         gasto: isAtivo ? ((a.servicos as any)?.preco ?? 0) : 0,
         ultimaVisita: a.data_hora,
         ultimaVisitaAtiva: isAtivo ? a.data_hora : null,
+        ehPrestadora: Boolean(a.cliente_e_prestadora),
         historico: [agItem],
       })
     }

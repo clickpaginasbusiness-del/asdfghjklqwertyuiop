@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyClientToken } from '@/lib/clientAuth'
-import { formatDateShort, formatDateKey, dateKeyToDate, diaAtivoPadrao } from '@/lib/utils'
+import { formatDateShort, formatDateKey, dateKeyToDate, diaAtivoPadrao, mesmoTelefone } from '@/lib/utils'
 
 type Body = {
   token?: string
@@ -32,12 +32,19 @@ export async function POST(request: NextRequest) {
 
   const supabaseAdmin = createAdminClient()
 
-  const { data: servico } = await supabaseAdmin
-    .from('servicos')
-    .select('id, duracao_minutos')
-    .eq('id', servicoId)
-    .eq('prestadora_id', prestadoraId)
-    .maybeSingle()
+  const [{ data: servico }, { data: prestadora }] = await Promise.all([
+    supabaseAdmin
+      .from('servicos')
+      .select('id, duracao_minutos')
+      .eq('id', servicoId)
+      .eq('prestadora_id', prestadoraId)
+      .maybeSingle(),
+    supabaseAdmin
+      .from('prestadoras')
+      .select('telefone')
+      .eq('id', prestadoraId)
+      .maybeSingle(),
+  ])
 
   if (!servico) {
     return NextResponse.json({ error: 'Serviço não encontrado.' }, { status: 404 })
@@ -115,6 +122,14 @@ export async function POST(request: NextRequest) {
 
   if (error || !ag) {
     return NextResponse.json({ error: 'Erro ao agendar. Tente novamente.' }, { status: 500 })
+  }
+
+  // Cliente testando o próprio sistema (mesmo telefone da prestadora) — não
+  // bloqueia o agendamento, só sinaliza pra exibir "(Você)" no painel e,
+  // futuramente, excluir esse agendamento de missões/objetivos.
+  if (mesmoTelefone(ag.clientes?.telefone, prestadora?.telefone)) {
+    await supabaseAdmin.from('agendamentos').update({ cliente_e_prestadora: true }).eq('id', ag.id)
+    ag.cliente_e_prestadora = true
   }
 
   const profNome = ag.profissionais ? ` com ${ag.profissionais.nome}` : ''

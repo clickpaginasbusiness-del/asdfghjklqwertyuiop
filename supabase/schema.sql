@@ -58,6 +58,7 @@ create table if not exists agendamentos (
   cliente_id uuid references clientes(id) on delete cascade not null,
   data_hora timestamptz not null,
   status text not null default 'confirmado' check (status in ('confirmado', 'cancelado', 'concluido')),
+  cliente_e_prestadora boolean default false,
   created_at timestamptz default now()
 );
 

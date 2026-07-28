@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { formatDateTime, formatCurrency, maskTelefone, buildWhatsappUrl } from '@/lib/utils'
 import { Users, MessageCircle, ChevronDown, Phone, Bell, Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { VoceBadge } from '@/components/painel/VoceBadge'
 
 type AgItem = {
   id: string
@@ -20,6 +21,7 @@ type ClienteEntry = {
   gasto: number
   ultimaVisita: string
   ultimaVisitaAtiva: string | null
+  ehPrestadora: boolean
   historico: AgItem[]
 }
 
@@ -57,7 +59,7 @@ function statusVariant(s: string): 'success' | 'concluido' | 'danger' {
   return 'danger'
 }
 
-function ClienteCard({ cliente, total, gasto, ultimaVisita, ultimaVisitaAtiva, historico, prestadoraNome }: ClienteEntry & { prestadoraNome: string }) {
+function ClienteCard({ cliente, total, gasto, ultimaVisita, ultimaVisitaAtiva, ehPrestadora, historico, prestadoraNome }: ClienteEntry & { prestadoraNome: string }) {
   const [expanded, setExpanded] = useState(false)
   const isFrequente = total >= 3
   const ausente = isAusente(ultimaVisitaAtiva)
@@ -90,7 +92,10 @@ function ClienteCard({ cliente, total, gasto, ultimaVisita, ultimaVisitaAtiva, h
         {/* Info principal */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <p className="font-semibold text-gray-900 text-sm">{cliente.nome}</p>
+            <p className="font-semibold text-gray-900 text-sm">
+              {cliente.nome}
+              {ehPrestadora && <VoceBadge />}
+            </p>
             {ausente ? (
               <Badge variant="warning" className="text-[10px] px-2 py-0.5">Ausente</Badge>
             ) : isFrequente ? (

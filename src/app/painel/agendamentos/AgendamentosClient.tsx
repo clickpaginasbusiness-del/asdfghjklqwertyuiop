@@ -12,6 +12,7 @@ import { formatCurrency, formatDateTime, maskTelefone, buildWhatsappUrl, formatD
 import { Calendar, Phone, Search, MessageCircle, ArrowDownAZ, ArrowUpAZ, Clock4, CheckCheck, Trash2, Star } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import { VoceBadge } from '@/components/painel/VoceBadge'
 import type { Agendamento, Profissional } from '@/lib/types'
 import { renderTemplate, MSG_CONFIRMACAO_DEFAULT, MSG_CANCELAMENTO_DEFAULT, MSG_LEMBRETE_DEFAULT } from '@/lib/whatsappTemplates'
 import toast from 'react-hot-toast'
@@ -422,7 +423,10 @@ export default function AgendamentosClient({
                     {/* Conteúdo principal */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                        <p className="font-medium text-gray-900 text-sm">{a.clientes?.nome}</p>
+                        <p className="font-medium text-gray-900 text-sm">
+                          {a.clientes?.nome}
+                          {a.cliente_e_prestadora && <VoceBadge />}
+                        </p>
                         <Badge variant={statusVariant(a.status)}>{statusLabel(a.status)}</Badge>
                       </div>
                       <p className="text-xs text-gray-500 truncate">

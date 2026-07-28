@@ -577,6 +577,7 @@ export default function PerfilPublicoClient({
           status: 'confirmado',
           cancelado_por: null,
           arquivado: false,
+          cliente_e_prestadora: false,
           created_at: new Date().toISOString(),
           servicos: servico,
           clientes: { id: 'demo-cliente', nome: clienteLogado.nome, telefone: clienteLogado.telefone, verificado_em: null, created_at: '' },
