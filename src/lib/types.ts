@@ -158,6 +158,7 @@ export type MissaoDesconto = {
   origem: string
   aplicado: boolean
   aplicado_em: string | null
+  expira_em: string | null
   created_at: string
 }
 

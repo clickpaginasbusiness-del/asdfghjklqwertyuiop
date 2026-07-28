@@ -1,20 +1,27 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Flame, Tag } from 'lucide-react'
+import { Flame, Tag, AlertTriangle } from 'lucide-react'
 import { getMissaoIcone } from '@/lib/missaoIcones'
 import { cn } from '@/lib/utils'
-import type { Missao, MissaoProgresso } from '@/lib/types'
+import type { Missao, MissaoProgresso, MissaoDesconto } from '@/lib/types'
 
 type MissaoComProgresso = MissaoProgresso & { missoes: Missao }
 
 interface Resposta {
   missoes: MissaoComProgresso[]
-  descontosPendentesPercentual: number
+  descontosPendentes: MissaoDesconto[]
 }
 
 const MES_ANO_FORMAT = new Intl.DateTimeFormat('pt-BR', {
   month: 'long',
+  year: 'numeric',
+  timeZone: 'America/Sao_Paulo',
+})
+
+const DATA_FORMAT = new Intl.DateTimeFormat('pt-BR', {
+  day: '2-digit',
+  month: '2-digit',
   year: 'numeric',
   timeZone: 'America/Sao_Paulo',
 })
@@ -88,7 +95,8 @@ export function MissoesDrawer() {
                 {dados.missoes.map((m) => {
                   const Icone = getMissaoIcone(m.missoes.icone)
                   const pct = Math.min(100, Math.round((m.progresso / Math.max(1, m.meta_adaptada)) * 100))
-                  const recompensa = m.missoes.tipo === 'indicacao_bonus'
+                  const ehBonusIndicacao = m.missoes.tipo === 'indicacao_bonus'
+                  const recompensa = ehBonusIndicacao
                     ? '🎁 1 mês grátis'
                     : `🏷️ ${m.missoes.desconto_percentual}% de desconto`
                   return (
@@ -131,7 +139,10 @@ export function MissoesDrawer() {
                             <span className="text-[11px] text-gray-400">
                               {Math.min(m.progresso, m.meta_adaptada)} / {m.meta_adaptada}
                             </span>
-                            <span className="text-[11px] font-medium text-gray-600">{recompensa}</span>
+                            <span className="text-[11px] font-medium text-gray-600">
+                              {recompensa}
+                              {ehBonusIndicacao && <span className="text-gray-400"> · Sem expiração</span>}
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -142,13 +153,31 @@ export function MissoesDrawer() {
             )}
           </div>
 
-          {dados && dados.descontosPendentesPercentual > 0 && (
-            <div className="px-4 py-3 bg-amber-50 border-t border-amber-100">
-              <p className="flex items-center gap-1.5 text-sm font-semibold text-amber-700">
-                <Tag className="w-3.5 h-3.5" />
-                Descontos aguardando: {dados.descontosPendentesPercentual}%
-              </p>
-              <p className="text-xs text-amber-600 mt-0.5">Serão aplicados na próxima fatura.</p>
+          {dados && dados.descontosPendentes.length > 0 && (
+            <div className="border-t border-amber-100">
+              <div className="px-4 py-2.5 bg-red-50 border-b border-red-100 flex items-start gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" />
+                <p className="text-[11px] text-red-600 leading-relaxed">
+                  ⚠️ Descontos de missões expiram no final do mês. Não acumulam para o mês seguinte!
+                </p>
+              </div>
+              <div className="px-4 py-3 bg-amber-50 space-y-1.5">
+                <p className="flex items-center gap-1.5 text-sm font-semibold text-amber-700">
+                  <Tag className="w-3.5 h-3.5" />
+                  Descontos aguardando
+                </p>
+                <div className="space-y-1">
+                  {dados.descontosPendentes.map((d) => (
+                    <div key={d.id} className="flex items-center justify-between text-xs">
+                      <span className="text-amber-700 truncate pr-2">{d.origem} — {d.percentual}%</span>
+                      <span className="text-amber-500 shrink-0 whitespace-nowrap">
+                        {d.expira_em ? `Expira em ${DATA_FORMAT.format(new Date(d.expira_em))}` : 'Sem expiração'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-amber-600 mt-0.5">Serão aplicados na próxima fatura.</p>
+              </div>
             </div>
           )}
         </div>

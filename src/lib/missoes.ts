@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { limitesDoMesSP, mesAnoAtualSP, formatDateKey, dateKeyToDate } from '@/lib/utils'
-import type { Missao, MissaoProgresso } from '@/lib/types'
+import type { Missao, MissaoProgresso, MissaoDesconto } from '@/lib/types'
 
 /**
  * Motor do sistema de Missões/Objetivos mensais.
@@ -480,6 +480,12 @@ async function sortearMissoesDoMes(admin: Admin, prestadoraId: string, plano: 'b
 
 /* ───────────────────────── Conclusão + desconto ───────────────────────── */
 
+/** Início do mês seguinte (UTC) — mesmo instante de `date_trunc('month', now()) + interval '1 month'` no Postgres. */
+function inicioProximoMesUTC(): Date {
+  const agora = new Date()
+  return new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth() + 1, 1, 0, 0, 0))
+}
+
 async function concluirMissao(admin: Admin, prestadoraId: string, linhaId: string, missao: Missao): Promise<void> {
   await admin.from('missoes_progresso').update({
     concluida: true,
@@ -490,14 +496,18 @@ async function concluirMissao(admin: Admin, prestadoraId: string, linhaId: strin
   // Missão de indicação: a recompensa (extensão de 30 dias) já é concedida
   // pelo fluxo de indicação existente no webhook do Stripe — aqui só marcamos
   // a missão como concluída pra fins de exibição, sem gerar desconto de novo.
+  // Não expira (não entra na fila de descontos percentuais).
   if (missao.tipo === 'indicacao_bonus') {
     return
   }
 
+  // Desconto vale só até o início do próximo mês — se não for aplicado numa
+  // fatura até lá, expira (não acumula pro mês seguinte).
   await admin.from('missoes_descontos').insert({
     prestadora_id: prestadoraId,
     percentual: missao.desconto_percentual,
     origem: missao.titulo,
+    expira_em: inicioProximoMesUTC().toISOString(),
   })
 
   await admin.from('notificacoes').insert({
@@ -549,6 +559,23 @@ async function fecharMesesAnteriores(admin: Admin, prestadoraId: string, mesAtua
   }
 }
 
+/**
+ * Job de limpeza: descontos com prazo vencido que nunca foram aplicados numa
+ * fatura são marcados como "aplicado" (consumidos/expirados) — não acumulam
+ * pro mês seguinte. Roda a cada vez que o painel busca as missões, o que na
+ * prática cobre "início de cada mês" (mesma cadência lazy do sorteio mensal,
+ * sem precisar de um cron dedicado).
+ */
+async function expirarDescontosVencidos(admin: Admin, prestadoraId: string): Promise<void> {
+  await admin
+    .from('missoes_descontos')
+    .update({ aplicado: true, aplicado_em: new Date().toISOString() })
+    .eq('prestadora_id', prestadoraId)
+    .eq('aplicado', false)
+    .not('expira_em', 'is', null)
+    .lte('expira_em', new Date().toISOString())
+}
+
 /* ───────────────────────── API pública do módulo ───────────────────────── */
 
 export interface MissaoComProgresso extends MissaoProgresso {
@@ -557,11 +584,12 @@ export interface MissaoComProgresso extends MissaoProgresso {
 
 export async function getMissoesDoMes(admin: Admin, prestadoraId: string, plano: 'basico' | 'pro'): Promise<{
   missoes: MissaoComProgresso[]
-  descontosPendentesPercentual: number
+  descontosPendentes: MissaoDesconto[]
 }> {
   const { mes, ano } = mesAnoAtualSP()
 
   await fecharMesesAnteriores(admin, prestadoraId, mes, ano)
+  await expirarDescontosVencidos(admin, prestadoraId)
   await sortearMissoesDoMes(admin, prestadoraId, plano, mes, ano)
   await recomputarProgresso(admin, prestadoraId, mes, ano, false)
 
@@ -575,15 +603,14 @@ export async function getMissoesDoMes(admin: Admin, prestadoraId: string, plano:
 
   const { data: descontos } = await admin
     .from('missoes_descontos')
-    .select('percentual')
+    .select('*')
     .eq('prestadora_id', prestadoraId)
     .eq('aplicado', false)
-
-  const descontosPendentesPercentual = (descontos ?? []).reduce((s, d) => s + d.percentual, 0)
+    .order('expira_em')
 
   return {
     missoes: (linhas ?? []) as unknown as MissaoComProgresso[],
-    descontosPendentesPercentual,
+    descontosPendentes: (descontos ?? []) as MissaoDesconto[],
   }
 }
 

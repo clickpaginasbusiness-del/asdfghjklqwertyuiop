@@ -259,11 +259,14 @@ export async function POST(request: NextRequest) {
           .maybeSingle()
         if (!prestadora) break
 
+        // Ignora descontos já vencidos (expira_em no passado) — só pega os
+        // ainda válidos (sem prazo ou com prazo no futuro).
         const { data: descontosPendentes } = await supabaseAdmin
           .from('missoes_descontos')
           .select('id, percentual')
           .eq('prestadora_id', prestadora.id)
           .eq('aplicado', false)
+          .or(`expira_em.is.null,expira_em.gt.${new Date().toISOString()}`)
 
         if (!descontosPendentes || descontosPendentes.length === 0) break
 
