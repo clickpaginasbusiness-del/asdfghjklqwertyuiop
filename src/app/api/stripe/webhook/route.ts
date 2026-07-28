@@ -1,5 +1,6 @@
 import { stripe, planByPrice } from '@/lib/stripe'
 import { aplicarDowngradeParaBasico } from '@/lib/downgrade'
+import { concluirMissaoIndicacaoBonus } from '@/lib/missoes'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { headers } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
@@ -122,6 +123,15 @@ export async function POST(request: NextRequest) {
                   })
                   .eq('id', referrer.id)
               }
+
+              // Missão "Indique uma amiga": a recompensa (30 dias grátis) já
+              // foi concedida acima, isso só marca a missão como concluída
+              // no drawer, se ela estiver ativa no mês corrente do referrer.
+              try {
+                await concluirMissaoIndicacaoBonus(supabaseAdmin, referrer.id)
+              } catch (err) {
+                console.error('[stripe webhook] erro ao concluir missão de indicação', referrer.id, err)
+              }
             }
           } catch (err) {
             console.error('[stripe webhook] erro ao processar recompensa de indicação', prestadora_id, err)
@@ -229,6 +239,49 @@ export async function POST(request: NextRequest) {
           stripe_subscription_id: null,
           trial_fim: null,
         }).eq('id', prestadora_id)
+        break
+      }
+
+      case 'invoice.created': {
+        // Aplica descontos ganhos em missões (missoes_descontos com
+        // aplicado=false) na próxima fatura. Como uma subscription do Stripe
+        // só aceita um coupon ativo por vez, soma todos os descontos
+        // pendentes num único coupon em vez de tentar empilhar vários.
+        const invoice = event.data.object as Stripe.Invoice
+        const subscriptionRef = invoice.parent?.subscription_details?.subscription
+        const subscriptionId = typeof subscriptionRef === 'string' ? subscriptionRef : subscriptionRef?.id
+        if (!subscriptionId) break
+
+        const { data: prestadora } = await supabaseAdmin
+          .from('prestadoras')
+          .select('id')
+          .eq('stripe_subscription_id', subscriptionId)
+          .maybeSingle()
+        if (!prestadora) break
+
+        const { data: descontosPendentes } = await supabaseAdmin
+          .from('missoes_descontos')
+          .select('id, percentual')
+          .eq('prestadora_id', prestadora.id)
+          .eq('aplicado', false)
+
+        if (!descontosPendentes || descontosPendentes.length === 0) break
+
+        try {
+          const percentualTotal = Math.min(
+            100,
+            descontosPendentes.reduce((soma, d) => soma + d.percentual, 0)
+          )
+          const coupon = await stripe.coupons.create({ percent_off: percentualTotal, duration: 'once' })
+          await stripe.subscriptions.update(subscriptionId, { discounts: [{ coupon: coupon.id }] })
+
+          await supabaseAdmin
+            .from('missoes_descontos')
+            .update({ aplicado: true, aplicado_em: new Date().toISOString() })
+            .in('id', descontosPendentes.map((d) => d.id))
+        } catch (err) {
+          console.error('[stripe webhook] erro ao aplicar desconto de missões', prestadora.id, err)
+        }
         break
       }
     }

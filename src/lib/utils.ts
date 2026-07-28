@@ -104,6 +104,21 @@ export function dateKeyToDate(key: string): Date {
   return new Date(Date.UTC(y, m - 1, d, 3, 0, 0))
 }
 
+/** Mês (1-12) e ano atuais, calculados em horário de São Paulo (não no fuso do runtime). */
+export function mesAnoAtualSP(): { mes: number; ano: number } {
+  const { MM, yyyy } = partesDataSP(new Date())
+  return { mes: Number(MM), ano: Number(yyyy) }
+}
+
+/** Início (inclusivo) e fim (exclusivo) de um mês, como instantes de meia-noite em São Paulo. */
+export function limitesDoMesSP(mes: number, ano: number): { inicio: Date; fim: Date } {
+  const inicio = new Date(Date.UTC(ano, mes - 1, 1, 3, 0, 0))
+  const fim = mes === 12
+    ? new Date(Date.UTC(ano + 1, 0, 1, 3, 0, 0))
+    : new Date(Date.UTC(ano, mes, 1, 3, 0, 0))
+  return { inicio, fim }
+}
+
 /**
  * Quando a prestadora nunca salvou horarios_funcionamento para um dia (sem linha
  * no banco), esse é o padrão assumido — precisa bater com o DEFAULTS mostrado em

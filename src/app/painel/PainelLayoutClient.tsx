@@ -10,6 +10,7 @@ import {
 import toast from 'react-hot-toast'
 import { createClient } from '@/lib/supabase/client'
 import { NotificacoesSino } from '@/components/painel/NotificacoesSino'
+import { MissoesDrawer } from '@/components/painel/MissoesDrawer'
 import { OnboardingTour } from '@/components/painel/OnboardingTour'
 import { WelcomeModal } from '@/components/painel/WelcomeModal'
 import { PushNotificationPrompt } from '@/components/painel/PushNotificationPrompt'
@@ -383,7 +384,10 @@ export default function PainelLayoutClient({
             <p className="hidden lg:block text-sm text-gray-500">Olá, <span className="font-medium text-gray-900">{prestadora.nome}</span> 👋</p>
           </div>
 
-          <NotificacoesSino prestadoraId={prestadora.id} />
+          <div className="flex items-center gap-1">
+            <MissoesDrawer />
+            <NotificacoesSino prestadoraId={prestadora.id} />
+          </div>
         </header>
 
         {/* Downgrade banner */}

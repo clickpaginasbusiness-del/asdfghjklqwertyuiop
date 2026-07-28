@@ -10,6 +10,7 @@ import { formatCurrency, formatDateShort, buildWhatsappUrl } from '@/lib/utils'
 import { Calendar, DollarSign, Clock, MessageCircle, CheckCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { VoceBadge } from '@/components/painel/VoceBadge'
+import { logMissaoEvento } from '@/lib/missoesClient'
 import {
   format, isToday, startOfDay, endOfDay, parseISO, subDays, addDays,
 } from 'date-fns'
@@ -97,14 +98,14 @@ function AgendamentoItem({
               </button>
               {waOpenId === a.id && (
                 <div className="absolute left-0 bottom-full mb-1 z-20 bg-white border border-gray-100 rounded-xl shadow-xl p-1.5 space-y-0.5 w-52" onClick={(e) => e.stopPropagation()}>
-                  <a href={buildWhatsappUrl(a.clientes!.telefone, renderTemplate(msgConfirmacao || MSG_CONFIRMACAO_DEFAULT, a, prestadoraNome))} target="_blank" rel="noopener noreferrer" onClick={() => setWaOpenId(null)} className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-green-50 rounded-lg transition-colors">
+                  <a href={buildWhatsappUrl(a.clientes!.telefone, renderTemplate(msgConfirmacao || MSG_CONFIRMACAO_DEFAULT, a, prestadoraNome))} target="_blank" rel="noopener noreferrer" onClick={() => { setWaOpenId(null); logMissaoEvento('confirmacao', a.clientes!.id, a.id) }} className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-green-50 rounded-lg transition-colors">
                     ✅ Enviar confirmação
                   </a>
                   <a href={buildWhatsappUrl(a.clientes!.telefone, renderTemplate(msgCancelamento || MSG_CANCELAMENTO_DEFAULT, a, prestadoraNome))} target="_blank" rel="noopener noreferrer" onClick={() => setWaOpenId(null)} className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-red-50 rounded-lg transition-colors">
                     ❌ Enviar cancelamento
                   </a>
                   {a.status === 'confirmado' && new Date(a.data_hora) >= amanha && (
-                    <a href={buildWhatsappUrl(a.clientes!.telefone, renderTemplate(msgLembrete || MSG_LEMBRETE_DEFAULT, a, prestadoraNome))} target="_blank" rel="noopener noreferrer" onClick={() => setWaOpenId(null)} className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-amber-50 rounded-lg transition-colors">
+                    <a href={buildWhatsappUrl(a.clientes!.telefone, renderTemplate(msgLembrete || MSG_LEMBRETE_DEFAULT, a, prestadoraNome))} target="_blank" rel="noopener noreferrer" onClick={() => { setWaOpenId(null); logMissaoEvento('lembrete', a.clientes!.id) }} className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-amber-50 rounded-lg transition-colors">
                       🔔 Enviar lembrete
                     </a>
                   )}

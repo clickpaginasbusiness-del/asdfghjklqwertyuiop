@@ -7,6 +7,7 @@ import { formatDateTime, formatCurrency, maskTelefone, buildWhatsappUrl } from '
 import { Users, MessageCircle, ChevronDown, Phone, Bell, Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { VoceBadge } from '@/components/painel/VoceBadge'
+import { logMissaoEvento } from '@/lib/missoesClient'
 
 type AgItem = {
   id: string
@@ -113,6 +114,7 @@ function ClienteCard({ cliente, total, gasto, ultimaVisita, ultimaVisitaAtiva, e
               href={buildWhatsappUrl(cliente.telefone, msgLembrete)}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => logMissaoEvento('lembrete', cliente.id)}
               className="flex items-center gap-1 bg-rose-50 hover:bg-rose-100 border border-rose-100 text-rose-600 rounded-full px-2.5 py-1 text-xs font-medium transition-colors"
             >
               <Bell className="w-3 h-3" />

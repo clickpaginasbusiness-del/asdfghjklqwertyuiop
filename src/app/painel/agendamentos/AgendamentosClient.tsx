@@ -13,6 +13,7 @@ import { Calendar, Phone, Search, MessageCircle, ArrowDownAZ, ArrowUpAZ, Clock4,
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { VoceBadge } from '@/components/painel/VoceBadge'
+import { logMissaoEvento } from '@/lib/missoesClient'
 import type { Agendamento, Profissional } from '@/lib/types'
 import { renderTemplate, MSG_CONFIRMACAO_DEFAULT, MSG_CANCELAMENTO_DEFAULT, MSG_LEMBRETE_DEFAULT } from '@/lib/whatsappTemplates'
 import toast from 'react-hot-toast'
@@ -462,7 +463,7 @@ export default function AgendamentosClient({
                                   href={buildWhatsappUrl(a.clientes!.telefone, renderTemplate(msgConfirmacao || MSG_CONFIRMACAO_DEFAULT, a, prestadoraNome))}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  onClick={() => setWaOpenId(null)}
+                                  onClick={() => { setWaOpenId(null); logMissaoEvento('confirmacao', a.cliente_id, a.id) }}
                                   className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-green-50 rounded-lg transition-colors"
                                 >
                                   ✅ Enviar confirmação
@@ -481,7 +482,7 @@ export default function AgendamentosClient({
                                     href={buildWhatsappUrl(a.clientes!.telefone, renderTemplate(msgLembrete || MSG_LEMBRETE_DEFAULT, a, prestadoraNome))}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    onClick={() => setWaOpenId(null)}
+                                    onClick={() => { setWaOpenId(null); logMissaoEvento('lembrete', a.cliente_id) }}
                                     className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-amber-50 rounded-lg transition-colors"
                                   >
                                     🔔 Enviar lembrete
