@@ -75,15 +75,21 @@ export function MissoesDrawer() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-12 w-96 max-w-[calc(100vw-2rem)] bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden">
-          <div className="bg-gradient-to-r from-rose-400 to-orange-400 px-4 py-4">
+        <div
+          className={cn(
+            'fixed inset-x-0 top-20 w-full max-h-[calc(100vh-6rem)] flex flex-col',
+            'sm:absolute sm:inset-x-auto sm:right-0 sm:top-12 sm:w-96 sm:max-w-[calc(100vw-2rem)] sm:max-h-none sm:block',
+            'bg-white rounded-2xl shadow-xl border border-gray-100 z-50 overflow-hidden'
+          )}
+        >
+          <div className="bg-gradient-to-r from-rose-400 to-orange-400 px-4 py-4 shrink-0">
             <h3 className="font-semibold text-white text-sm flex items-center gap-1.5">
               🔥 Objetivos do mês
             </h3>
             <p className="text-white/80 text-xs mt-0.5 capitalize">{MES_ANO_FORMAT.format(new Date())}</p>
           </div>
 
-          <div className="max-h-96 overflow-y-auto scrollbar-thin">
+          <div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin sm:flex-none sm:max-h-96">
             {carregando ? (
               <div className="py-10 text-center text-gray-400 text-sm">Carregando...</div>
             ) : !dados || dados.missoes.length === 0 ? (
@@ -154,7 +160,7 @@ export function MissoesDrawer() {
           </div>
 
           {dados && dados.descontosPendentes.length > 0 && (
-            <div className="border-t border-amber-100">
+            <div className="border-t border-amber-100 shrink-0">
               <div className="px-4 py-2.5 bg-red-50 border-b border-red-100 flex items-start gap-1.5">
                 <AlertTriangle className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" />
                 <p className="text-[11px] text-red-600 leading-relaxed">
