@@ -1,6 +1,7 @@
 import { stripe, planByPrice } from '@/lib/stripe'
 import { aplicarDowngradeParaBasico } from '@/lib/downgrade'
 import { concluirMissaoIndicacaoBonus } from '@/lib/missoes'
+import { criarComissaoSeAplicavel, cancelarComissaoPendente } from '@/lib/parceiras'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { headers } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
@@ -239,6 +240,12 @@ export async function POST(request: NextRequest) {
           stripe_subscription_id: null,
           trial_fim: null,
         }).eq('id', prestadora_id)
+
+        // Cancela a comissão de parceira ainda pendente ligada à última
+        // fatura dessa assinatura, se houver.
+        const latestInvoiceRef = sub.latest_invoice
+        const latestInvoiceId = typeof latestInvoiceRef === 'string' ? latestInvoiceRef : latestInvoiceRef?.id
+        await cancelarComissaoPendente(supabaseAdmin, latestInvoiceId)
         break
       }
 
@@ -284,6 +291,63 @@ export async function POST(request: NextRequest) {
             .in('id', descontosPendentes.map((d) => d.id))
         } catch (err) {
           console.error('[stripe webhook] erro ao aplicar desconto de missões', prestadora.id, err)
+        }
+        break
+      }
+
+      case 'invoice.paid': {
+        // Gera comissão de parceira: só acontece se quem pagou foi indicada
+        // por alguém, e quem indicou tem e_parceira=true (checado dentro de
+        // criarComissaoSeAplicavel).
+        const invoice = event.data.object as Stripe.Invoice
+        const subscriptionRef = invoice.parent?.subscription_details?.subscription
+        const subscriptionId = typeof subscriptionRef === 'string' ? subscriptionRef : subscriptionRef?.id
+        if (!subscriptionId) break
+
+        const { data: prestadoraPagante } = await supabaseAdmin
+          .from('prestadoras')
+          .select('id')
+          .eq('stripe_subscription_id', subscriptionId)
+          .maybeSingle()
+        if (!prestadoraPagante) break
+
+        try {
+          await criarComissaoSeAplicavel(supabaseAdmin, {
+            indicadaId: prestadoraPagante.id,
+            invoiceId: invoice.id!,
+            valorAssinatura: (invoice.amount_paid ?? 0) / 100,
+          })
+        } catch (err) {
+          console.error('[stripe webhook] erro ao criar comissão de parceira', invoice.id, err)
+        }
+        break
+      }
+
+      case 'invoice.voided': {
+        const invoice = event.data.object as Stripe.Invoice
+        await cancelarComissaoPendente(supabaseAdmin, invoice.id)
+        break
+      }
+
+      case 'charge.refunded': {
+        // Charge não carrega mais o invoice_id direto nessa versão da API —
+        // precisa passar pelo payment_intent e consultar o InvoicePayment
+        // que liga o pagamento à fatura.
+        const charge = event.data.object as Stripe.Charge
+        const paymentIntentRef = charge.payment_intent
+        const paymentIntentId = typeof paymentIntentRef === 'string' ? paymentIntentRef : paymentIntentRef?.id
+        if (!paymentIntentId) break
+
+        try {
+          const invoicePayments = await stripe.invoicePayments.list({
+            payment: { type: 'payment_intent', payment_intent: paymentIntentId },
+            limit: 1,
+          })
+          const invoiceRef = invoicePayments.data[0]?.invoice
+          const invoiceId = typeof invoiceRef === 'string' ? invoiceRef : invoiceRef?.id
+          await cancelarComissaoPendente(supabaseAdmin, invoiceId)
+        } catch (err) {
+          console.error('[stripe webhook] erro ao buscar invoice do charge reembolsado', charge.id, err)
         }
         break
       }

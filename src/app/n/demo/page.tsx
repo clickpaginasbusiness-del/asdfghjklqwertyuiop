@@ -35,6 +35,11 @@ const DEMO_PRESTADORA: Prestadora = {
   indicacao_recompensa_processada: false,
   indicacao_cadastro_processada: false,
   last_seen_at: null,
+  e_parceira: false,
+  parceira_desde: null,
+  parceira_comissao_percentual: 20,
+  parceira_periodo_30_inicio: null,
+  parceira_pix: null,
   created_at: new Date().toISOString(),
 }
 

@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import {
   User, Link2, Upload, Phone, AtSign, MapPin,
   CheckCircle2, XCircle, Loader2, Palette, Lock, Check, MessageCircle,
-  Gift, Shield, Copy, CalendarClock,
+  Gift, Shield, CalendarClock,
 } from 'lucide-react'
 import Image from 'next/image'
 import type { Prestadora } from '@/lib/types'
@@ -18,6 +18,7 @@ import { maskTelefone, cleanTelefone, slugify, formatDate } from '@/lib/utils'
 import { TEMAS, type CorTema } from '@/lib/theme'
 import { TEMPLATE_VARS, MSG_CONFIRMACAO_DEFAULT, MSG_CANCELAMENTO_DEFAULT, MSG_LEMBRETE_DEFAULT } from '@/lib/whatsappTemplates'
 import { AvaliacoesDestaqueSection } from './AvaliacoesDestaqueSection'
+import { CodigoIndicacaoCard } from '@/components/painel/CodigoIndicacaoCard'
 import { ADMIN_EMAIL } from '@/lib/admin'
 import toast from 'react-hot-toast'
 
@@ -199,9 +200,6 @@ export default function PerfilPainelClient({
   }
 
   const isAdmin = prestadora.email === ADMIN_EMAIL
-  const linkIndicacao = typeof window !== 'undefined'
-    ? `${window.location.origin}/painel/cadastro?ref=${prestadora.codigo_indicacao ?? ''}`
-    : `https://bellebook.com.br/painel/cadastro?ref=${prestadora.codigo_indicacao ?? ''}`
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -562,40 +560,7 @@ export default function PerfilPainelClient({
           )}
 
           {/* Link de indicação */}
-          {prestadora.codigo_indicacao ? (
-            <div className="space-y-3">
-              <div>
-                <label className="text-sm font-medium text-gray-700 block mb-1.5">Seu código</label>
-                <div className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
-                  <span className="font-mono font-bold text-gray-900 tracking-widest text-lg flex-1">
-                    {prestadora.codigo_indicacao}
-                  </span>
-                  <button
-                    onClick={() => { navigator.clipboard.writeText(prestadora.codigo_indicacao!); toast.success('Código copiado!') }}
-                    className="text-gray-400 hover:text-gray-600 transition-colors"
-                  >
-                    <Copy className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 block mb-1.5">Link de indicação</label>
-                <div className="flex items-center gap-3 bg-rose-50 rounded-xl px-4 py-3">
-                  <span className="text-sm text-rose-700 flex-1 truncate">{linkIndicacao}</span>
-                  <button
-                    onClick={() => { navigator.clipboard.writeText(linkIndicacao); toast.success('Link copiado!') }}
-                    className="text-rose-400 hover:text-rose-600 transition-colors shrink-0"
-                  >
-                    <Copy className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <p className="text-sm text-gray-400">
-              Seu código de indicação será gerado automaticamente. Recarregue a página.
-            </p>
-          )}
+          <CodigoIndicacaoCard codigoIndicacao={prestadora.codigo_indicacao} />
         </CardContent>
       </Card>
 

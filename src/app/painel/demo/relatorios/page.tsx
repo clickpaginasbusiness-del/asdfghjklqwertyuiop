@@ -21,6 +21,9 @@ export default function RelatoriosDemoPage() {
       avaliacoes={DEMO_AVALIACOES}
       horaAbertura={DEMO_PRESTADORA.hora_abertura}
       horaFechamento={DEMO_PRESTADORA.hora_fechamento}
+      eParceira={false}
+      codigoIndicacao={null}
+      resumoParceira={null}
     />
   )
 }

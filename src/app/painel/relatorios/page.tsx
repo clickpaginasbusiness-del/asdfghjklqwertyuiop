@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
+import { getResumoParceira } from '@/lib/parceiras'
 import RelatoriosClient, { type Ag, type AvaliacaoRel } from './RelatoriosClient'
 
 export default async function RelatoriosPage() {
@@ -9,13 +11,20 @@ export default async function RelatoriosPage() {
 
   const { data: prestadora } = await supabase
     .from('prestadoras')
-    .select('id, plano, hora_abertura, hora_fechamento')
+    .select('id, plano, hora_abertura, hora_fechamento, e_parceira, codigo_indicacao')
     .eq('user_id', user.id)
     .single()
 
   if (!prestadora) redirect('/painel/login')
 
   const plano = (prestadora.plano as 'basico' | 'pro' | null) ?? null
+
+  // Resumo de parceira usa o cliente admin (não o autenticado por RLS)
+  // porque liberar comissões vencidas exige um UPDATE, e a policy de
+  // parceiras_comissoes só permite SELECT da própria prestadora.
+  const resumoParceira = prestadora.e_parceira
+    ? await getResumoParceira(createAdminClient(), prestadora.id)
+    : null
 
   if (plano === 'basico') {
     return (
@@ -27,6 +36,9 @@ export default async function RelatoriosPage() {
         avaliacoes={[]}
         horaAbertura="09:00"
         horaFechamento="18:00"
+        eParceira={prestadora.e_parceira}
+        codigoIndicacao={prestadora.codigo_indicacao}
+        resumoParceira={resumoParceira}
       />
     )
   }
@@ -66,6 +78,9 @@ export default async function RelatoriosPage() {
       avaliacoes={(avaliacoes ?? []) as unknown as AvaliacaoRel[]}
       horaAbertura={prestadora.hora_abertura}
       horaFechamento={prestadora.hora_fechamento}
+      eParceira={prestadora.e_parceira}
+      codigoIndicacao={prestadora.codigo_indicacao}
+      resumoParceira={resumoParceira}
     />
   )
 }

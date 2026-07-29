@@ -32,6 +32,36 @@ export type Prestadora = {
   indicacao_recompensa_processada: boolean
   indicacao_cadastro_processada: boolean
   last_seen_at: string | null
+  e_parceira: boolean
+  parceira_desde: string | null
+  parceira_comissao_percentual: number | null
+  parceira_periodo_30_inicio: string | null
+  parceira_pix: string | null
+  created_at: string
+}
+
+export type ParceiraComissao = {
+  id: string
+  parceira_id: string
+  indicada_id: string
+  stripe_invoice_id: string
+  valor_assinatura: number
+  percentual: number
+  valor_comissao: number
+  status: 'pendente' | 'disponivel' | 'pago' | 'cancelado'
+  disponivel_em: string | null
+  created_at: string
+}
+
+export type ParceiraSaque = {
+  id: string
+  parceira_id: string
+  valor: number
+  pix_chave: string
+  status: 'solicitado' | 'pago'
+  solicitado_em: string
+  pago_em: string | null
+  whatsapp_telefone: string | null
   created_at: string
 }
 

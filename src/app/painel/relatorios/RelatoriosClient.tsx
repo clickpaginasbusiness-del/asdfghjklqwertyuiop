@@ -14,6 +14,8 @@ import {
 import {
   format, startOfDay, endOfDay, parseISO, subDays, eachDayOfInterval, getDay,
 } from 'date-fns'
+import { RelatorioParceiraClient } from '@/components/parceiras/RelatorioParceiraClient'
+import type { ResumoParceira } from '@/lib/parceiras'
 
 const ROSE = '#fb7185'
 const ROSE_LIGHT = '#fecdd3'
@@ -48,10 +50,13 @@ interface Props {
   avaliacoes: AvaliacaoRel[]
   horaAbertura: string
   horaFechamento: string
+  eParceira: boolean
+  codigoIndicacao: string | null
+  resumoParceira: ResumoParceira | null
 }
 
 type QuickSel = 'hoje' | '7d' | '30d' | null
-type Aba = 'geral' | 'avaliacoes'
+type Aba = 'geral' | 'avaliacoes' | 'parceira'
 
 const QUICK_BUTTONS: { value: Exclude<QuickSel, null>; label: string }[] = [
   { value: 'hoje', label: 'Hoje' },
@@ -70,6 +75,7 @@ function heatColor(value: number, max: number) {
 
 export default function RelatoriosClient({
   plano, agendamentos, profissionais, visitas, avaliacoes, horaAbertura, horaFechamento,
+  eParceira, codigoIndicacao, resumoParceira,
 }: Props) {
   const todayStr = format(new Date(), 'yyyy-MM-dd')
   const [aba, setAba] = useState<Aba>('geral')
@@ -336,9 +342,22 @@ export default function RelatoriosClient({
         >
           Avaliações
         </button>
+        {eParceira && (
+          <button
+            onClick={() => setAba('parceira')}
+            className={cn(
+              'px-4 py-1.5 rounded-lg text-sm font-medium transition-all',
+              aba === 'parceira' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            )}
+          >
+            Parceira
+          </button>
+        )}
       </div>
 
-      {aba === 'avaliacoes' ? (
+      {aba === 'parceira' && resumoParceira ? (
+        <RelatorioParceiraClient resumo={resumoParceira} codigoIndicacao={codigoIndicacao} />
+      ) : aba === 'avaliacoes' ? (
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Card>

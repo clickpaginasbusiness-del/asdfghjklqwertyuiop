@@ -6,6 +6,7 @@ import { ArrowLeft, Gift, TrendingUp, Users, Zap, DollarSign, Loader2, X, Star }
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
+import { AdminNav } from '@/components/admin/AdminNav'
 import { cn } from '@/lib/utils'
 import toast from 'react-hot-toast'
 
@@ -143,7 +144,7 @@ export default function AdminClient({
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white border-b border-gray-100 px-6 lg:px-8 py-4 flex items-center justify-between sticky top-0 z-10">
+      <header className="bg-white border-b border-gray-100 px-6 lg:px-8 py-4 flex items-center justify-between sticky top-0 z-10 gap-4 flex-wrap">
         <div className="flex items-center gap-3">
           <span className="font-serif text-xl font-bold text-rose-400">BelleBook</span>
           <span className="text-gray-300">|</span>
@@ -153,6 +154,7 @@ export default function AdminClient({
             {onlineCount} online agora
           </span>
         </div>
+        <AdminNav />
         <Link
           href="/painel"
           className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-800 transition-colors"
