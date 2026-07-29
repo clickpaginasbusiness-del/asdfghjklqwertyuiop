@@ -8,7 +8,7 @@ import { Modal } from '@/components/ui/modal'
 import { Badge } from '@/components/ui/badge'
 import { CodigoIndicacaoCard } from '@/components/painel/CodigoIndicacaoCard'
 import { formatCurrency, formatDate, cn } from '@/lib/utils'
-import { Wallet, Clock, TrendingUp, Sparkles, Users, UserCheck, UserX, Percent, Banknote } from 'lucide-react'
+import { Wallet, Clock, TrendingUp, Sparkles, Users, UserCheck, UserX, Percent, Banknote, Crown } from 'lucide-react'
 import type { ResumoParceira } from '@/lib/parceiras'
 import toast from 'react-hot-toast'
 
@@ -31,6 +31,10 @@ interface Props {
 }
 
 export function RelatorioParceiraClient({ resumo, codigoIndicacao, somenteLeitura = false }: Props) {
+  // Tema exclusivo (rosa) só na visão da própria parceira — a visão somente-leitura do admin mantém o padrão do painel
+  const exclusivo = !somenteLeitura
+  const cardBorda = exclusivo ? 'border-rose-200' : undefined
+
   const [modalAberto, setModalAberto] = useState(false)
   const [valor, setValor] = useState('')
   const [pixChave, setPixChave] = useState(resumo.pixSalvo ?? '')
@@ -66,28 +70,39 @@ export function RelatorioParceiraClient({ resumo, codigoIndicacao, somenteLeitur
   }
 
   return (
-    <div className="space-y-6">
+    <div className={cn('space-y-6', exclusivo && 'rounded-3xl p-4 sm:p-8 bg-gradient-to-br from-[#f9a8c9] to-[#f472b6] shadow-lg')}>
+      {exclusivo && (
+        <div className="text-center sm:text-left">
+          <div className="inline-flex items-center gap-1.5 bg-white/25 backdrop-blur-sm text-white text-xs font-bold uppercase tracking-widest px-3.5 py-1.5 rounded-full mb-3">
+            <Crown className="w-3.5 h-3.5" />
+            Área exclusiva de parceira
+          </div>
+          <h2 className="text-white text-2xl sm:text-3xl font-bold">Sua área exclusiva</h2>
+          <p className="text-white/85 text-sm mt-1">Acompanhe suas comissões, indicadas e conquistas em um só lugar</p>
+        </div>
+      )}
+
       {/* Resumo financeiro */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card>
+        <Card className={cardBorda}>
           <CardContent className="p-5">
-            <div className="flex items-center gap-2 text-emerald-600 mb-2">
+            <div className={cn('flex items-center gap-2 mb-2', exclusivo ? 'text-[#f472b6]' : 'text-emerald-600')}>
               <Wallet className="w-4 h-4" />
               <span className="text-xs font-semibold uppercase tracking-wide">Disponível para saque</span>
             </div>
-            <p className="text-2xl font-bold text-emerald-600">{formatCurrency(resumo.disponivelParaSaque)}</p>
+            <p className={cn('text-2xl font-bold', exclusivo ? 'text-[#f472b6]' : 'text-emerald-600')}>{formatCurrency(resumo.disponivelParaSaque)}</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className={cardBorda}>
           <CardContent className="p-5">
-            <div className="flex items-center gap-2 text-amber-600 mb-2">
+            <div className={cn('flex items-center gap-2 mb-2', exclusivo ? 'text-[#f472b6]' : 'text-amber-600')}>
               <Clock className="w-4 h-4" />
               <span className="text-xs font-semibold uppercase tracking-wide">Pendente — aguardando 30 dias</span>
             </div>
-            <p className="text-2xl font-bold text-amber-600">{formatCurrency(resumo.pendente)}</p>
+            <p className={cn('text-2xl font-bold', exclusivo ? 'text-[#f472b6]' : 'text-amber-600')}>{formatCurrency(resumo.pendente)}</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card className={cardBorda}>
           <CardContent className="p-5">
             <div className="flex items-center gap-2 text-gray-500 mb-2">
               <TrendingUp className="w-4 h-4" />
@@ -99,7 +114,7 @@ export function RelatorioParceiraClient({ resumo, codigoIndicacao, somenteLeitur
       </div>
 
       {/* Comissão atual */}
-      <Card>
+      <Card className={cardBorda}>
         <CardContent className="p-5">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3">
@@ -110,12 +125,27 @@ export function RelatorioParceiraClient({ resumo, codigoIndicacao, somenteLeitur
                 <Percent className={cn('w-5 h-5', resumo.comissaoAtualPercentual === 30 ? 'text-orange-500' : 'text-rose-400')} />
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <p className="font-semibold text-gray-900">Comissão atual: {resumo.comissaoAtualPercentual}%</p>
-                  {resumo.comissaoAtualPercentual === 30 && (
-                    <Badge className="bg-gradient-to-r from-amber-400 to-orange-400 text-white flex items-center gap-1">
-                      <Sparkles className="w-3 h-3" /> Premium
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-semibold text-gray-900">Comissão atual</p>
+                  {exclusivo ? (
+                    <Badge className={cn(
+                      'flex items-center gap-1',
+                      resumo.comissaoAtualPercentual === 30
+                        ? 'bg-gradient-to-r from-amber-400 to-yellow-500 text-white'
+                        : 'bg-gradient-to-r from-amber-100 to-yellow-200 text-amber-800'
+                    )}>
+                      {resumo.comissaoAtualPercentual === 30 && <Sparkles className="w-3 h-3" />}
+                      {resumo.comissaoAtualPercentual}%{resumo.comissaoAtualPercentual === 30 ? ' Premium' : ''}
                     </Badge>
+                  ) : (
+                    <>
+                      <span className="text-gray-900 font-semibold">{resumo.comissaoAtualPercentual}%</span>
+                      {resumo.comissaoAtualPercentual === 30 && (
+                        <Badge className="bg-gradient-to-r from-amber-400 to-orange-400 text-white flex items-center gap-1">
+                          <Sparkles className="w-3 h-3" /> Premium
+                        </Badge>
+                      )}
+                    </>
                   )}
                 </div>
                 {resumo.comissaoAtualPercentual === 30 && resumo.periodoPremiumAte && (
@@ -140,7 +170,7 @@ export function RelatorioParceiraClient({ resumo, codigoIndicacao, somenteLeitur
       </Card>
 
       {/* Estatísticas */}
-      <Card>
+      <Card className={cardBorda}>
         <CardHeader>
           <CardTitle>Estatísticas de indicação</CardTitle>
         </CardHeader>
@@ -169,7 +199,7 @@ export function RelatorioParceiraClient({ resumo, codigoIndicacao, somenteLeitur
       </Card>
 
       {/* Histórico de comissões */}
-      <Card>
+      <Card className={cardBorda}>
         <CardHeader>
           <CardTitle>Histórico de comissões</CardTitle>
           <p className="text-xs text-gray-400">Por privacidade, não mostramos o nome das indicadas aqui.</p>
@@ -200,12 +230,12 @@ export function RelatorioParceiraClient({ resumo, codigoIndicacao, somenteLeitur
       </Card>
 
       {/* Saques */}
-      <Card>
+      <Card className={cardBorda}>
         <CardHeader>
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <CardTitle>Saques</CardTitle>
             {!somenteLeitura && (
-              <Button size="sm" onClick={() => setModalAberto(true)}>
+              <Button size="sm" variant={exclusivo ? 'outline' : 'primary'} onClick={() => setModalAberto(true)}>
                 <Banknote className="w-4 h-4" />
                 Solicitar saque
               </Button>
@@ -240,7 +270,7 @@ export function RelatorioParceiraClient({ resumo, codigoIndicacao, somenteLeitur
       </Card>
 
       {/* Código de indicação */}
-      <Card>
+      <Card className={cardBorda}>
         <CardHeader>
           <CardTitle>Código de indicação</CardTitle>
         </CardHeader>
