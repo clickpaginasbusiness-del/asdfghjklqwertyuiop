@@ -32,13 +32,15 @@ export default async function PainelLayout({ children }: { children: React.React
 
   // Sem assinatura ativa → página de planos
   // Trial gratuito expirado (sem Stripe ativo) → página de planos
+  // Parceira nunca é redirecionada aqui — ela tem Pro liberado pelo cargo,
+  // sem Stripe por trás, independente do que assinatura_ativa/plano digam.
   const isExpiredTrial = Boolean(
     prestadora.e_trial &&
     !prestadora.stripe_subscription_id &&
     prestadora.trial_fim &&
     new Date(prestadora.trial_fim) < new Date()
   )
-  if (!prestadora.assinatura_ativa || isExpiredTrial) redirect('/planos')
+  if (!prestadora.e_parceira && (!prestadora.assinatura_ativa || isExpiredTrial)) redirect('/planos')
 
   // Trial gratuito de 7 dias do Pro expirou → volta pro Básico. Verificado no
   // servidor (não só no cliente) porque esse campo controla acesso a

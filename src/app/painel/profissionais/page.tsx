@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { planoEfetivo } from '@/lib/plano'
 import ProfissionaisClient from './ProfissionaisClient'
 
 export default async function ProfissionaisPage() {
@@ -9,7 +10,7 @@ export default async function ProfissionaisPage() {
 
   const { data: prestadora } = await supabase
     .from('prestadoras')
-    .select('id, plano')
+    .select('id, plano, e_parceira')
     .eq('user_id', user.id)
     .single()
 
@@ -25,7 +26,7 @@ export default async function ProfissionaisPage() {
     <ProfissionaisClient
       profissionais={profissionais ?? []}
       prestadoraId={prestadora.id}
-      plano={(prestadora.plano as 'basico' | 'pro' | null) ?? null}
+      plano={planoEfetivo({ plano: (prestadora.plano as 'basico' | 'pro' | null) ?? null, e_parceira: prestadora.e_parceira })}
     />
   )
 }

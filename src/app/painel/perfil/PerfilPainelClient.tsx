@@ -61,7 +61,7 @@ export default function PerfilPainelClient({
 
   const [corTema, setCorTema] = useState<CorTema>((initial.cor_tema as CorTema) || 'rosa')
   const [savingTema, setSavingTema] = useState(false)
-  const ehPro = prestadora.plano === 'pro'
+  const ehPro = prestadora.plano === 'pro' || prestadora.e_parceira
 
   const [msgConfirmacao, setMsgConfirmacao] = useState(initial.mensagem_confirmacao ?? MSG_CONFIRMACAO_DEFAULT)
   const [msgCancelamento, setMsgCancelamento] = useState(initial.mensagem_cancelamento ?? MSG_CANCELAMENTO_DEFAULT)

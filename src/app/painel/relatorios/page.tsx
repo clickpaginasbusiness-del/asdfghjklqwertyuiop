@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { getResumoParceira } from '@/lib/parceiras'
+import { planoEfetivo } from '@/lib/plano'
 import RelatoriosClient, { type Ag, type AvaliacaoRel } from './RelatoriosClient'
 
 export default async function RelatoriosPage() {
@@ -17,7 +18,7 @@ export default async function RelatoriosPage() {
 
   if (!prestadora) redirect('/painel/login')
 
-  const plano = (prestadora.plano as 'basico' | 'pro' | null) ?? null
+  const plano = planoEfetivo({ plano: (prestadora.plano as 'basico' | 'pro' | null) ?? null, e_parceira: prestadora.e_parceira })
 
   // Resumo de parceira usa o cliente admin (não o autenticado por RLS)
   // porque liberar comissões vencidas exige um UPDATE, e a policy de

@@ -220,9 +220,17 @@ export async function POST(request: NextRequest) {
 
         const { data: prestadora } = await supabaseAdmin
           .from('prestadoras')
-          .select('stripe_subscription_id')
+          .select('stripe_subscription_id, e_parceira')
           .eq('id', prestadora_id)
           .single()
+
+        // Parceira: o cargo cancela a assinatura Stripe de propósito (ela tem
+        // Pro grátis, sem cobrança) e já zera stripe_subscription_id na hora —
+        // esse evento chega depois, de forma assíncrona, então sem essa
+        // checagem ele encontraria stripe_subscription_id=null (o guard de
+        // "assinatura não é mais a atual" logo abaixo não detecta isso) e
+        // apagaria assinatura_ativa/plano que acabaram de ser setados.
+        if (prestadora?.e_parceira) break
 
         // Só limpa o plano se a assinatura excluída for a que está vinculada hoje.
         // Caso contrário é uma assinatura antiga/substituída sendo cancelada

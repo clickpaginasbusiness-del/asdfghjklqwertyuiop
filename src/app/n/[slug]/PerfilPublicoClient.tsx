@@ -697,12 +697,12 @@ export default function PerfilPublicoClient({
   // (ex.: downgrade após ter marcado destaques), ignora marcações antigas.
   // Sem nenhuma marcada, a seção de avaliações simplesmente não aparece —
   // sem fallback para "mais recentes".
-  const avaliacoesDestaque = prestadora.plano === 'pro' ? avaliacoes.filter((a) => a.destaque) : []
+  const avaliacoesDestaque = (prestadora.plano === 'pro' || prestadora.e_parceira) ? avaliacoes.filter((a) => a.destaque) : []
   const avaliacoesExibidas = avaliacoesDestaque.slice(0, 3)
 
   // Galeria é recurso exclusivo do Plano Pro — as fotos continuam salvas no
   // banco num downgrade, só ficam ocultas aqui na página pública.
-  const galeriaVisivel = prestadora.plano === 'pro' ? galeria : []
+  const galeriaVisivel = (prestadora.plano === 'pro' || prestadora.e_parceira) ? galeria : []
 
   async function compartilharAgendamento() {
     if (!agendamentoFeito) return
