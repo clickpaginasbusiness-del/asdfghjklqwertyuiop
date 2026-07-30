@@ -3,9 +3,10 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Modal } from '@/components/ui/modal'
 import { formatCurrency, cn } from '@/lib/utils'
 import {
-  Lock, DollarSign, Percent, UserPlus, TrendingUp, Eye, Star, MessageSquareQuote,
+  Lock, DollarSign, Percent, UserPlus, TrendingUp, Eye, Star, MessageSquareQuote, Wallet,
 } from 'lucide-react'
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
@@ -15,6 +16,7 @@ import {
   format, startOfDay, endOfDay, parseISO, subDays, eachDayOfInterval, getDay,
 } from 'date-fns'
 import { RelatorioParceiraClient } from '@/components/parceiras/RelatorioParceiraClient'
+import { FinanceiroTabClient } from '@/components/relatorios/FinanceiroTabClient'
 import type { ResumoParceira } from '@/lib/parceiras'
 
 const ROSE = '#fb7185'
@@ -42,12 +44,23 @@ export type AvaliacaoRel = {
   agendamentos: { clientes: { nome: string } | null; servicos: { nome: string } | null } | null
 }
 
+export type LancamentoFinanceiro = {
+  id: string
+  descricao: string
+  valor: number
+  categoria: 'Aluguel' | 'Salario' | 'Equipamento' | 'Material' | 'Outro'
+  data: string
+  created_at: string
+}
+
 interface Props {
   plano: 'basico' | 'pro'
+  prestadoraId: string
   agendamentos: Ag[]
   profissionais: ProfissionalLite[]
   visitas: VisitaLite[]
   avaliacoes: AvaliacaoRel[]
+  lancamentos: LancamentoFinanceiro[]
   horaAbertura: string
   horaFechamento: string
   eParceira: boolean
@@ -56,7 +69,7 @@ interface Props {
 }
 
 type QuickSel = 'hoje' | '7d' | '30d' | null
-type Aba = 'geral' | 'avaliacoes' | 'parceira'
+type Aba = 'geral' | 'financeiro' | 'avaliacoes' | 'parceira'
 
 const QUICK_BUTTONS: { value: Exclude<QuickSel, null>; label: string }[] = [
   { value: 'hoje', label: 'Hoje' },
@@ -74,7 +87,7 @@ function heatColor(value: number, max: number) {
 }
 
 export default function RelatoriosClient({
-  plano, agendamentos, profissionais, visitas, avaliacoes, horaAbertura, horaFechamento,
+  plano, prestadoraId, agendamentos, profissionais, visitas, avaliacoes, lancamentos, horaAbertura, horaFechamento,
   eParceira, codigoIndicacao, resumoParceira,
 }: Props) {
   const todayStr = format(new Date(), 'yyyy-MM-dd')
@@ -121,6 +134,16 @@ export default function RelatoriosClient({
 
   const receitaTotal = ativosNoPeriodo.reduce((acc, a) => acc + (a.servicos?.preco ?? 0), 0)
   const ticketMedio = ativosNoPeriodo.length > 0 ? receitaTotal / ativosNoPeriodo.length : 0
+
+  // Faturamento total do card de destaque — só concluídos (receita já
+  // realizada), diferente de receitaTotal acima que também soma confirmados
+  // (agendamentos futuros ainda não atendidos).
+  const faturamentoTotal = useMemo(
+    () => noPeriodo.filter((a) => a.status === 'concluido').reduce((acc, a) => acc + (a.servicos?.preco ?? 0), 0),
+    [noPeriodo]
+  )
+
+  const [servicosModalOpen, setServicosModalOpen] = useState(false)
 
   /* ── Serviço mais vendido ── */
   const rankingServicos = useMemo(() => {
@@ -334,6 +357,15 @@ export default function RelatoriosClient({
           Visão geral
         </button>
         <button
+          onClick={() => setAba('financeiro')}
+          className={cn(
+            'px-4 py-1.5 rounded-lg text-sm font-medium transition-all',
+            aba === 'financeiro' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          )}
+        >
+          Financeiro
+        </button>
+        <button
           onClick={() => setAba('avaliacoes')}
           className={cn(
             'px-4 py-1.5 rounded-lg text-sm font-medium transition-all',
@@ -357,6 +389,16 @@ export default function RelatoriosClient({
 
       {aba === 'parceira' && resumoParceira ? (
         <RelatorioParceiraClient resumo={resumoParceira} codigoIndicacao={codigoIndicacao} />
+      ) : aba === 'financeiro' ? (
+        <FinanceiroTabClient
+          prestadoraId={prestadoraId}
+          agendamentos={agendamentos}
+          lancamentos={lancamentos}
+          profissionais={profissionais}
+          dataInicio={dataInicio}
+          dataFim={dataFim}
+          periodoLabel={periodoLabel}
+        />
       ) : aba === 'avaliacoes' ? (
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -449,7 +491,17 @@ export default function RelatoriosClient({
       ) : (
       <>
       {/* Cards de resumo */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <Card className="border-rose-100">
+          <CardContent className="p-6">
+            <div className="bg-rose-100 p-2.5 rounded-xl w-fit mb-4">
+              <Wallet className="w-5 h-5 text-rose-500" />
+            </div>
+            <p className="text-3xl font-bold text-rose-600">{formatCurrency(faturamentoTotal)}</p>
+            <p className="text-sm text-gray-500 mt-1">Faturamento total — {periodoLabel.toLowerCase()}</p>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardContent className="p-6">
             <div className="bg-emerald-50 p-2.5 rounded-xl w-fit mb-4">
@@ -495,7 +547,17 @@ export default function RelatoriosClient({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Serviço mais vendido</CardTitle>
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle>Serviço mais vendido</CardTitle>
+              {rankingServicos.length > 6 && (
+                <button
+                  onClick={() => setServicosModalOpen(true)}
+                  className="text-xs font-medium text-rose-500 hover:text-rose-600 transition-colors shrink-0"
+                >
+                  Ver todos →
+                </button>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             {rankingServicos.length === 0 ? (
@@ -654,6 +716,31 @@ export default function RelatoriosClient({
           </CardContent>
         </Card>
       </div>
+
+      {/* Todos os serviços */}
+      <Modal open={servicosModalOpen} onClose={() => setServicosModalOpen(false)} title="Todos os serviços">
+        <div className="p-6">
+          <div className="-mx-6 px-6 divide-y divide-gray-50 max-h-[60vh] overflow-y-auto">
+            {rankingServicos.map((s, i) => {
+              const pct = receitaTotal > 0 ? Math.min(100, (s.receita / receitaTotal) * 100) : 0
+              return (
+                <div key={s.nome} className="py-3 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      <span className="text-gray-400 mr-1.5">{i + 1}.</span>{s.nome}
+                    </p>
+                    <p className="text-xs text-gray-400">{s.qtd} agendamento{s.qtd !== 1 ? 's' : ''}</p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-semibold text-gray-900">{formatCurrency(s.receita)}</p>
+                    <p className="text-xs text-gray-400">{pct.toFixed(1)}% do faturamento</p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </Modal>
       </>
       )}
     </div>

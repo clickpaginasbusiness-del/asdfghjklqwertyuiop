@@ -15,10 +15,12 @@ export default function RelatoriosDemoPage() {
   return (
     <RelatoriosClient
       plano="pro"
+      prestadoraId={DEMO_PRESTADORA.id}
       agendamentos={agendamentos}
       profissionais={DEMO_PROFISSIONAIS.map((p) => ({ id: p.id, nome: p.nome }))}
       visitas={DEMO_VISITAS_PAGINA}
       avaliacoes={DEMO_AVALIACOES}
+      lancamentos={[]}
       horaAbertura={DEMO_PRESTADORA.hora_abertura}
       horaFechamento={DEMO_PRESTADORA.hora_fechamento}
       eParceira={false}

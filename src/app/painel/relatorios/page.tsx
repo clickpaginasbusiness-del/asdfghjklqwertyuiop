@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { getResumoParceira } from '@/lib/parceiras'
 import { planoEfetivo } from '@/lib/plano'
-import RelatoriosClient, { type Ag, type AvaliacaoRel } from './RelatoriosClient'
+import RelatoriosClient, { type Ag, type AvaliacaoRel, type LancamentoFinanceiro } from './RelatoriosClient'
 
 export default async function RelatoriosPage() {
   const supabase = await createClient()
@@ -31,10 +31,12 @@ export default async function RelatoriosPage() {
     return (
       <RelatoriosClient
         plano="basico"
+        prestadoraId={prestadora.id}
         agendamentos={[]}
         profissionais={[]}
         visitas={[]}
         avaliacoes={[]}
+        lancamentos={[]}
         horaAbertura="09:00"
         horaFechamento="18:00"
         eParceira={prestadora.e_parceira}
@@ -49,6 +51,7 @@ export default async function RelatoriosPage() {
     { data: profissionais },
     { data: visitas },
     { data: avaliacoes },
+    { data: lancamentos },
   ] = await Promise.all([
     supabase
       .from('agendamentos')
@@ -68,15 +71,22 @@ export default async function RelatoriosPage() {
       .select('id, nota, comentario, created_at, agendamentos(clientes(nome), servicos(nome))')
       .eq('prestadora_id', prestadora.id)
       .order('created_at', { ascending: false }),
+    supabase
+      .from('lancamentos_financeiros')
+      .select('id, descricao, valor, categoria, data, created_at')
+      .eq('prestadora_id', prestadora.id)
+      .order('data', { ascending: false }),
   ])
 
   return (
     <RelatoriosClient
       plano="pro"
+      prestadoraId={prestadora.id}
       agendamentos={(agendamentos ?? []) as unknown as Ag[]}
       profissionais={profissionais ?? []}
       visitas={visitas ?? []}
       avaliacoes={(avaliacoes ?? []) as unknown as AvaliacaoRel[]}
+      lancamentos={(lancamentos ?? []) as unknown as LancamentoFinanceiro[]}
       horaAbertura={prestadora.hora_abertura}
       horaFechamento={prestadora.hora_fechamento}
       eParceira={prestadora.e_parceira}
