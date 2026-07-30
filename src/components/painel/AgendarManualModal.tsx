@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase/client'
 import {
   cn, formatCurrency, maskTelefone, generateTimeSlots,
-  formatDateKey, formatTime, dateKeyToDate, diaAtivoPadrao,
+  formatDateKey, formatTime, dateKeyToDate,
+  computeHorasDoDia, diaIndisponivelParaAgendar,
 } from '@/lib/utils'
 import {
   Search, Plus, ChevronLeft, User, Phone, Scissors, UserCircle2, Calendar as CalendarIcon, Clock,
@@ -35,6 +36,9 @@ interface ServicoOption {
 interface ProfissionalOption {
   id: string
   nome: string
+  hora_abertura: string | null
+  hora_fechamento: string | null
+  dias_semana: number[] | null
 }
 
 interface Props {
@@ -79,7 +83,7 @@ export function AgendarManualModal({ onClose, prestadoraId, onCriado }: Props) {
     Promise.all([
       supabase.from('agendamentos').select('clientes(id, nome, telefone, cliente_manual)').eq('prestadora_id', prestadoraId),
       supabase.from('servicos').select('id, nome, preco, duracao_minutos, servico_profissionais(profissional_id)').eq('prestadora_id', prestadoraId).eq('ativo', true).order('nome'),
-      supabase.from('profissionais').select('id, nome').eq('prestadora_id', prestadoraId).eq('ativa', true).order('nome'),
+      supabase.from('profissionais').select('id, nome, hora_abertura, hora_fechamento, dias_semana').eq('prestadora_id', prestadoraId).eq('ativa', true).order('nome'),
       supabase.from('horarios_funcionamento').select('*').eq('prestadora_id', prestadoraId),
       supabase.from('dias_bloqueados').select('data').eq('prestadora_id', prestadoraId),
       supabase.from('prestadoras').select('hora_abertura, hora_fechamento').eq('id', prestadoraId).single(),
@@ -115,17 +119,18 @@ export function AgendarManualModal({ onClose, prestadoraId, onCriado }: Props) {
 
   const horaMinima = formatDateKey(new Date())
 
-  function horasDoDia(dataChave: string) {
+  // Mesma lógica de disponibilidade da página pública (/n/[slug]), agora
+  // compartilhada via @/lib/utils — já considera horário próprio da
+  // profissional selecionada (quando ela tem um) e os dias que ela atende.
+  function diaInfo(dataChave: string) {
     const diaSemana = dateKeyToDate(dataChave).getUTCDay()
-    const horario = horariosFuncionamento.find((h) => h.dia_semana === diaSemana)
-    return {
-      ativo: horario ? horario.ativo : diaAtivoPadrao(diaSemana),
-      bloqueado: diasBloqueados.includes(dataChave),
-      abertura: horario?.hora_abertura ?? horaAberturaPadrao,
-      fechamento: horario?.hora_fechamento ?? horaFechamentoPadrao,
-      turno2Inicio: horario?.turno2_inicio ?? null,
-      turno2Fim: horario?.turno2_fim ?? null,
-    }
+    const indisponivel = diaIndisponivelParaAgendar(
+      diaSemana, dataChave, diasBloqueados, horariosFuncionamento, profissionalSelecionado
+    )
+    const horas = computeHorasDoDia(
+      diaSemana, horariosFuncionamento, profissionalSelecionado, horaAberturaPadrao, horaFechamentoPadrao
+    )
+    return { indisponivel, ...horas }
   }
 
   async function selecionarCliente(c: ClienteOption) {
@@ -163,18 +168,33 @@ export function AgendarManualModal({ onClose, prestadoraId, onCriado }: Props) {
 
   function selecionarServico(s: ServicoOption) {
     setServicoSelecionado(s)
-    setProfissionalSelecionado(null)
     const idsRestritos = s.servico_profissionais.map((sp) => sp.profissional_id)
     const disponiveis = idsRestritos.length === 0 ? profissionais : profissionais.filter((p) => idsRestritos.includes(p.id))
-    setStep(disponiveis.length > 1 ? 'profissional' : 'data')
+    if (disponiveis.length === 0) {
+      // Nenhuma profissional disponível pra esse serviço — não tem o que
+      // escolher, segue sem profissional definida.
+      setProfissionalSelecionado(null)
+      setStep('data')
+      return
+    }
+    // A etapa sempre aparece (nunca pula), mas pré-seleciona quando só há uma
+    // opção real — só pra facilitar o clique, não pra pular a confirmação.
+    setProfissionalSelecionado(disponiveis.length === 1 ? disponiveis[0] : null)
+    setStep('profissional')
   }
 
   function selecionarProfissional(p: ProfissionalOption | null) {
     setProfissionalSelecionado(p)
+    setDataSelecionada('')
+    setHorarioSelecionado(null)
     setStep('data')
   }
 
   async function selecionarData(dataChave: string) {
+    if (diaInfo(dataChave).indisponivel) {
+      toast.error('Esse dia não está disponível pra agendar.')
+      return
+    }
     setDataSelecionada(dataChave)
     setHorarioSelecionado(null)
     setCarregandoHorarios(true)
@@ -194,7 +214,7 @@ export function AgendarManualModal({ onClose, prestadoraId, onCriado }: Props) {
     }
   }
 
-  const infoDia = dataSelecionada ? horasDoDia(dataSelecionada) : null
+  const infoDia = dataSelecionada ? diaInfo(dataSelecionada) : null
 
   // Cálculo simples e barato (não precisa de useMemo — e useMemo aqui violaria
   // a regra de pureza, já que "agora"/"hoje" mudam sem nenhuma dependência
@@ -392,19 +412,27 @@ export function AgendarManualModal({ onClose, prestadoraId, onCriado }: Props) {
                 <h3 className="font-medium text-gray-900">Escolha a profissional</h3>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                {profissionaisDoServico.map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => selecionarProfissional(p)}
-                    className="flex flex-col items-center gap-2 p-4 rounded-xl border border-gray-100 hover:border-rose-200 hover:bg-rose-50/50 transition-colors"
-                  >
-                    <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-500 font-bold flex items-center justify-center">
-                      {p.nome.charAt(0).toUpperCase()}
-                    </div>
-                    <p className="text-sm font-medium text-gray-900 text-center">{p.nome}</p>
-                  </button>
-                ))}
+                {profissionaisDoServico.map((p) => {
+                  const selecionada = profissionalSelecionado?.id === p.id
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => selecionarProfissional(p)}
+                      className={cn(
+                        'flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors',
+                        selecionada
+                          ? 'border-rose-300 bg-rose-50 ring-2 ring-rose-200'
+                          : 'border-gray-100 hover:border-rose-200 hover:bg-rose-50/50'
+                      )}
+                    >
+                      <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-500 font-bold flex items-center justify-center">
+                        {p.nome.charAt(0).toUpperCase()}
+                      </div>
+                      <p className="text-sm font-medium text-gray-900 text-center">{p.nome}</p>
+                    </button>
+                  )
+                })}
               </div>
             </div>
           )}
@@ -415,7 +443,7 @@ export function AgendarManualModal({ onClose, prestadoraId, onCriado }: Props) {
               <div className="flex items-center gap-2 mb-1">
                 <button
                   type="button"
-                  onClick={() => setStep(profissionaisDoServico.length > 1 ? 'profissional' : 'servico')}
+                  onClick={() => setStep(profissionaisDoServico.length > 0 ? 'profissional' : 'servico')}
                   className="text-gray-400 hover:text-gray-600"
                 >
                   <ChevronLeft className="w-5 h-5" />
@@ -431,17 +459,22 @@ export function AgendarManualModal({ onClose, prestadoraId, onCriado }: Props) {
               />
               <div className="flex flex-wrap gap-1.5">
                 {diasSugeridos.slice(0, 8).map((d) => {
-                  const { ativo, bloqueado } = horasDoDia(d)
-                  const desativado = !ativo || bloqueado
+                  const { indisponivel } = diaInfo(d)
                   const label = dateKeyToDate(d)
                   return (
                     <button
                       key={d}
                       type="button"
+                      disabled={indisponivel}
                       onClick={() => selecionarData(d)}
+                      title={indisponivel ? 'Indisponível nesse dia' : undefined}
                       className={cn(
                         'flex flex-col items-center px-3 py-2 rounded-xl text-xs font-medium transition-all min-w-14',
-                        dataSelecionada === d ? 'bg-rose-400 text-white' : desativado ? 'bg-gray-50 text-gray-300' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        dataSelecionada === d
+                          ? 'bg-rose-400 text-white'
+                          : indisponivel
+                            ? 'bg-gray-50 text-gray-300 cursor-not-allowed'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                       )}
                     >
                       <span className="capitalize">{label.toLocaleDateString('pt-BR', { weekday: 'short', timeZone: 'UTC' })}</span>
@@ -450,11 +483,6 @@ export function AgendarManualModal({ onClose, prestadoraId, onCriado }: Props) {
                   )
                 })}
               </div>
-              {dataSelecionada && (infoDia?.bloqueado || infoDia?.ativo === false) && (
-                <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
-                  Esse dia está marcado como fechado/bloqueado na sua agenda normal. Como é um agendamento manual, os horários abaixo usam o expediente padrão mesmo assim.
-                </p>
-              )}
             </div>
           )}
 

@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import {
   formatCurrency, formatDateTime, formatDateShort, generateTimeSlots,
   maskTelefone, cleanTelefone, buildWhatsappUrl, diaAtivoPadrao,
+  computeHorasDoDia, diaIndisponivelParaAgendar,
 } from '@/lib/utils'
 import {
   Clock, CheckCircle2, Calendar, ChevronLeft, ChevronRight, X,
@@ -277,32 +278,16 @@ export default function PerfilPublicoClient({
   // de tratar "sem configuração" como "sempre aberto".
   const abertoHoje = horarioHoje ? horarioHoje.ativo : diaAtivoPadrao(diaHoje)
 
-  function getHorarioDia(d: Date): HorarioFuncionamento | undefined {
-    return horariosFuncionamento.find((h) => h.dia_semana === getDay(d))
-  }
-
+  // Lógica de disponibilidade (horários por dia + dias indisponíveis) mora em
+  // @/lib/utils, compartilhada com o agendamento manual do painel — evita as
+  // duas telas divergirem silenciosamente sobre o que conta como disponível.
   function isDiaDesativado(d: Date): boolean {
     if (isBefore(d, today)) return true
-    if (diasBloqueados.includes(format(d, 'yyyy-MM-dd'))) return true
-    const horario = getHorarioDia(d)
-    const ativo = horario ? horario.ativo : diaAtivoPadrao(getDay(d))
-    if (!ativo) return true
-    if (profissionalSelecionada?.dias_semana && !profissionalSelecionada.dias_semana.includes(getDay(d))) return true
-    return false
+    return diaIndisponivelParaAgendar(getDay(d), format(d, 'yyyy-MM-dd'), diasBloqueados, horariosFuncionamento, profissionalSelecionada)
   }
 
   function computeHorasDia(d: Date, prof: Profissional | null) {
-    const horario = getHorarioDia(d)
-    // Profissional com horário próprio substitui a janela do dia inteira (ex:
-    // só atende de manhã) — nesse caso o intervalo de almoço da prestadora não
-    // se aplica, já que a agenda dela já é um recorte específico do dia.
-    const temHorarioProprio = Boolean(prof?.hora_abertura && prof?.hora_fechamento)
-    return {
-      abertura: prof?.hora_abertura ?? horario?.hora_abertura ?? prestadora.hora_abertura,
-      fechamento: prof?.hora_fechamento ?? horario?.hora_fechamento ?? prestadora.hora_fechamento,
-      turno2Inicio: temHorarioProprio ? null : horario?.turno2_inicio ?? null,
-      turno2Fim: temHorarioProprio ? null : horario?.turno2_fim ?? null,
-    }
+    return computeHorasDoDia(getDay(d), horariosFuncionamento, prof, prestadora.hora_abertura, prestadora.hora_fechamento)
   }
 
   function selecionarServico(s: ServicoComProfissionais) {

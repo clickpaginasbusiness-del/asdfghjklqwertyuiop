@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 import { parseISO, isValid } from 'date-fns'
+import type { HorarioFuncionamento } from '@/lib/types'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -161,6 +162,63 @@ export function generateTimeSlots(
     slots.push(...slotsDaJanela(turno2Inicio, turno2Fim, duracaoMinutos))
   }
   return slots
+}
+
+export interface HorasDoDia {
+  abertura: string
+  fechamento: string
+  turno2Inicio: string | null
+  turno2Fim: string | null
+}
+
+interface ProfissionalHorarioLike {
+  hora_abertura: string | null
+  hora_fechamento: string | null
+  dias_semana: number[] | null
+}
+
+/** Lógica única de disponibilidade compartilhada entre a página pública
+ * (/n/[slug]) e o agendamento manual do painel — qualquer ajuste aqui vale
+ * pros dois fluxos, em vez de duas implementações que podem divergir. */
+
+/** Janela de horário (+ intervalo de almoço) de um dia específico. Se a
+ * profissional tiver horário próprio configurado, ele substitui a janela do
+ * dia inteiro — e nesse caso o intervalo de almoço da prestadora não se
+ * aplica, já que a agenda dela já é um recorte específico do dia. */
+export function computeHorasDoDia(
+  diaSemana: number,
+  horariosFuncionamento: HorarioFuncionamento[],
+  profissional: ProfissionalHorarioLike | null,
+  prestadoraHoraAbertura: string,
+  prestadoraHoraFechamento: string
+): HorasDoDia {
+  const horario = horariosFuncionamento.find((h) => h.dia_semana === diaSemana)
+  const temHorarioProprio = Boolean(profissional?.hora_abertura && profissional?.hora_fechamento)
+  return {
+    abertura: profissional?.hora_abertura ?? horario?.hora_abertura ?? prestadoraHoraAbertura,
+    fechamento: profissional?.hora_fechamento ?? horario?.hora_fechamento ?? prestadoraHoraFechamento,
+    turno2Inicio: temHorarioProprio ? null : horario?.turno2_inicio ?? null,
+    turno2Fim: temHorarioProprio ? null : horario?.turno2_fim ?? null,
+  }
+}
+
+/** Um dia está indisponível pra agendar se: está bloqueado explicitamente, o
+ * dia da semana está desativado no horário de funcionamento (ou seria
+ * desativado por padrão, se a prestadora nunca configurou Horários), ou a
+ * profissional selecionada não atende nesse dia da semana. */
+export function diaIndisponivelParaAgendar(
+  diaSemana: number,
+  dataChave: string,
+  diasBloqueados: string[],
+  horariosFuncionamento: HorarioFuncionamento[],
+  profissional: ProfissionalHorarioLike | null
+): boolean {
+  if (diasBloqueados.includes(dataChave)) return true
+  const horario = horariosFuncionamento.find((h) => h.dia_semana === diaSemana)
+  const ativo = horario ? horario.ativo : diaAtivoPadrao(diaSemana)
+  if (!ativo) return true
+  if (profissional?.dias_semana && !profissional.dias_semana.includes(diaSemana)) return true
+  return false
 }
 
 export function slugify(text: string): string {
