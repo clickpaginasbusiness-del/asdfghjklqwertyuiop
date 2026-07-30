@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase/client'
 import {
   cn, formatCurrency, maskTelefone, generateTimeSlots,
-  formatDateKey, dateKeyToDate, diaAtivoPadrao,
+  formatDateKey, formatTime, dateKeyToDate, diaAtivoPadrao,
 } from '@/lib/utils'
 import {
   Search, Plus, ChevronLeft, User, Phone, Scissors, UserCircle2, Calendar as CalendarIcon, Clock,
@@ -196,23 +196,30 @@ export function AgendarManualModal({ onClose, prestadoraId, onCriado }: Props) {
 
   const infoDia = dataSelecionada ? horasDoDia(dataSelecionada) : null
 
-  const horariosDisponiveis = useMemo(() => {
+  // Cálculo simples e barato (não precisa de useMemo — e useMemo aqui violaria
+  // a regra de pureza, já que "agora"/"hoje" mudam sem nenhuma dependência
+  // do memo mudar junto). Mesmo padrão da página pública (/n/[slug]).
+  const horariosDisponiveis = (() => {
     if (!servicoSelecionado || !dataSelecionada || !infoDia) return []
     const todosSlots = generateTimeSlots(
       infoDia.abertura, infoDia.fechamento, servicoSelecionado.duracao_minutos,
       infoDia.turno2Inicio, infoDia.turno2Fim
     )
-    // Sem checagem de "já passou" de propósito — agendamento manual serve
-    // também pra registrar retroativamente um atendimento que já aconteceu
-    // (ex.: cliente que pagou na hora e a prestadora só lança depois).
-    return todosSlots.filter((h) => {
+    const semSobreposicao = todosSlots.filter((h) => {
       const [hh, mm] = h.split(':').map(Number)
       const [ano, mes, dia] = dataSelecionada.split('-').map(Number)
       const inicio = new Date(ano, mes - 1, dia, hh, mm).getTime()
       const fim = inicio + servicoSelecionado.duracao_minutos * 60000
       return !horariosOcupados.some(({ start, end }) => inicio < end && fim > start)
     })
-  }, [servicoSelecionado, dataSelecionada, infoDia, horariosOcupados])
+
+    // Se a data escolhida é hoje (em horário de Brasília), esconde horários
+    // que já passaram — comparar em UTC bugava perto da meia-noite/troca de
+    // fuso, já que São Paulo está 3h atrás.
+    if (dataSelecionada !== formatDateKey(new Date())) return semSobreposicao
+    const horaAtual = formatTime(new Date())
+    return semSobreposicao.filter((h) => h > horaAtual)
+  })()
 
   async function confirmar() {
     if (!clienteSelecionado || !servicoSelecionado || !dataSelecionada || !horarioSelecionado) return
