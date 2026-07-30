@@ -104,7 +104,8 @@ export type Servico = {
 export type Cliente = {
   id: string
   nome: string
-  telefone: string
+  telefone: string | null
+  cliente_manual: boolean
   verificado_em: string | null
   created_at: string
 }
@@ -120,6 +121,7 @@ export type Agendamento = {
   cancelado_por: 'prestadora' | 'cliente' | null
   arquivado: boolean
   cliente_e_prestadora: boolean
+  agendamento_manual: boolean
   created_at: string
   servicos?: Servico
   clientes?: Cliente

@@ -34,6 +34,7 @@ async function agendamentosConcluidos(admin: Admin, prestadoraId: string, mes: n
     .eq('prestadora_id', prestadoraId)
     .eq('status', 'concluido')
     .eq('cliente_e_prestadora', false)
+    .eq('agendamento_manual', false)
     .gte('data_hora', inicio.toISOString())
     .lt('data_hora', fim.toISOString())
   return (data ?? []) as { cliente_id: string }[]
@@ -47,6 +48,7 @@ async function cancelamentosMes(admin: Admin, prestadoraId: string, mes: number,
     .eq('prestadora_id', prestadoraId)
     .eq('status', 'cancelado')
     .eq('cliente_e_prestadora', false)
+    .eq('agendamento_manual', false)
     .gte('data_hora', inicio.toISOString())
     .lt('data_hora', fim.toISOString())
   return count ?? 0
@@ -62,6 +64,7 @@ async function zeroCancelamentos14Dias(admin: Admin, prestadoraId: string, mes: 
     .eq('prestadora_id', prestadoraId)
     .eq('status', 'cancelado')
     .eq('cliente_e_prestadora', false)
+    .eq('agendamento_manual', false)
     .gte('data_hora', inicio.toISOString())
     .lt('data_hora', limite.toISOString())
     .order('data_hora')
@@ -82,6 +85,7 @@ async function historicoAnterior(admin: Admin, prestadoraId: string, clienteIds:
     .eq('prestadora_id', prestadoraId)
     .in('cliente_id', clienteIds)
     .in('status', ['confirmado', 'concluido'])
+    .eq('agendamento_manual', false)
     .lt('data_hora', antesDe.toISOString())
   return (data ?? []) as { cliente_id: string; data_hora: string }[]
 }
@@ -101,6 +105,7 @@ async function clientesNovosMes(admin: Admin, prestadoraId: string, mes: number,
     .eq('prestadora_id', prestadoraId)
     .in('cliente_id', clienteIds)
     .in('status', ['confirmado', 'concluido'])
+    .eq('agendamento_manual', false)
 
   const primeira = new Map<string, number>()
   for (const a of (todoHistorico ?? []) as { cliente_id: string; data_hora: string }[]) {
@@ -176,11 +181,11 @@ async function avaliacoesDoMes(admin: Admin, prestadoraId: string, mes: number, 
   const agIds = avals.map((a) => a.agendamento_id)
   const { data: ags } = await admin
     .from('agendamentos')
-    .select('id, cliente_id, cliente_e_prestadora')
+    .select('id, cliente_id, cliente_e_prestadora, agendamento_manual')
     .in('id', agIds)
 
   const clienteValido = new Map(
-    (ags ?? []).filter((a) => !a.cliente_e_prestadora).map((a) => [a.id, a.cliente_id])
+    (ags ?? []).filter((a) => !a.cliente_e_prestadora && !a.agendamento_manual).map((a) => [a.id, a.cliente_id])
   )
   const validas = avals.filter((a) => clienteValido.has(a.agendamento_id))
   const clientesDistintos = new Set(validas.map((a) => clienteValido.get(a.agendamento_id))).size
@@ -213,6 +218,7 @@ async function confirmacoesSemanaAtual(admin: Admin, prestadoraId: string): Prom
     .select('id')
     .eq('prestadora_id', prestadoraId)
     .eq('status', 'confirmado')
+    .eq('agendamento_manual', false)
     .gte('data_hora', inicioSemana.toISOString())
     .lt('data_hora', fimSemana.toISOString())
 
@@ -285,6 +291,7 @@ async function faturamentoLinhasDoMes(admin: Admin, prestadoraId: string, mes: n
     .eq('prestadora_id', prestadoraId)
     .eq('status', 'concluido')
     .eq('cliente_e_prestadora', false)
+    .eq('agendamento_manual', false)
     .gte('data_hora', inicio.toISOString())
     .lt('data_hora', fim.toISOString())
   return ((data ?? []) as unknown as { data_hora: string; servicos: { preco: number } | null }[]).map((a) => ({

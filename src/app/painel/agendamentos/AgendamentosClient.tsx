@@ -13,6 +13,8 @@ import { Calendar, Phone, Search, MessageCircle, ArrowDownAZ, ArrowUpAZ, Clock4,
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { VoceBadge } from '@/components/painel/VoceBadge'
+import { ManualBadge } from '@/components/painel/ManualBadge'
+import { AgendarButton } from '@/components/painel/AgendarButton'
 import { logMissaoEvento } from '@/lib/missoesClient'
 import type { Agendamento, Profissional } from '@/lib/types'
 import { renderTemplate, MSG_CONFIRMACAO_DEFAULT, MSG_CANCELAMENTO_DEFAULT, MSG_LEMBRETE_DEFAULT } from '@/lib/whatsappTemplates'
@@ -21,8 +23,13 @@ import toast from 'react-hot-toast'
 type FiltroStatus = 'todos' | 'confirmado' | 'concluido' | 'cancelado'
 type Ordenacao = 'recente' | 'antigo' | 'proximo'
 
+// String.fromCodePoint() em vez de emoji literal — ver mesma correção em
+// ClientesClient.tsx e whatsappTemplates.ts (caractere de plano astral
+// virando U+FFFD no bundle de produção do Turbopack).
+const STAR = String.fromCodePoint(0x1f31f)
+
 function buildMsgAvaliacao(a: Agendamento, prestadoraNome: string): string {
-  return `Olá ${a.clientes?.nome}! Esperamos que tenha amado seu ${a.servicos?.nome}. Poderia deixar uma avaliação sobre o atendimento? \u{1F31F} ${window.location.origin}/avaliar/${a.id} - ${prestadoraNome}`
+  return `Olá ${a.clientes?.nome}! Esperamos que tenha amado seu ${a.servicos?.nome}. Poderia deixar uma avaliação sobre o atendimento? ${STAR} ${window.location.origin}/avaliar/${a.id} - ${prestadoraNome}`
 }
 
 const FILTROS_STATUS: { value: FiltroStatus; label: string }[] = [
@@ -146,7 +153,7 @@ export default function AgendamentosClient({
       const matchBusca =
         !busca ||
         a.clientes?.nome.toLowerCase().includes(q) ||
-        a.clientes?.telefone.includes(q) ||
+        a.clientes?.telefone?.includes(q) ||
         a.servicos?.nome.toLowerCase().includes(q)
 
       const matchProfissional =
@@ -276,6 +283,10 @@ export default function AgendamentosClient({
             </button>
           )}
           <Badge variant="pink">{confirmadosCount} confirmados</Badge>
+          <AgendarButton
+            prestadoraId={prestadoraId}
+            onCriado={(ag) => setAgendamentos((prev) => prev.some((a) => a.id === ag.id) ? prev : [ag, ...prev])}
+          />
         </div>
       </div>
 
@@ -427,6 +438,7 @@ export default function AgendamentosClient({
                         <p className="font-medium text-gray-900 text-sm">
                           {a.clientes?.nome}
                           {a.cliente_e_prestadora && <VoceBadge />}
+                          {a.agendamento_manual && <ManualBadge />}
                         </p>
                         <Badge variant={statusVariant(a.status)}>{statusLabel(a.status)}</Badge>
                       </div>
@@ -460,7 +472,7 @@ export default function AgendamentosClient({
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <a
-                                  href={buildWhatsappUrl(a.clientes!.telefone, renderTemplate(msgConfirmacao || MSG_CONFIRMACAO_DEFAULT, a, prestadoraNome))}
+                                  href={buildWhatsappUrl(a.clientes!.telefone!, renderTemplate(msgConfirmacao || MSG_CONFIRMACAO_DEFAULT, a, prestadoraNome))}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   onClick={() => { setWaOpenId(null); logMissaoEvento('confirmacao', a.cliente_id, a.id) }}
@@ -469,7 +481,7 @@ export default function AgendamentosClient({
                                   ✅ Enviar confirmação
                                 </a>
                                 <a
-                                  href={buildWhatsappUrl(a.clientes!.telefone, renderTemplate(msgCancelamento || MSG_CANCELAMENTO_DEFAULT, a, prestadoraNome))}
+                                  href={buildWhatsappUrl(a.clientes!.telefone!, renderTemplate(msgCancelamento || MSG_CANCELAMENTO_DEFAULT, a, prestadoraNome))}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   onClick={() => setWaOpenId(null)}
@@ -479,7 +491,7 @@ export default function AgendamentosClient({
                                 </a>
                                 {a.status === 'confirmado' && new Date(a.data_hora) >= amanha && (
                                   <a
-                                    href={buildWhatsappUrl(a.clientes!.telefone, renderTemplate(msgLembrete || MSG_LEMBRETE_DEFAULT, a, prestadoraNome))}
+                                    href={buildWhatsappUrl(a.clientes!.telefone!, renderTemplate(msgLembrete || MSG_LEMBRETE_DEFAULT, a, prestadoraNome))}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     onClick={() => { setWaOpenId(null); logMissaoEvento('lembrete', a.cliente_id) }}
@@ -531,7 +543,7 @@ export default function AgendamentosClient({
                       {/* Ação para concluídos */}
                       {a.status === 'concluido' && a.clientes?.telefone && (
                         <button
-                          onClick={() => window.open(buildWhatsappUrl(a.clientes!.telefone, buildMsgAvaliacao(a, prestadoraNome)), '_blank')}
+                          onClick={() => window.open(buildWhatsappUrl(a.clientes!.telefone!, buildMsgAvaliacao(a, prestadoraNome)), '_blank')}
                           className="flex items-center gap-1 text-xs rounded-lg px-2.5 font-medium transition-all border bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 min-h-11"
                         >
                           <Star className="w-3 h-3" />

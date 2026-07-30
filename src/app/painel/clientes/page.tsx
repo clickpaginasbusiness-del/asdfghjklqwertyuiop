@@ -18,7 +18,7 @@ export default async function ClientesPage() {
   // Busca todos os agendamentos com joins — sem filtro de status para ter histórico completo
   const { data: agendamentos } = await supabase
     .from('agendamentos')
-    .select('id, data_hora, status, cliente_e_prestadora, servicos(nome, preco), clientes(id, nome, telefone)')
+    .select('id, data_hora, status, cliente_e_prestadora, servicos(nome, preco), clientes(id, nome, telefone, cliente_manual)')
     .eq('prestadora_id', prestadora.id)
     .order('data_hora', { ascending: false })
 
@@ -30,7 +30,7 @@ export default async function ClientesPage() {
     servicos: { nome: string; preco: number } | null
   }
   type ClienteEntry = {
-    cliente: { id: string; nome: string; telefone: string }
+    cliente: { id: string; nome: string; telefone: string | null; cliente_manual: boolean }
     total: number               // confirmado + concluido
     gasto: number
     ultimaVisita: string        // qualquer agendamento (para exibição)
@@ -42,7 +42,7 @@ export default async function ClientesPage() {
   const clienteMap = new Map<string, ClienteEntry>()
 
   agendamentos?.forEach((a) => {
-    const c = a.clientes as unknown as { id: string; nome: string; telefone: string } | null
+    const c = a.clientes as unknown as { id: string; nome: string; telefone: string | null; cliente_manual: boolean } | null
     if (!c) return
     const isAtivo = a.status === 'confirmado' || a.status === 'concluido'
     const agItem: AgItem = {

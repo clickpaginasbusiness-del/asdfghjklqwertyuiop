@@ -10,7 +10,7 @@ type AgItem = {
 }
 
 type ClienteEntry = {
-  cliente: { id: string; nome: string; telefone: string }
+  cliente: { id: string; nome: string; telefone: string | null; cliente_manual: boolean }
   total: number
   gasto: number
   ultimaVisita: string
@@ -31,7 +31,7 @@ function buildClienteEntries(agendamentos: Agendamento[]): ClienteEntry[] {
     let entry = map.get(id)
     if (!entry) {
       entry = {
-        cliente: { id, nome: a.clientes.nome, telefone: a.clientes.telefone },
+        cliente: { id, nome: a.clientes.nome, telefone: a.clientes.telefone, cliente_manual: a.clientes.cliente_manual },
         total: 0,
         gasto: 0,
         ultimaVisita: a.data_hora,

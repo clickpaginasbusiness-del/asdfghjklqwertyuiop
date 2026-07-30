@@ -3,11 +3,16 @@
 import { useState, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Modal } from '@/components/ui/modal'
 import { formatDateTime, formatCurrency, maskTelefone, buildWhatsappUrl } from '@/lib/utils'
-import { Users, MessageCircle, ChevronDown, Phone, Bell, Star } from 'lucide-react'
+import { Users, MessageCircle, ChevronDown, Phone, Bell, Star, Pencil, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { VoceBadge } from '@/components/painel/VoceBadge'
+import { ManualBadge } from '@/components/painel/ManualBadge'
 import { logMissaoEvento } from '@/lib/missoesClient'
+import toast from 'react-hot-toast'
 
 type AgItem = {
   id: string
@@ -17,7 +22,7 @@ type AgItem = {
 }
 
 type ClienteEntry = {
-  cliente: { id: string; nome: string; telefone: string }
+  cliente: { id: string; nome: string; telefone: string | null; cliente_manual: boolean }
   total: number
   gasto: number
   ultimaVisita: string
@@ -66,8 +71,21 @@ function statusVariant(s: string): 'success' | 'concluido' | 'danger' {
   return 'danger'
 }
 
-function ClienteCard({ cliente, total, gasto, ultimaVisita, ultimaVisitaAtiva, ehPrestadora, historico, prestadoraNome }: ClienteEntry & { prestadoraNome: string }) {
+function ClienteCard({
+  cliente, total, gasto, ultimaVisita, ultimaVisitaAtiva, ehPrestadora, historico, prestadoraNome,
+  onEdited, onDeleted,
+}: ClienteEntry & {
+  prestadoraNome: string
+  onEdited: (id: string, novo: { nome: string; telefone: string | null }) => void
+  onDeleted: (id: string) => void
+}) {
   const [expanded, setExpanded] = useState(false)
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [nomeEdit, setNomeEdit] = useState(cliente.nome)
+  const [telefoneEdit, setTelefoneEdit] = useState(cliente.telefone ?? '')
+  const [salvando, setSalvando] = useState(false)
+  const [excluindo, setExcluindo] = useState(false)
   const isFrequente = total >= 3
   const ausente = isAusente(ultimaVisitaAtiva)
 
@@ -82,6 +100,54 @@ function ClienteCard({ cliente, total, gasto, ultimaVisita, ultimaVisitaAtiva, e
   const msgAvaliacao = ultimoConcluido
     ? `Olá ${cliente.nome}! Esperamos que tenha amado seu ${ultimoConcluido.servicos?.nome ?? 'atendimento'}. Poderia deixar uma avaliação sobre o atendimento? ${STAR} ${process.env.NEXT_PUBLIC_APP_URL}/avaliar/${ultimoConcluido.id} - ${prestadoraNome}`
     : null
+
+  async function salvarEdicao(e: React.FormEvent) {
+    e.preventDefault()
+    const nome = nomeEdit.trim()
+    if (nome.length < 2) {
+      toast.error('Informe o nome da cliente.')
+      return
+    }
+    setSalvando(true)
+    try {
+      const res = await fetch(`/api/clientes/${cliente.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome, telefone: telefoneEdit }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? 'Erro ao editar cliente.')
+        return
+      }
+      onEdited(cliente.id, { nome: data.cliente.nome, telefone: data.cliente.telefone })
+      toast.success('Cliente atualizada!')
+      setEditModalOpen(false)
+    } catch {
+      toast.error('Erro de conexão.')
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  async function confirmarExclusao() {
+    setExcluindo(true)
+    try {
+      const res = await fetch(`/api/clientes/${cliente.id}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? 'Erro ao excluir cliente.')
+        return
+      }
+      onDeleted(cliente.id)
+      toast.success('Cliente excluída')
+      setDeleteModalOpen(false)
+    } catch {
+      toast.error('Erro de conexão.')
+    } finally {
+      setExcluindo(false)
+    }
+  }
 
   return (
     <div className="border-b border-gray-50 last:border-0">
@@ -102,6 +168,7 @@ function ClienteCard({ cliente, total, gasto, ultimaVisita, ultimaVisitaAtiva, e
             <p className="font-semibold text-gray-900 text-sm">
               {cliente.nome}
               {ehPrestadora && <VoceBadge />}
+              {cliente.cliente_manual && <ManualBadge />}
             </p>
             {ausente ? (
               <Badge variant="warning" className="text-[10px] px-2 py-0.5">Ausente</Badge>
@@ -113,51 +180,76 @@ function ClienteCard({ cliente, total, gasto, ultimaVisita, ultimaVisitaAtiva, e
           <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
             <span className="flex items-center gap-1 text-xs text-gray-400 mr-1">
               <Phone className="w-3 h-3" />
-              {maskTelefone(cliente.telefone)}
+              {cliente.telefone ? maskTelefone(cliente.telefone) : 'Sem telefone'}
             </span>
 
-            <a
-              href={buildWhatsappUrl(cliente.telefone, msgLembrete)}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => logMissaoEvento('lembrete', cliente.id)}
-              className="flex items-center gap-1 bg-rose-50 hover:bg-rose-100 border border-rose-100 text-rose-600 rounded-full px-2.5 py-1 text-xs font-medium transition-colors"
-            >
-              <Bell className="w-3 h-3" />
-              Lembrete
-            </a>
+            {cliente.telefone && (
+              <>
+                <a
+                  href={buildWhatsappUrl(cliente.telefone, msgLembrete)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => logMissaoEvento('lembrete', cliente.id)}
+                  className="flex items-center gap-1 bg-rose-50 hover:bg-rose-100 border border-rose-100 text-rose-600 rounded-full px-2.5 py-1 text-xs font-medium transition-colors"
+                >
+                  <Bell className="w-3 h-3" />
+                  Lembrete
+                </a>
 
-            {msgAvaliacao ? (
-              <a
-                href={buildWhatsappUrl(cliente.telefone, msgAvaliacao)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 bg-amber-50 hover:bg-amber-100 border border-amber-100 text-amber-700 rounded-full px-2.5 py-1 text-xs font-medium transition-colors"
-              >
-                <Star className="w-3 h-3" />
-                Pedir avaliação
-              </a>
-            ) : (
-              <button
-                type="button"
-                disabled
-                title="Nenhum agendamento concluído ainda"
-                className="flex items-center gap-1 bg-gray-50 border border-gray-100 text-gray-300 rounded-full px-2.5 py-1 text-xs font-medium cursor-not-allowed"
-              >
-                <Star className="w-3 h-3" />
-                Pedir avaliação
-              </button>
+                {msgAvaliacao ? (
+                  <a
+                    href={buildWhatsappUrl(cliente.telefone, msgAvaliacao)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 bg-amber-50 hover:bg-amber-100 border border-amber-100 text-amber-700 rounded-full px-2.5 py-1 text-xs font-medium transition-colors"
+                  >
+                    <Star className="w-3 h-3" />
+                    Pedir avaliação
+                  </a>
+                ) : (
+                  <button
+                    type="button"
+                    disabled
+                    title="Nenhum agendamento concluído ainda"
+                    className="flex items-center gap-1 bg-gray-50 border border-gray-100 text-gray-300 rounded-full px-2.5 py-1 text-xs font-medium cursor-not-allowed"
+                  >
+                    <Star className="w-3 h-3" />
+                    Pedir avaliação
+                  </button>
+                )}
+
+                <a
+                  href={buildWhatsappUrl(cliente.telefone)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 bg-green-50 hover:bg-green-100 border border-green-100 text-green-600 rounded-full px-2.5 py-1 text-xs font-medium transition-colors"
+                >
+                  <MessageCircle className="w-3 h-3" />
+                  WhatsApp
+                </a>
+              </>
             )}
 
-            <a
-              href={buildWhatsappUrl(cliente.telefone)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 bg-green-50 hover:bg-green-100 border border-green-100 text-green-600 rounded-full px-2.5 py-1 text-xs font-medium transition-colors"
-            >
-              <MessageCircle className="w-3 h-3" />
-              WhatsApp
-            </a>
+            {cliente.cliente_manual && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => { setNomeEdit(cliente.nome); setTelefoneEdit(cliente.telefone ?? ''); setEditModalOpen(true) }}
+                  className="flex items-center gap-1 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-500 rounded-full px-2.5 py-1 text-xs font-medium transition-colors"
+                >
+                  <Pencil className="w-3 h-3" />
+                  Editar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeleteModalOpen(true)}
+                  className="flex items-center gap-1 bg-gray-50 hover:bg-red-50 border border-gray-200 hover:border-red-200 text-gray-500 hover:text-red-500 rounded-full px-2.5 py-1 text-xs font-medium transition-colors"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  Excluir
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -205,6 +297,50 @@ function ClienteCard({ cliente, total, gasto, ultimaVisita, ultimaVisitaAtiva, e
           </div>
         </div>
       )}
+
+      {/* Editar cliente manual */}
+      <Modal open={editModalOpen} onClose={() => setEditModalOpen(false)} title="Editar cliente">
+        <form onSubmit={salvarEdicao} className="p-6 space-y-4">
+          <Input
+            label="Nome"
+            value={nomeEdit}
+            onChange={(e) => setNomeEdit(e.target.value)}
+            required
+          />
+          <Input
+            label="Telefone (opcional)"
+            placeholder="(11) 99999-9999"
+            value={telefoneEdit}
+            onChange={(e) => setTelefoneEdit(e.target.value)}
+          />
+          <div className="flex gap-3 pt-2">
+            <Button type="button" variant="outline" onClick={() => setEditModalOpen(false)} className="flex-1">
+              Cancelar
+            </Button>
+            <Button type="submit" loading={salvando} className="flex-1">
+              Salvar
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Excluir cliente manual */}
+      <Modal open={deleteModalOpen} onClose={() => setDeleteModalOpen(false)} title="Excluir cliente">
+        <div className="p-6 space-y-4">
+          <p className="text-sm text-gray-600">
+            Tem certeza que quer excluir <span className="font-semibold text-gray-900">{cliente.nome}</span>?
+            Isso também exclui todo o histórico de agendamentos dela. Essa ação não pode ser desfeita.
+          </p>
+          <div className="flex gap-3 pt-2">
+            <Button type="button" variant="outline" onClick={() => setDeleteModalOpen(false)} className="flex-1">
+              Cancelar
+            </Button>
+            <Button type="button" variant="danger" loading={excluindo} onClick={confirmarExclusao} className="flex-1">
+              Excluir
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
@@ -215,8 +351,17 @@ const FILTROS: { value: FiltroCliente; label: string }[] = [
   { value: 'ausentes', label: 'Ausentes' },
 ]
 
-export default function ClientesClient({ clientes, prestadoraNome }: { clientes: ClienteEntry[]; prestadoraNome: string }) {
+export default function ClientesClient({ clientes: initialClientes, prestadoraNome }: { clientes: ClienteEntry[]; prestadoraNome: string }) {
+  const [clientes, setClientes] = useState(initialClientes)
   const [filtro, setFiltro] = useState<FiltroCliente>('todos')
+
+  function handleEdited(id: string, novo: { nome: string; telefone: string | null }) {
+    setClientes((prev) => prev.map((c) => c.cliente.id === id ? { ...c, cliente: { ...c.cliente, ...novo } } : c))
+  }
+
+  function handleDeleted(id: string) {
+    setClientes((prev) => prev.filter((c) => c.cliente.id !== id))
+  }
 
   const clientesFiltrados = useMemo(() => {
     if (filtro === 'frequentes') return clientes.filter((c) => c.total >= 3)
@@ -295,7 +440,7 @@ export default function ClientesClient({ clientes, prestadoraNome }: { clientes:
           <CardContent className="p-0">
             <div>
               {clientesFiltrados.map((c) => (
-                <ClienteCard key={c.cliente.id} {...c} prestadoraNome={prestadoraNome} />
+                <ClienteCard key={c.cliente.id} {...c} prestadoraNome={prestadoraNome} onEdited={handleEdited} onDeleted={handleDeleted} />
               ))}
             </div>
           </CardContent>

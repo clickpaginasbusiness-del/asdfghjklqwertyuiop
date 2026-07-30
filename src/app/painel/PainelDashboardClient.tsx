@@ -10,6 +10,8 @@ import { formatCurrency, formatDateShort, buildWhatsappUrl } from '@/lib/utils'
 import { Calendar, DollarSign, Clock, MessageCircle, CheckCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { VoceBadge } from '@/components/painel/VoceBadge'
+import { ManualBadge } from '@/components/painel/ManualBadge'
+import { AgendarButton } from '@/components/painel/AgendarButton'
 import { logMissaoEvento } from '@/lib/missoesClient'
 import {
   format, isToday, startOfDay, endOfDay, parseISO, subDays, addDays,
@@ -26,9 +28,10 @@ type Ag = {
   data_hora: string
   status: string
   servicos: { nome: string; preco: number; duracao_minutos: number } | null
-  clientes: { id: string; nome: string; telefone: string } | null
+  clientes: { id: string; nome: string; telefone: string | null } | null
   profissionais: { nome: string } | null
   cliente_e_prestadora: boolean
+  agendamento_manual: boolean
 }
 
 interface Props {
@@ -80,6 +83,7 @@ function AgendamentoItem({
           <p className="font-medium text-gray-900 text-sm">
             {a.clientes?.nome}
             {a.cliente_e_prestadora && <VoceBadge />}
+            {a.agendamento_manual && <ManualBadge />}
           </p>
           <p className="text-xs text-gray-500 truncate">
             {a.servicos?.nome}
@@ -473,7 +477,10 @@ export default function PainelDashboardClient({
       {/* ── Agenda de hoje ── */}
       <Card>
         <CardHeader>
-          <CardTitle>Agenda de hoje</CardTitle>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <CardTitle>Agenda de hoje</CardTitle>
+            <AgendarButton prestadoraId={prestadoraId} />
+          </div>
         </CardHeader>
         <CardContent>
           {agendaHoje.length === 0 ? (

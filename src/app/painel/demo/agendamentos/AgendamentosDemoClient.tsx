@@ -86,7 +86,7 @@ export default function AgendamentosDemoClient({
       const matchBusca =
         !busca ||
         a.clientes?.nome.toLowerCase().includes(q) ||
-        a.clientes?.telefone.includes(q) ||
+        a.clientes?.telefone?.includes(q) ||
         a.servicos?.nome.toLowerCase().includes(q)
 
       const matchProfissional =
@@ -307,7 +307,7 @@ export default function AgendamentosDemoClient({
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <a
-                                  href={buildWhatsappUrl(a.clientes!.telefone, renderTemplate(msgConfirmacao || MSG_CONFIRMACAO_DEFAULT, a, prestadoraNome))}
+                                  href={buildWhatsappUrl(a.clientes!.telefone!, renderTemplate(msgConfirmacao || MSG_CONFIRMACAO_DEFAULT, a, prestadoraNome))}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   onClick={() => setWaOpenId(null)}
@@ -316,7 +316,7 @@ export default function AgendamentosDemoClient({
                                   ✅ Enviar confirmação
                                 </a>
                                 <a
-                                  href={buildWhatsappUrl(a.clientes!.telefone, renderTemplate(msgCancelamento || MSG_CANCELAMENTO_DEFAULT, a, prestadoraNome))}
+                                  href={buildWhatsappUrl(a.clientes!.telefone!, renderTemplate(msgCancelamento || MSG_CANCELAMENTO_DEFAULT, a, prestadoraNome))}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   onClick={() => setWaOpenId(null)}
@@ -326,7 +326,7 @@ export default function AgendamentosDemoClient({
                                 </a>
                                 {a.status === 'confirmado' && new Date(a.data_hora) >= amanha && (
                                   <a
-                                    href={buildWhatsappUrl(a.clientes!.telefone, renderTemplate(msgLembrete || MSG_LEMBRETE_DEFAULT, a, prestadoraNome))}
+                                    href={buildWhatsappUrl(a.clientes!.telefone!, renderTemplate(msgLembrete || MSG_LEMBRETE_DEFAULT, a, prestadoraNome))}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     onClick={() => setWaOpenId(null)}
@@ -373,7 +373,7 @@ export default function AgendamentosDemoClient({
 
                       {a.status === 'concluido' && a.clientes?.telefone && (
                         <button
-                          onClick={() => window.open(buildWhatsappUrl(a.clientes!.telefone, buildMsgAvaliacao(a, prestadoraNome)), '_blank')}
+                          onClick={() => window.open(buildWhatsappUrl(a.clientes!.telefone!, buildMsgAvaliacao(a, prestadoraNome)), '_blank')}
                           className="flex items-center gap-1 text-xs rounded-lg px-2.5 font-medium transition-all border bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 min-h-11"
                         >
                           <Star className="w-3 h-3" />

@@ -578,9 +578,10 @@ export default function PerfilPublicoClient({
           cancelado_por: null,
           arquivado: false,
           cliente_e_prestadora: false,
+          agendamento_manual: false,
           created_at: new Date().toISOString(),
           servicos: servico,
-          clientes: { id: 'demo-cliente', nome: clienteLogado.nome, telefone: clienteLogado.telefone, verificado_em: null, created_at: '' },
+          clientes: { id: 'demo-cliente', nome: clienteLogado.nome, telefone: clienteLogado.telefone, cliente_manual: false, verificado_em: null, created_at: '' },
           profissionais: prof ?? undefined,
         }
         setAgendamentoFeito(novoAgendamento)

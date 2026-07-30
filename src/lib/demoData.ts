@@ -82,11 +82,11 @@ export const DEMO_PROFISSIONAIS: Profissional[] = [
 ]
 
 export const DEMO_CLIENTES: Cliente[] = [
-  { id: 'demo-cli-maria', nome: 'Maria Silva', telefone: '31999991111', verificado_em: '2025-03-01T12:00:00Z', created_at: '2025-03-01T12:00:00Z' },
-  { id: 'demo-cli-julia', nome: 'Júlia Santos', telefone: '31999992222', verificado_em: '2025-03-10T12:00:00Z', created_at: '2025-03-10T12:00:00Z' },
-  { id: 'demo-cli-fernanda', nome: 'Fernanda Costa', telefone: '31999993333', verificado_em: '2025-04-02T12:00:00Z', created_at: '2025-04-02T12:00:00Z' },
-  { id: 'demo-cli-camila', nome: 'Camila Oliveira', telefone: '31999994444', verificado_em: '2025-04-20T12:00:00Z', created_at: '2025-04-20T12:00:00Z' },
-  { id: 'demo-cli-beatriz', nome: 'Beatriz Lima', telefone: '31999995555', verificado_em: '2025-05-05T12:00:00Z', created_at: '2025-05-05T12:00:00Z' },
+  { id: 'demo-cli-maria', nome: 'Maria Silva', telefone: '31999991111', cliente_manual: false, verificado_em: '2025-03-01T12:00:00Z', created_at: '2025-03-01T12:00:00Z' },
+  { id: 'demo-cli-julia', nome: 'Júlia Santos', telefone: '31999992222', cliente_manual: false, verificado_em: '2025-03-10T12:00:00Z', created_at: '2025-03-10T12:00:00Z' },
+  { id: 'demo-cli-fernanda', nome: 'Fernanda Costa', telefone: '31999993333', cliente_manual: false, verificado_em: '2025-04-02T12:00:00Z', created_at: '2025-04-02T12:00:00Z' },
+  { id: 'demo-cli-camila', nome: 'Camila Oliveira', telefone: '31999994444', cliente_manual: false, verificado_em: '2025-04-20T12:00:00Z', created_at: '2025-04-20T12:00:00Z' },
+  { id: 'demo-cli-beatriz', nome: 'Beatriz Lima', telefone: '31999995555', cliente_manual: false, verificado_em: '2025-05-05T12:00:00Z', created_at: '2025-05-05T12:00:00Z' },
 ]
 
 export const DEMO_SERVICOS: Servico[] = [
@@ -117,6 +117,7 @@ function montarAgendamento(
     cancelado_por: status === 'cancelado' ? 'prestadora' : null,
     arquivado: false,
     cliente_e_prestadora: false,
+    agendamento_manual: false,
     created_at: em(offset - 3, 9, 0),
     servicos: servico,
     clientes: cliente,

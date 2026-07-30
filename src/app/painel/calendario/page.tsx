@@ -36,7 +36,7 @@ export default async function CalendarioPage() {
       .order('nome'),
     supabase
       .from('agendamentos')
-      .select('id, data_hora, status, profissional_id, cliente_e_prestadora, servicos(nome, preco, duracao_minutos), clientes(nome, telefone), profissionais(nome)')
+      .select('id, data_hora, status, profissional_id, cliente_e_prestadora, agendamento_manual, servicos(nome, preco, duracao_minutos), clientes(nome, telefone), profissionais(nome)')
       .eq('prestadora_id', prestadora.id)
       .neq('status', 'cancelado')
       .gte('data_hora', startOfDay(hoje).toISOString())
@@ -60,7 +60,8 @@ export type AgendaSlotAg = {
   status: 'confirmado' | 'cancelado' | 'concluido'
   profissional_id: string | null
   cliente_e_prestadora: boolean
+  agendamento_manual: boolean
   servicos: { nome: string; preco: number; duracao_minutos: number } | null
-  clientes: { nome: string; telefone: string } | null
+  clientes: { nome: string; telefone: string | null } | null
   profissionais: { nome: string } | null
 }

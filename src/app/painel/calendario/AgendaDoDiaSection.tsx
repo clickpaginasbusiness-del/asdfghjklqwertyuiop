@@ -7,6 +7,7 @@ import { Modal } from '@/components/ui/modal'
 import { Badge } from '@/components/ui/badge'
 import { CalendarDays, Phone, Scissors, UserCircle2, DollarSign } from 'lucide-react'
 import { VoceBadge } from '@/components/painel/VoceBadge'
+import { ManualBadge } from '@/components/painel/ManualBadge'
 import {
   cn,
   formatCurrency,
@@ -182,6 +183,7 @@ export function AgendaDoDiaSection({
                             <p className="font-medium text-rose-700 truncate">
                               {ag.clientes?.nome}
                               {ag.cliente_e_prestadora && <VoceBadge />}
+                              {ag.agendamento_manual && <ManualBadge />}
                             </p>
                             <p className="text-[11px] text-rose-500 truncate">{ag.servicos?.nome}</p>
                             <p className="text-[10px] text-rose-400">{formatFaixaHorario(ag)}</p>
@@ -207,6 +209,7 @@ export function AgendaDoDiaSection({
               <p className="font-semibold text-gray-900">
                 {modalAg.clientes?.nome}
                 {modalAg.cliente_e_prestadora && <VoceBadge />}
+                {modalAg.agendamento_manual && <ManualBadge />}
               </p>
               <Badge variant={modalAg.status === 'concluido' ? 'concluido' : 'success'}>
                 {modalAg.status === 'concluido' ? 'Concluído' : 'Confirmado'}
