@@ -4,9 +4,11 @@ import { Copy } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export function CodigoIndicacaoCard({ codigoIndicacao }: { codigoIndicacao: string | null }) {
-  const linkIndicacao = typeof window !== 'undefined'
-    ? `${window.location.origin}/painel/cadastro?ref=${codigoIndicacao ?? ''}`
-    : `https://bellebook.com.br/painel/cadastro?ref=${codigoIndicacao ?? ''}`
+  // NEXT_PUBLIC_APP_URL (não window.location.origin) — precisa ser o mesmo
+  // valor no servidor e no cliente, senão o hydrate quebra: window só existe
+  // no cliente, então o servidor sempre renderiza um fallback diferente do
+  // que o cliente calcula na primeira renderização.
+  const linkIndicacao = `${process.env.NEXT_PUBLIC_APP_URL}/painel/cadastro?ref=${codigoIndicacao ?? ''}`
 
   if (!codigoIndicacao) {
     return (

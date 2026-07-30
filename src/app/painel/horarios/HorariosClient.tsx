@@ -69,7 +69,22 @@ export default function HorariosClient({
   }
 
   function toggleIntervalo(index: number) {
-    setHorarios((prev) => prev.map((h, i) => i === index ? { ...h, temIntervalo: !h.temIntervalo } : h))
+    setHorarios((prev) => prev.map((h, i) => {
+      if (i !== index) return h
+      const ativando = !h.temIntervalo
+      // Ao ativar, se o turno 1 ainda cobre o dia inteiro (fim igual ao fim do
+      // turno 2, ou vazio — ou seja, ela nunca ajustou isso), sugere um
+      // intervalo de almoço padrão em vez de deixar os dois turnos se
+      // sobrepondo: sem esse ajuste o horário de almoço não fica bloqueado de
+      // verdade na agenda pública (generateTimeSlots soma as duas janelas).
+      const sugerirPadrao = ativando && (!h.hora_fechamento || h.hora_fechamento === h.turno2_fim)
+      return {
+        ...h,
+        temIntervalo: ativando,
+        hora_fechamento: sugerirPadrao ? '12:00' : h.hora_fechamento,
+        turno2_inicio: sugerirPadrao ? '13:00' : h.turno2_inicio,
+      }
+    }))
   }
 
   function updateHora(

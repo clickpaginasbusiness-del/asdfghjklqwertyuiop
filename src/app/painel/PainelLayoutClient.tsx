@@ -280,7 +280,6 @@ export default function PainelLayoutClient({
   trialProDiasRestantes: number | null
 }) {
   const pathname = usePathname()
-  const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   // Marca a prestadora como "online" pro indicador em tempo real do painel
@@ -293,7 +292,11 @@ export default function PainelLayoutClient({
   async function handleLogout() {
     const supabase = createClient()
     await supabase.auth.signOut()
-    router.push('/painel/login')
+    // Reload completo (não router.push) — o layout autenticado é um Server
+    // Component que só reavalia a sessão numa navegação de verdade; uma troca
+    // client-side deixava a sidebar/topbar da sessão antiga visível por trás
+    // da tela de login.
+    window.location.href = '/painel/login'
   }
 
   return (
@@ -395,8 +398,8 @@ export default function PainelLayoutClient({
           <DowngradeBanner prestadoraId={prestadora.id} />
         )}
 
-        {/* Trial banner */}
-        {prestadora.e_trial && !prestadora.stripe_subscription_id && trialDiasRestantes !== null && (
+        {/* Trial banner — parceira tem Pro vitalício pelo cargo, nunca precisa assinar */}
+        {!prestadora.e_parceira && prestadora.e_trial && !prestadora.stripe_subscription_id && trialDiasRestantes !== null && (
           <TrialBanner dias={trialDiasRestantes} />
         )}
 
@@ -406,8 +409,8 @@ export default function PainelLayoutClient({
         {/* Trial Pro em andamento — dias restantes até encerrar */}
         {trialProDiasRestantes !== null && <TrialProAtivoBanner dias={trialProDiasRestantes} />}
 
-        {/* Oferta de trial Pro grátis — só quem está no Básico e nunca usou */}
-        {prestadora.plano === 'basico' && !prestadora.trial_pro_usado && <TrialProBanner />}
+        {/* Oferta de trial Pro grátis — só quem está no Básico e nunca usou (parceira já tem Pro vitalício, oferta seria redundante) */}
+        {!prestadora.e_parceira && prestadora.plano === 'basico' && !prestadora.trial_pro_usado && <TrialProBanner />}
 
         {/* Ativar notificações push */}
         <PushNotificationPrompt prestadoraId={prestadora.id} />

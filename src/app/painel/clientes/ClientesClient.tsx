@@ -39,6 +39,12 @@ const AVATAR_COLORS = [
 
 const SEIS_MESES_MS = 6 * 30 * 24 * 60 * 60 * 1000
 
+// String.fromCodePoint() em vez de emoji literal no source — caracteres de plano
+// astral (fora do BMP) estavam sendo corrompidos para U+FFFD (�) no bundle de
+// produção do Turbopack quando escritos como literal no código.
+const NAIL_POLISH = String.fromCodePoint(0x1f485)
+const STAR = String.fromCodePoint(0x1f31f)
+
 function isAusente(ultimaVisitaAtiva: string | null): boolean {
   if (!ultimaVisitaAtiva) return true
   return Date.now() - new Date(ultimaVisitaAtiva).getTime() > SEIS_MESES_MS
@@ -70,11 +76,11 @@ function ClienteCard({ cliente, total, gasto, ultimaVisita, ultimaVisitaAtiva, e
   const ultimoConcluido = historico.find((h) => h.status === 'concluido')
 
   const msgLembrete = ausente
-    ? `Olá ${cliente.nome}! Sentimos sua falta 💅 Que tal agendar um horário? Estamos com novidades te esperando!`
-    : `Olá ${cliente.nome}! Temos horários disponíveis. Gostaria de agendar? 💅 - ${prestadoraNome}`
+    ? `Olá ${cliente.nome}! Sentimos sua falta ${NAIL_POLISH} Que tal agendar um horário? Estamos com novidades te esperando!`
+    : `Olá ${cliente.nome}! Temos horários disponíveis. Gostaria de agendar? ${NAIL_POLISH} - ${prestadoraNome}`
 
   const msgAvaliacao = ultimoConcluido
-    ? `Olá ${cliente.nome}! Esperamos que tenha amado seu ${ultimoConcluido.servicos?.nome ?? 'atendimento'}. Poderia deixar uma avaliação sobre o atendimento? \u{1F31F} ${process.env.NEXT_PUBLIC_APP_URL}/avaliar/${ultimoConcluido.id} - ${prestadoraNome}`
+    ? `Olá ${cliente.nome}! Esperamos que tenha amado seu ${ultimoConcluido.servicos?.nome ?? 'atendimento'}. Poderia deixar uma avaliação sobre o atendimento? ${STAR} ${process.env.NEXT_PUBLIC_APP_URL}/avaliar/${ultimoConcluido.id} - ${prestadoraNome}`
     : null
 
   return (

@@ -8,12 +8,17 @@ export const TEMPLATE_VARS: { key: string; label: string }[] = [
   { key: 'hora', label: 'Hora' },
 ]
 
+// Emojis são gerados via String.fromCodePoint() em vez de literais no código-fonte —
+// caracteres de plano astral (fora do BMP, como 💅 e 🌟) literais no source estavam
+// sendo corrompidos para U+FFFD (�) no bundle de produção do Turbopack.
+const NAIL_POLISH = String.fromCodePoint(0x1f485)
+
 export const MSG_CONFIRMACAO_DEFAULT =
-  'Olá {cliente_nome}! Confirmando seu agendamento de {servico} no dia {data} às {hora}. Te esperamos! 💅 - {nome_da_prestadora}'
+  `Olá {cliente_nome}! Confirmando seu agendamento de {servico} no dia {data} às {hora}. Te esperamos! ${NAIL_POLISH} - {nome_da_prestadora}`
 export const MSG_CANCELAMENTO_DEFAULT =
   'Olá {cliente_nome}, infelizmente precisamos cancelar seu agendamento de {servico} no dia {data}. Entre em contato para remarcar. - {nome_da_prestadora}'
 export const MSG_LEMBRETE_DEFAULT =
-  'Olá {cliente_nome}! Passando para lembrar do seu agendamento de {servico} amanhã às {hora}. Te esperamos! 💅 - {nome_da_prestadora}'
+  `Olá {cliente_nome}! Passando para lembrar do seu agendamento de {servico} amanhã às {hora}. Te esperamos! ${NAIL_POLISH} - {nome_da_prestadora}`
 
 type AgendamentoLike = {
   data_hora: string
