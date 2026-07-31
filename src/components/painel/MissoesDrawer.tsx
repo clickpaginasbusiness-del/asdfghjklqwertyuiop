@@ -164,7 +164,7 @@ export function MissoesDrawer() {
               <div className="px-4 py-2.5 bg-red-50 border-b border-red-100 flex items-start gap-1.5">
                 <AlertTriangle className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" />
                 <p className="text-[11px] text-red-600 leading-relaxed">
-                  ⚠️ Descontos de missões expiram no final do mês. Não acumulam para o mês seguinte!
+                  Descontos de missões expiram no final do mês. Não acumulam para o mês seguinte!
                 </p>
               </div>
               <div className="px-4 py-3 bg-amber-50 space-y-1.5">
