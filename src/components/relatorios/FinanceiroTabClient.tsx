@@ -78,8 +78,12 @@ export function FinanceiroTabClient({
   const entradasExtras = lancamentosNoPeriodo.filter((l) => l.valor > 0).reduce((acc, l) => acc + l.valor, 0)
   const saldoLancamentos = entradasExtras - despesas
 
-  const lucro = receita - despesas
-  const margem = receita > 0 ? (lucro / receita) * 100 : 0
+  // Lucro conta as entradas extras dos lançamentos também — não é só receita
+  // de serviço menos despesa. saldoLancamentos já é (entradas - despesas), só
+  // soma na receita.
+  const lucro = receita + saldoLancamentos
+  const baseMargem = receita + entradasExtras
+  const margem = baseMargem > 0 ? (lucro / baseMargem) * 100 : 0
 
   /* Período anterior — mesma duração, imediatamente antes do início selecionado. */
   const { prevStart, prevEnd } = useMemo(() => {
@@ -258,7 +262,7 @@ export function FinanceiroTabClient({
             <div className="bg-purple-50 p-2.5 rounded-xl w-fit mb-4">
               <TrendingUp className="w-5 h-5 text-purple-500" />
             </div>
-            <p className="text-3xl font-bold text-gray-900">{receita > 0 ? `${margem.toFixed(1)}%` : '—'}</p>
+            <p className="text-3xl font-bold text-gray-900">{baseMargem > 0 ? `${margem.toFixed(1)}%` : '—'}</p>
             <p className="text-sm text-gray-500 mt-1">Margem</p>
           </CardContent>
         </Card>
