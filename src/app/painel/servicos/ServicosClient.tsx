@@ -198,6 +198,9 @@ export default function ServicosClient({
     setDeleteId(null)
   }
 
+  const usandoFoto = form.fotoGaleriaId !== null
+  const fotoAtualUrl = fotoUrlFor(form.fotoGaleriaId)
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -311,7 +314,7 @@ export default function ServicosClient({
             <div className="grid grid-cols-8 gap-2 mt-2">
               {SERVICO_ICONE_OPTIONS.map((nomeIcone) => {
                 const IconeOpcao = getServicoIcone(nomeIcone)
-                const selecionado = !mostrarSeletorFoto && form.icone === nomeIcone
+                const selecionado = !usandoFoto && form.icone === nomeIcone
                 return (
                   <button
                     key={nomeIcone}
@@ -329,29 +332,33 @@ export default function ServicosClient({
                   </button>
                 )
               })}
-              <button
-                type="button"
-                title="Usar foto da galeria"
-                aria-label="Usar foto da galeria"
-                onClick={() => setMostrarSeletorFoto(true)}
-                className={`aspect-square rounded-xl border flex items-center justify-center transition-colors ${
-                  mostrarSeletorFoto
-                    ? 'border-rose-400 bg-rose-50 text-rose-500'
-                    : 'border-gray-200 text-gray-400 hover:border-rose-200 hover:text-rose-400'
-                }`}
-              >
-                <ImageIcon className="w-5 h-5" />
-              </button>
             </div>
 
-            {mostrarSeletorFoto && (
+            {mostrarSeletorFoto ? (
               <div className="mt-3">
                 <p className="text-xs text-gray-500 mb-2">Escolha uma foto da galeria para usar como ícone</p>
                 <SeletorFotoIcone
                   galeria={galeria}
                   selecionada={form.fotoGaleriaId}
-                  onSelect={(id) => setForm({ ...form, fotoGaleriaId: id })}
+                  onSelect={(id) => { setForm({ ...form, fotoGaleriaId: id }); setMostrarSeletorFoto(false) }}
                 />
+              </div>
+            ) : (
+              <div className="mt-3 flex items-center justify-center gap-3">
+                {usandoFoto && fotoAtualUrl && (
+                  <div className="relative w-10 h-10 rounded-lg overflow-hidden ring-1 ring-gray-200 shrink-0">
+                    <ImageWithSkeleton src={fotoAtualUrl} alt="Foto selecionada" fill className="object-cover" />
+                  </div>
+                )}
+                <Button type="button" size="sm" onClick={() => setMostrarSeletorFoto(true)}>
+                  <ImageIcon className="w-4 h-4" />
+                  {usandoFoto ? 'Trocar foto' : 'Escolher da galeria'}
+                </Button>
+                {usandoFoto && (
+                  <Button type="button" variant="outline" size="sm" onClick={() => setForm({ ...form, fotoGaleriaId: null })}>
+                    Remover foto
+                  </Button>
+                )}
               </div>
             )}
           </div>
