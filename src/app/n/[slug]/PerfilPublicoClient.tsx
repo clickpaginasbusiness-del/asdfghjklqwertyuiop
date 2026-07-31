@@ -1172,6 +1172,9 @@ export default function PerfilPublicoClient({
                   ) : (
                     servicos.map((s) => {
                       const IconeServico = getServicoIcone(s.icone)
+                      const fotoServico = s.foto_galeria_id
+                        ? galeria.find((g) => g.id === s.foto_galeria_id && g.tipo === 'imagem')
+                        : null
                       return (
                       <div
                         key={s.id}
@@ -1181,8 +1184,12 @@ export default function PerfilPublicoClient({
                         onMouseLeave={(e) => { e.currentTarget.style.borderColor = '' }}
                       >
                         <div className="flex items-center gap-4">
-                          <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-colors" style={{ backgroundColor: tema.hexLight }}>
-                            <IconeServico className="w-5 h-5" style={{ color: tema.hex }} />
+                          <div className="relative w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-colors overflow-hidden" style={{ backgroundColor: tema.hexLight }}>
+                            {fotoServico ? (
+                              <ImageWithSkeleton src={fotoServico.url} alt={s.nome} fill className="object-cover" />
+                            ) : (
+                              <IconeServico className="w-5 h-5" style={{ color: tema.hex }} />
+                            )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <h4 className="font-semibold text-gray-900">{s.nome}</h4>

@@ -73,6 +73,7 @@ const DEMO_SERVICOS: ServicoComProfissionais[] = [
     duracao_minutos: 30,
     descricao: 'Cutilagem, esmaltação e hidratação das mãos.',
     icone: 'Hand',
+    foto_galeria_id: null,
     servico_profissionais: [],
   },
   {
@@ -82,6 +83,7 @@ const DEMO_SERVICOS: ServicoComProfissionais[] = [
     duracao_minutos: 60,
     descricao: 'Cutilagem, esmaltação e esfoliação dos pés.',
     icone: 'Hand',
+    foto_galeria_id: null,
     servico_profissionais: [],
   },
   {
@@ -91,6 +93,7 @@ const DEMO_SERVICOS: ServicoComProfissionais[] = [
     duracao_minutos: 90,
     descricao: 'Decoração artística nas unhas com glitter, strass e estampas.',
     icone: 'Palette',
+    foto_galeria_id: null,
     servico_profissionais: [],
   },
   {
@@ -100,6 +103,7 @@ const DEMO_SERVICOS: ServicoComProfissionais[] = [
     duracao_minutos: 120,
     descricao: 'Extensão das unhas em gel com formato e comprimento personalizados.',
     icone: 'Gem',
+    foto_galeria_id: null,
     servico_profissionais: [],
   },
   {
@@ -109,6 +113,7 @@ const DEMO_SERVICOS: ServicoComProfissionais[] = [
     duracao_minutos: 60,
     descricao: 'Reequilíbrio e esmaltação das unhas em gel com preenchimento da raiz.',
     icone: 'Sparkles',
+    foto_galeria_id: null,
     servico_profissionais: [],
   },
 ]

@@ -109,6 +109,7 @@ export type Servico = {
   descricao: string | null
   ativo: boolean
   icone: string | null
+  foto_galeria_id: string | null
   created_at: string
 }
 

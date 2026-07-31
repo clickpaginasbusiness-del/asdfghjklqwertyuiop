@@ -15,7 +15,7 @@ export default async function ServicosPage() {
 
   if (!prestadora) redirect('/painel/login')
 
-  const [{ data: servicos }, { data: profissionais }] = await Promise.all([
+  const [{ data: servicos }, { data: profissionais }, { data: galeria }] = await Promise.all([
     supabase
       .from('servicos')
       .select('*, servico_profissionais(profissional_id)')
@@ -27,12 +27,18 @@ export default async function ServicosPage() {
       .eq('prestadora_id', prestadora.id)
       .eq('ativa', true)
       .order('nome'),
+    supabase
+      .from('galeria')
+      .select('*')
+      .eq('prestadora_id', prestadora.id)
+      .order('created_at', { ascending: false }),
   ])
 
   return (
     <ServicosClient
       servicos={(servicos ?? []) as unknown as ServicoComProfissionais[]}
       profissionais={profissionais ?? []}
+      galeria={galeria ?? []}
       prestadoraId={prestadora.id}
     />
   )

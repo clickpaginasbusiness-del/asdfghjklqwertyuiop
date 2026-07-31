@@ -1,16 +1,18 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Modal } from '@/components/ui/modal'
-import { formatCurrency } from '@/lib/utils'
-import { Plus, Pencil, Trash2, Clock, Scissors } from 'lucide-react'
+import { ImageWithSkeleton } from '@/components/ui/image-with-skeleton'
+import { formatCurrency, cn } from '@/lib/utils'
+import { Plus, Pencil, Trash2, Clock, Scissors, ImageIcon, Check } from 'lucide-react'
 import { SERVICO_ICONE_OPTIONS, SERVICO_ICONE_PADRAO, getServicoIcone, type ServicoIcone } from '@/lib/servicoIcones'
-import type { Servico } from '@/lib/types'
+import type { Servico, GaleriaItem } from '@/lib/types'
 import toast from 'react-hot-toast'
 
 interface ServicoForm {
@@ -19,6 +21,7 @@ interface ServicoForm {
   duracao_minutos: string
   descricao: string
   icone: ServicoIcone
+  fotoGaleriaId: string | null
 }
 
 export type ServicoComProfissionais = Servico & {
@@ -30,24 +33,85 @@ interface ProfissionalLite {
   nome: string
 }
 
-const emptyForm: ServicoForm = { nome: '', preco: '', duracao_minutos: '', descricao: '', icone: SERVICO_ICONE_PADRAO }
+const emptyForm: ServicoForm = { nome: '', preco: '', duracao_minutos: '', descricao: '', icone: SERVICO_ICONE_PADRAO, fotoGaleriaId: null }
+
+function SeletorFotoIcone({
+  galeria,
+  selecionada,
+  onSelect,
+}: {
+  galeria: GaleriaItem[]
+  selecionada: string | null
+  onSelect: (id: string) => void
+}) {
+  const fotos = galeria.filter((g) => g.tipo === 'imagem')
+
+  if (fotos.length === 0) {
+    return (
+      <div className="text-center py-6 text-gray-400 border border-dashed border-gray-200 rounded-xl">
+        <ImageIcon className="w-5 h-5 mx-auto mb-1.5 opacity-30" />
+        <p className="text-xs">
+          Nenhuma foto na galeria.{' '}
+          <Link href="/painel/galeria" className="text-rose-500 font-medium underline underline-offset-2">
+            Adicionar fotos
+          </Link>
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="grid grid-cols-6 gap-2">
+      {fotos.map((item) => {
+        const selecionado = item.id === selecionada
+        return (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => onSelect(item.id)}
+            title="Usar esta foto"
+            className={cn(
+              'relative aspect-square rounded-lg overflow-hidden ring-2 transition-all',
+              selecionado ? 'ring-rose-400' : 'ring-transparent hover:ring-rose-200'
+            )}
+          >
+            <ImageWithSkeleton src={item.url} alt="Foto da galeria" fill className="object-cover" />
+            {selecionado && (
+              <span className="absolute inset-0 bg-rose-400/25 flex items-center justify-center">
+                <Check className="w-5 h-5 text-white drop-shadow" />
+              </span>
+            )}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
 
 export default function ServicosClient({
   servicos: initial,
   profissionais,
+  galeria,
   prestadoraId,
 }: {
   servicos: ServicoComProfissionais[]
   profissionais: ProfissionalLite[]
+  galeria: GaleriaItem[]
   prestadoraId: string
 }) {
   const [servicos, setServicos] = useState(initial)
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState<ServicoForm>(emptyForm)
+  const [mostrarSeletorFoto, setMostrarSeletorFoto] = useState(false)
   const [profissionaisSelecionadas, setProfissionaisSelecionadas] = useState<string[]>([])
   const [editId, setEditId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
+
+  function fotoUrlFor(fotoId: string | null | undefined): string | null {
+    if (!fotoId) return null
+    return galeria.find((g) => g.id === fotoId)?.url ?? null
+  }
 
   function toggleProfissional(id: string) {
     setProfissionaisSelecionadas((prev) =>
@@ -59,6 +123,7 @@ export default function ServicosClient({
     setForm(emptyForm)
     setProfissionaisSelecionadas([])
     setEditId(null)
+    setMostrarSeletorFoto(false)
     setModalOpen(true)
   }
 
@@ -69,9 +134,11 @@ export default function ServicosClient({
       duracao_minutos: String(s.duracao_minutos),
       descricao: s.descricao ?? '',
       icone: (s.icone as ServicoIcone) ?? SERVICO_ICONE_PADRAO,
+      fotoGaleriaId: s.foto_galeria_id,
     })
     setProfissionaisSelecionadas(s.servico_profissionais.map((sp) => sp.profissional_id))
     setEditId(s.id)
+    setMostrarSeletorFoto(!!s.foto_galeria_id)
     setModalOpen(true)
   }
 
@@ -86,6 +153,7 @@ export default function ServicosClient({
       duracao_minutos: parseInt(form.duracao_minutos),
       descricao: form.descricao || null,
       icone: form.icone,
+      foto_galeria_id: form.fotoGaleriaId,
     }
 
     let servicoId = editId
@@ -156,13 +224,18 @@ export default function ServicosClient({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {servicos.map((s) => {
             const IconeServico = getServicoIcone(s.icone)
+            const fotoUrl = fotoUrlFor(s.foto_galeria_id)
             return (
             <Card key={s.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-5">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-9 h-9 rounded-lg bg-rose-50 flex items-center justify-center shrink-0">
-                      <IconeServico className="w-4 h-4 text-rose-500" />
+                    <div className="relative w-9 h-9 rounded-lg bg-rose-50 flex items-center justify-center shrink-0 overflow-hidden">
+                      {fotoUrl ? (
+                        <ImageWithSkeleton src={fotoUrl} alt={s.nome} fill className="object-cover" />
+                      ) : (
+                        <IconeServico className="w-4 h-4 text-rose-500" />
+                      )}
                     </div>
                     <h3 className="font-semibold text-gray-900 truncate">{s.nome}</h3>
                   </div>
@@ -238,14 +311,14 @@ export default function ServicosClient({
             <div className="grid grid-cols-8 gap-2 mt-2">
               {SERVICO_ICONE_OPTIONS.map((nomeIcone) => {
                 const IconeOpcao = getServicoIcone(nomeIcone)
-                const selecionado = form.icone === nomeIcone
+                const selecionado = !mostrarSeletorFoto && form.icone === nomeIcone
                 return (
                   <button
                     key={nomeIcone}
                     type="button"
                     title={nomeIcone}
                     aria-label={nomeIcone}
-                    onClick={() => setForm({ ...form, icone: nomeIcone })}
+                    onClick={() => { setForm({ ...form, icone: nomeIcone, fotoGaleriaId: null }); setMostrarSeletorFoto(false) }}
                     className={`aspect-square rounded-xl border flex items-center justify-center transition-colors ${
                       selecionado
                         ? 'border-rose-400 bg-rose-50 text-rose-500'
@@ -256,7 +329,31 @@ export default function ServicosClient({
                   </button>
                 )
               })}
+              <button
+                type="button"
+                title="Usar foto da galeria"
+                aria-label="Usar foto da galeria"
+                onClick={() => setMostrarSeletorFoto(true)}
+                className={`aspect-square rounded-xl border flex items-center justify-center transition-colors ${
+                  mostrarSeletorFoto
+                    ? 'border-rose-400 bg-rose-50 text-rose-500'
+                    : 'border-gray-200 text-gray-400 hover:border-rose-200 hover:text-rose-400'
+                }`}
+              >
+                <ImageIcon className="w-5 h-5" />
+              </button>
             </div>
+
+            {mostrarSeletorFoto && (
+              <div className="mt-3">
+                <p className="text-xs text-gray-500 mb-2">Escolha uma foto da galeria para usar como ícone</p>
+                <SeletorFotoIcone
+                  galeria={galeria}
+                  selecionada={form.fotoGaleriaId}
+                  onSelect={(id) => setForm({ ...form, fotoGaleriaId: id })}
+                />
+              </div>
+            )}
           </div>
 
           {profissionais.length > 0 && (
