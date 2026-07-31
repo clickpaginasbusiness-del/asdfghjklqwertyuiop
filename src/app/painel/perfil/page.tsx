@@ -15,10 +15,15 @@ export default async function PerfilPainelPage() {
 
   if (!prestadora) redirect('/painel/login')
 
-  const [avaliacoesRes, indicacoesRes, conversoesRes] = await Promise.all([
+  const [avaliacoesRes, galeriaRes, indicacoesRes, conversoesRes] = await Promise.all([
     supabase
       .from('avaliacoes')
       .select('id, nota, comentario, destaque, created_at, agendamentos(clientes(nome), servicos(nome))')
+      .eq('prestadora_id', prestadora.id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('galeria')
+      .select('*')
       .eq('prestadora_id', prestadora.id)
       .order('created_at', { ascending: false }),
     supabase
@@ -37,6 +42,7 @@ export default async function PerfilPainelPage() {
     <PerfilPainelClient
       prestadora={prestadora}
       avaliacoes={(avaliacoesRes.data ?? []) as unknown as AvaliacaoComCliente[]}
+      galeria={galeriaRes.data ?? []}
       indicacoesCount={indicacoesRes.count ?? 0}
       conversoesCount={conversoesRes.count ?? 0}
     />

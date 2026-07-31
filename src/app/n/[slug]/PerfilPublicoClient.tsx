@@ -62,6 +62,63 @@ function formatHora(h: string): string {
   return min === '00' ? `${parseInt(hora)}h` : `${parseInt(hora)}h${min}`
 }
 
+function GaleriaGrid({
+  itens, modo, altPrefixo, nomePrestadora, onItemClick,
+}: {
+  itens: GaleriaItem[]
+  modo: 'empilhada' | 'carrossel'
+  altPrefixo: string
+  nomePrestadora: string
+  onItemClick: (index: number) => void
+}) {
+  const tile = (item: GaleriaItem, i: number) => (
+    <div
+      key={item.id}
+      className="aspect-square rounded-2xl overflow-hidden bg-gray-100 cursor-pointer relative group"
+      onClick={() => onItemClick(i)}
+    >
+      {item.tipo === 'video' ? (
+        <video
+          src={item.url}
+          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+          muted
+        />
+      ) : (
+        /* Inner div for scale — absolute fills parent, Image fills this div */
+        <div className="absolute inset-0 transition-transform duration-300 group-hover:scale-110">
+          <ImageWithSkeleton
+            src={item.url}
+            alt={`${altPrefixo} ${i + 1} de ${nomePrestadora}`}
+            fill
+            className="object-cover"
+            sizes="33vw"
+          />
+        </div>
+      )}
+      {/* Subtle overlay */}
+      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" aria-hidden />
+    </div>
+  )
+
+  if (modo === 'carrossel') {
+    return (
+      <div className="flex gap-2 overflow-x-auto snap-x snap-mandatory pb-1 -mx-4 px-4">
+        {itens.map((item, i) => (
+          <div key={item.id} className="w-32 sm:w-40 shrink-0 snap-center">
+            {tile(item, i)}
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+      {itens.map((item, i) => tile(item, i))}
+    </div>
+  )
+}
+
 export default function PerfilPublicoClient({
   prestadora, servicos, galeria, diasBloqueados, profissionais, horariosFuncionamento, avaliacoes, isDemo = false,
 }: Props) {
@@ -136,7 +193,7 @@ export default function PerfilPublicoClient({
     })
   }, [meusAgendamentos])
 
-  const [galeriaIndex, setGaleriaIndex] = useState<number | null>(null)
+  const [lightbox, setLightbox] = useState<{ lista: GaleriaItem[]; index: number } | null>(null)
 
   const [weekOffset, setWeekOffset] = useState(0)
   const today = startOfDay(new Date())
@@ -683,12 +740,26 @@ export default function PerfilPublicoClient({
   // (ex.: downgrade após ter marcado destaques), ignora marcações antigas.
   // Sem nenhuma marcada, a seção de avaliações simplesmente não aparece —
   // sem fallback para "mais recentes".
-  const avaliacoesDestaque = (prestadora.plano === 'pro' || prestadora.e_parceira) ? avaliacoes.filter((a) => a.destaque) : []
+  const avaliacoesDestaque = prestadora.pagina_mostrar_avaliacoes && (prestadora.plano === 'pro' || prestadora.e_parceira)
+    ? avaliacoes.filter((a) => a.destaque)
+    : []
   const avaliacoesExibidas = avaliacoesDestaque.slice(0, 3)
 
   // Galeria é recurso exclusivo do Plano Pro — as fotos continuam salvas no
-  // banco num downgrade, só ficam ocultas aqui na página pública.
-  const galeriaVisivel = (prestadora.plano === 'pro' || prestadora.e_parceira) ? galeria : []
+  // banco num downgrade, só ficam ocultas aqui na página pública. Exibe só as
+  // fotos selecionadas no modal "Personalizar Página", na ordem escolhida lá.
+  const galeriaCompleta = prestadora.pagina_mostrar_galeria && (prestadora.plano === 'pro' || prestadora.e_parceira) ? galeria : []
+  const galeriaVisivel = prestadora.pagina_galeria_fotos_ids.length > 0
+    ? prestadora.pagina_galeria_fotos_ids
+        .map((id) => galeriaCompleta.find((g) => g.id === id))
+        .filter((g): g is GaleriaItem => !!g)
+    : galeriaCompleta
+
+  const estabelecimentoFotos = prestadora.pagina_mostrar_estabelecimento
+    ? prestadora.pagina_estabelecimento_fotos_ids
+        .map((id) => galeria.find((g) => g.id === id))
+        .filter((g): g is GaleriaItem => !!g)
+    : []
 
   async function compartilharAgendamento() {
     if (!agendamentoFeito) return
@@ -863,11 +934,13 @@ export default function PerfilPublicoClient({
 
               {/* 24h + avaliações badges */}
               <div className="flex items-center justify-center gap-2 flex-wrap">
-                <span className="inline-flex items-center gap-1.5 bg-amber-50 border border-amber-100 text-amber-600 rounded-full px-4 py-1.5 text-xs font-semibold">
-                  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                  Agendamento online 24h
-                </span>
-                {mediaAvaliacoes !== null && (
+                {prestadora.pagina_mostrar_texto_agendamento && prestadora.pagina_texto_agendamento && (
+                  <span className="inline-flex items-center gap-1.5 bg-amber-50 border border-amber-100 text-amber-600 rounded-full px-4 py-1.5 text-xs font-semibold">
+                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                    {prestadora.pagina_texto_agendamento}
+                  </span>
+                )}
+                {prestadora.pagina_mostrar_estrelas && mediaAvaliacoes !== null && (
                   <span className="inline-flex items-center gap-1.5 bg-amber-50 border border-amber-100 text-amber-600 rounded-full px-4 py-1.5 text-xs font-semibold">
                     <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                     {mediaAvaliacoes.toFixed(1)} ({avaliacoes.length} avaliaç{avaliacoes.length > 1 ? 'ões' : 'ão'})
@@ -952,36 +1025,29 @@ export default function PerfilPublicoClient({
         {galeriaVisivel.length > 0 && (
           <section data-animate>
             <h2 className="font-serif text-xl font-semibold text-gray-900 mb-4">Trabalhos</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {galeriaVisivel.slice(0, 9).map((item, i) => (
-                <div
-                  key={item.id}
-                  className="aspect-square rounded-2xl overflow-hidden bg-gray-100 cursor-pointer relative group"
-                  onClick={() => setGaleriaIndex(i)}
-                >
-                  {item.tipo === 'video' ? (
-                    <video
-                      src={item.url}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                      muted
-                    />
-                  ) : (
-                    /* Inner div for scale — absolute fills parent, Image fills this div */
-                    <div className="absolute inset-0 transition-transform duration-300 group-hover:scale-110">
-                      <ImageWithSkeleton
-                        src={item.url}
-                        alt={`Trabalho ${i + 1} de ${prestadora.nome}`}
-                        fill
-                        className="object-cover"
-                        sizes="33vw"
-                      />
-                    </div>
-                  )}
-                  {/* Subtle overlay */}
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" aria-hidden />
-                </div>
-              ))}
-            </div>
+            <GaleriaGrid
+              itens={prestadora.pagina_galeria_modo === 'carrossel' ? galeriaVisivel : galeriaVisivel.slice(0, 9)}
+              modo={prestadora.pagina_galeria_modo}
+              altPrefixo="Trabalho"
+              nomePrestadora={prestadora.nome}
+              onItemClick={(i) => setLightbox({ lista: galeriaVisivel, index: i })}
+            />
+          </section>
+        )}
+
+        {/* Fotos do estabelecimento */}
+        {estabelecimentoFotos.length > 0 && (
+          <section data-animate>
+            <h2 className="font-serif text-xl font-semibold text-gray-900 mb-4">
+              {prestadora.pagina_estabelecimento_titulo || 'Nosso espaço'}
+            </h2>
+            <GaleriaGrid
+              itens={prestadora.pagina_estabelecimento_modo === 'carrossel' ? estabelecimentoFotos : estabelecimentoFotos.slice(0, 9)}
+              modo={prestadora.pagina_estabelecimento_modo}
+              altPrefixo="Foto do espaço"
+              nomePrestadora={prestadora.nome}
+              onItemClick={(i) => setLightbox({ lista: estabelecimentoFotos, index: i })}
+            />
           </section>
         )}
 
@@ -1673,30 +1739,30 @@ export default function PerfilPublicoClient({
       </Modal>
 
       {/* ── GALERIA LIGHTBOX ────────────────────── */}
-      {galeriaIndex !== null && (
+      {lightbox !== null && (
         <div
           className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
-          onClick={() => setGaleriaIndex(null)}
+          onClick={() => setLightbox(null)}
         >
           <button
             className="absolute top-4 right-4 text-white p-2 hover:bg-white/10 rounded-xl transition-colors"
-            onClick={() => setGaleriaIndex(null)}
+            onClick={() => setLightbox(null)}
           >
             <X className="w-6 h-6" />
           </button>
           <button
             className="absolute left-4 top-1/2 -translate-y-1/2 text-white p-2 hover:bg-white/10 rounded-xl transition-colors"
-            onClick={(e) => { e.stopPropagation(); setGaleriaIndex(Math.max(0, galeriaIndex - 1)) }}
+            onClick={(e) => { e.stopPropagation(); setLightbox({ ...lightbox, index: Math.max(0, lightbox.index - 1) }) }}
           >
             <ChevronLeft className="w-6 h-6" />
           </button>
           <div className="max-w-xl w-full" onClick={(e) => e.stopPropagation()}>
-            {galeriaVisivel[galeriaIndex].tipo === 'video' ? (
-              <video src={galeriaVisivel[galeriaIndex].url} controls className="rounded-2xl w-full max-h-[80vh]" />
+            {lightbox.lista[lightbox.index].tipo === 'video' ? (
+              <video src={lightbox.lista[lightbox.index].url} controls className="rounded-2xl w-full max-h-[80vh]" />
             ) : (
               <Image
-                src={galeriaVisivel[galeriaIndex].url}
-                alt={`Trabalho ${galeriaIndex + 1} de ${prestadora.nome}`}
+                src={lightbox.lista[lightbox.index].url}
+                alt={`Foto ${lightbox.index + 1} de ${prestadora.nome}`}
                 width={600}
                 height={600}
                 className="rounded-2xl w-full max-h-[80vh] object-contain"
@@ -1705,13 +1771,13 @@ export default function PerfilPublicoClient({
           </div>
           <button
             className="absolute right-4 top-1/2 -translate-y-1/2 text-white p-2 hover:bg-white/10 rounded-xl transition-colors"
-            onClick={(e) => { e.stopPropagation(); setGaleriaIndex(Math.min(galeriaVisivel.length - 1, galeriaIndex + 1)) }}
+            onClick={(e) => { e.stopPropagation(); setLightbox({ ...lightbox, index: Math.min(lightbox.lista.length - 1, lightbox.index + 1) }) }}
           >
             <ChevronRight className="w-6 h-6" />
           </button>
           {/* Counter */}
           <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/50 text-xs">
-            {galeriaIndex + 1} / {galeriaVisivel.length}
+            {lightbox.index + 1} / {lightbox.lista.length}
           </div>
         </div>
       )}

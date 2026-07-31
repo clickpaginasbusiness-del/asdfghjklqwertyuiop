@@ -37,6 +37,17 @@ export type Prestadora = {
   parceira_comissao_percentual: number | null
   parceira_periodo_30_inicio: string | null
   parceira_pix: string | null
+  pagina_texto_agendamento: string | null
+  pagina_mostrar_texto_agendamento: boolean
+  pagina_mostrar_estrelas: boolean
+  pagina_mostrar_avaliacoes: boolean
+  pagina_mostrar_galeria: boolean
+  pagina_galeria_modo: 'empilhada' | 'carrossel'
+  pagina_galeria_fotos_ids: string[]
+  pagina_mostrar_estabelecimento: boolean
+  pagina_estabelecimento_modo: 'empilhada' | 'carrossel'
+  pagina_estabelecimento_fotos_ids: string[]
+  pagina_estabelecimento_titulo: string | null
   created_at: string
 }
 

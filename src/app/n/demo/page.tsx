@@ -40,6 +40,17 @@ const DEMO_PRESTADORA: Prestadora = {
   parceira_comissao_percentual: 20,
   parceira_periodo_30_inicio: null,
   parceira_pix: null,
+  pagina_texto_agendamento: 'Agendamento online 24h',
+  pagina_mostrar_texto_agendamento: true,
+  pagina_mostrar_estrelas: true,
+  pagina_mostrar_avaliacoes: true,
+  pagina_mostrar_galeria: true,
+  pagina_galeria_modo: 'empilhada',
+  pagina_galeria_fotos_ids: [],
+  pagina_mostrar_estabelecimento: false,
+  pagina_estabelecimento_modo: 'empilhada',
+  pagina_estabelecimento_fotos_ids: [],
+  pagina_estabelecimento_titulo: 'Nosso espaço',
   created_at: new Date().toISOString(),
 }
 

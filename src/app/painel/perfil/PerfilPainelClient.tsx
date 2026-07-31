@@ -9,15 +9,14 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import {
   User, Link2, Upload, Phone, AtSign, MapPin,
-  CheckCircle2, XCircle, Loader2, Palette, Lock, Check, MessageCircle,
+  CheckCircle2, XCircle, Loader2, Palette, MessageCircle,
   Gift, Shield, CalendarClock,
 } from 'lucide-react'
 import Image from 'next/image'
-import type { Prestadora } from '@/lib/types'
+import type { Prestadora, GaleriaItem } from '@/lib/types'
 import { maskTelefone, cleanTelefone, slugify, formatDate } from '@/lib/utils'
-import { TEMAS, type CorTema } from '@/lib/theme'
 import { TEMPLATE_VARS, MSG_CONFIRMACAO_DEFAULT, MSG_CANCELAMENTO_DEFAULT, MSG_LEMBRETE_DEFAULT } from '@/lib/whatsappTemplates'
-import { AvaliacoesDestaqueSection } from './AvaliacoesDestaqueSection'
+import { PersonalizarPaginaModal } from './PersonalizarPaginaModal'
 import { CodigoIndicacaoCard } from '@/components/painel/CodigoIndicacaoCard'
 import { ADMIN_EMAIL } from '@/lib/admin'
 import toast from 'react-hot-toast'
@@ -36,11 +35,13 @@ export type AvaliacaoComCliente = {
 export default function PerfilPainelClient({
   prestadora: initial,
   avaliacoes,
+  galeria,
   indicacoesCount,
   conversoesCount,
 }: {
   prestadora: Prestadora
   avaliacoes: AvaliacaoComCliente[]
+  galeria: GaleriaItem[]
   indicacoesCount: number
   conversoesCount: number
 }) {
@@ -59,9 +60,8 @@ export default function PerfilPainelClient({
   const [slugStatus, setSlugStatus] = useState<SlugStatus>('idle')
   const [savingSlug, setSavingSlug] = useState(false)
 
-  const [corTema, setCorTema] = useState<CorTema>((initial.cor_tema as CorTema) || 'rosa')
-  const [savingTema, setSavingTema] = useState(false)
   const ehPro = prestadora.plano === 'pro' || prestadora.e_parceira
+  const [personalizarOpen, setPersonalizarOpen] = useState(false)
 
   const [msgConfirmacao, setMsgConfirmacao] = useState(initial.mensagem_confirmacao ?? MSG_CONFIRMACAO_DEFAULT)
   const [msgCancelamento, setMsgCancelamento] = useState(initial.mensagem_cancelamento ?? MSG_CANCELAMENTO_DEFAULT)
@@ -122,19 +122,6 @@ export default function PerfilPainelClient({
       toast.success('Link atualizado!')
     }
     setSavingSlug(false)
-  }
-
-  async function salvarTema(cor: CorTema) {
-    setCorTema(cor)
-    setSavingTema(true)
-    const supabase = createClient()
-    const { error } = await supabase.from('prestadoras').update({ cor_tema: cor }).eq('id', prestadora.id)
-    if (error) toast.error('Erro ao salvar cor')
-    else {
-      setPrestadora((p) => ({ ...p, cor_tema: cor }))
-      toast.success('Cor da página atualizada!')
-    }
-    setSavingTema(false)
   }
 
   async function salvarMensagens() {
@@ -410,63 +397,20 @@ export default function PerfilPainelClient({
         </CardContent>
       </Card>
 
-      {/* Personalização (exclusivo Pro) */}
+      {/* Personalização */}
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
             <Palette className="w-5 h-5 text-rose-400" />
             <CardTitle>Personalização</CardTitle>
           </div>
-          <p className="text-sm text-gray-400">Escolha a cor principal da sua página pública</p>
+          <p className="text-sm text-gray-400">Cores, textos, avaliações e fotos da sua página pública</p>
         </CardHeader>
         <CardContent>
-          <div className="relative">
-            <div className="flex flex-wrap gap-3">
-              {(Object.entries(TEMAS) as [CorTema, (typeof TEMAS)[CorTema]][]).map(([key, tema]) => (
-                <button
-                  key={key}
-                  type="button"
-                  disabled={!ehPro || savingTema}
-                  onClick={() => salvarTema(key)}
-                  title={tema.label}
-                  className="flex flex-col items-center gap-1.5 disabled:cursor-not-allowed"
-                >
-                  <span
-                    className="w-10 h-10 rounded-full flex items-center justify-center ring-offset-2 transition-all"
-                    style={{
-                      backgroundColor: tema.hex,
-                      boxShadow: corTema === key ? `0 0 0 2px white, 0 0 0 4px ${tema.hex}` : undefined,
-                    }}
-                  >
-                    {corTema === key && <Check className="w-4 h-4 text-white" />}
-                  </span>
-                  <span className="text-[11px] text-gray-500">{tema.label}</span>
-                </button>
-              ))}
-            </div>
-
-            {!ehPro && (
-              <div className="absolute inset-0 -m-2 rounded-xl bg-white/70 backdrop-blur-[2px] flex flex-col items-center justify-center gap-2 text-center p-4">
-                <Lock className="w-6 h-6 text-gray-400" />
-                <p className="text-sm font-semibold text-gray-700">Exclusivo do Plano Pro</p>
-                <Link href="/painel/assinatura" className="text-xs font-semibold text-rose-500 hover:text-rose-600 underline underline-offset-2">
-                  Fazer upgrade
-                </Link>
-              </div>
-            )}
-          </div>
-
-          {ehPro && (
-            <div className="mt-5 flex items-center gap-3 rounded-xl p-4" style={{ backgroundColor: TEMAS[corTema].hexLight }}>
-              <span className="text-sm text-gray-600">Pré-visualização:</span>
-              <span
-                className="px-4 py-2 rounded-xl text-sm font-semibold text-white"
-                style={{ backgroundColor: TEMAS[corTema].hex }}
-              >
-                Botão de exemplo
-              </span>
-            </div>
-          )}
+          <Button onClick={() => setPersonalizarOpen(true)}>
+            <Palette className="w-4 h-4" />
+            Personalizar Página
+          </Button>
         </CardContent>
       </Card>
 
@@ -504,9 +448,6 @@ export default function PerfilPainelClient({
           <Button onClick={salvarMensagens} loading={savingMsgs}>Salvar mensagens</Button>
         </CardContent>
       </Card>
-
-      {/* Avaliações em destaque (exclusivo Pro) */}
-      <AvaliacoesDestaqueSection ehPro={ehPro} avaliacoesIniciais={avaliacoes} />
 
       {/* Indique e Ganhe */}
       <Card>
@@ -571,6 +512,16 @@ export default function PerfilPainelClient({
         </Link>
         .
       </p>
+
+      <PersonalizarPaginaModal
+        open={personalizarOpen}
+        onClose={() => setPersonalizarOpen(false)}
+        prestadora={prestadora}
+        galeria={galeria}
+        avaliacoes={avaliacoes}
+        ehPro={ehPro}
+        onSaved={(patch) => setPrestadora((p) => ({ ...p, ...patch }))}
+      />
     </div>
   )
 }
