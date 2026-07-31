@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -26,6 +26,15 @@ export default function GaleriaClient({
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!preview) return
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPreview(null)
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => document.removeEventListener('keydown', handleKey)
+  }, [preview])
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files
@@ -150,14 +159,14 @@ export default function GaleriaClient({
 
       {/* Preview lightbox */}
       {preview && (
-        <div
-          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
-          onClick={() => setPreview(null)}
-        >
-          <button className="absolute top-4 right-4 text-white p-2 hover:bg-white/10 rounded-xl">
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <button
+            onClick={() => setPreview(null)}
+            className="absolute top-4 right-4 text-white p-2 hover:bg-white/10 rounded-xl"
+          >
             <X className="w-6 h-6" />
           </button>
-          <div className="max-w-3xl max-h-full" onClick={(e) => e.stopPropagation()}>
+          <div className="max-w-3xl max-h-full">
             <Image src={preview} alt="Preview" width={800} height={600} className="rounded-2xl max-h-[80vh] object-contain" />
           </div>
         </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Link from 'next/link'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
@@ -10,7 +10,7 @@ import { AvaliacoesDestaqueSection } from './AvaliacoesDestaqueSection'
 import { TEMAS, TEMA_DEFAULT, getTema, type CorTema } from '@/lib/theme'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
-import { Palette, Type, Star, Images, Home, Eye, Check, Lock } from 'lucide-react'
+import { Palette, Type, Star, Images, Home, Eye, Check, Lock, Pencil } from 'lucide-react'
 import type { Prestadora, GaleriaItem } from '@/lib/types'
 import type { AvaliacaoComCliente } from './PerfilPainelClient'
 import toast from 'react-hot-toast'
@@ -81,6 +81,8 @@ function PersonalizarPaginaModalInner({
   onSaved,
 }: Omit<PersonalizarPaginaModalProps, 'open'>) {
   const [corTema, setCorTema] = useState<string>(prestadora.cor_tema || TEMA_DEFAULT)
+  const [hexDraft, setHexDraft] = useState(getTema(prestadora.cor_tema || TEMA_DEFAULT).hex.replace('#', ''))
+  const colorInputRef = useRef<HTMLInputElement>(null)
   const [textoAgendamento, setTextoAgendamento] = useState(prestadora.pagina_texto_agendamento ?? 'Agendamento online 24h')
   const [mostrarTextoAgendamento, setMostrarTextoAgendamento] = useState(prestadora.pagina_mostrar_texto_agendamento)
   const [mostrarEstrelas, setMostrarEstrelas] = useState(prestadora.pagina_mostrar_estrelas)
@@ -95,6 +97,22 @@ function PersonalizarPaginaModalInner({
   const [saving, setSaving] = useState(false)
 
   const temaAtual = getTema(corTema)
+
+  function applyCor(hex: string) {
+    setCorTema(hex)
+    setHexDraft(hex.replace('#', ''))
+  }
+
+  function selecionarPreset(key: CorTema) {
+    setCorTema(key)
+    setHexDraft(TEMAS[key].hex.replace('#', ''))
+  }
+
+  function handleHexChange(raw: string) {
+    const clean = raw.replace(/[^0-9a-f]/gi, '').slice(0, 6)
+    setHexDraft(clean)
+    if (/^[0-9a-f]{6}$/i.test(clean)) setCorTema(`#${clean}`)
+  }
 
   async function salvar() {
     setSaving(true)
@@ -129,42 +147,76 @@ function PersonalizarPaginaModalInner({
       <div className="p-6 space-y-8">
         {/* Aparência */}
         <section>
-          <SectionHeader icon={<Palette className="w-5 h-5 text-rose-400" />} title="🎨 Aparência" />
+          <SectionHeader icon={<Palette className="w-5 h-5 text-rose-400" />} title="Aparência" />
           <div className="relative">
-            <div className={cn('space-y-4', !ehPro && 'pointer-events-none opacity-60')}>
-              <div className="flex items-center gap-3">
-                <input
-                  type="color"
-                  value={temaAtual.hex}
-                  disabled={!ehPro}
-                  onChange={(e) => setCorTema(e.target.value)}
-                  className="w-12 h-12 rounded-xl border border-gray-200 cursor-pointer disabled:cursor-not-allowed"
-                />
-                <p className="text-sm text-gray-500">Escolha qualquer cor para sua página</p>
-              </div>
-
-              <div className="flex flex-wrap gap-3">
-                {(Object.entries(TEMAS) as [CorTema, (typeof TEMAS)[CorTema]][]).map(([key, tema]) => (
+            <div className={cn('space-y-5 rounded-2xl border border-gray-100 bg-gray-50/60 p-4', !ehPro && 'pointer-events-none opacity-60')}>
+              <div className="flex items-center gap-4">
+                <div className="relative shrink-0">
                   <button
-                    key={key}
                     type="button"
                     disabled={!ehPro}
-                    onClick={() => setCorTema(key)}
-                    title={tema.label}
-                    className="flex flex-col items-center gap-1.5 disabled:cursor-not-allowed"
-                  >
-                    <span
-                      className="w-9 h-9 rounded-full flex items-center justify-center ring-offset-2 transition-all"
-                      style={{
-                        backgroundColor: tema.hex,
-                        boxShadow: corTema === key ? `0 0 0 2px white, 0 0 0 4px ${tema.hex}` : undefined,
-                      }}
+                    onClick={() => colorInputRef.current?.click()}
+                    title="Escolher cor"
+                    className="w-12 h-12 rounded-2xl shadow-sm ring-1 ring-black/5 hover:brightness-95 transition-all disabled:cursor-not-allowed"
+                    style={{ backgroundColor: temaAtual.hex }}
+                  />
+                  <span className="absolute -bottom-1.5 -right-1.5 w-5 h-5 rounded-full bg-white shadow ring-1 ring-black/5 flex items-center justify-center pointer-events-none">
+                    <Pencil className="w-2.5 h-2.5 text-gray-500" />
+                  </span>
+                  <input
+                    ref={colorInputRef}
+                    type="color"
+                    value={temaAtual.hex}
+                    disabled={!ehPro}
+                    onChange={(e) => applyCor(e.target.value)}
+                    className="sr-only"
+                    tabIndex={-1}
+                  />
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-gray-600 mb-1.5">Clique no círculo para escolher qualquer cor</p>
+                  <div className="flex items-center rounded-xl border border-gray-200 bg-white overflow-hidden focus-within:ring-2 focus-within:ring-rose-300 focus-within:border-rose-300 transition-all w-32">
+                    <span className="pl-3 text-sm text-gray-400 select-none">#</span>
+                    <input
+                      type="text"
+                      value={hexDraft}
+                      disabled={!ehPro}
+                      onChange={(e) => handleHexChange(e.target.value)}
+                      onBlur={() => setHexDraft(temaAtual.hex.replace('#', ''))}
+                      placeholder="f472b6"
+                      maxLength={6}
+                      className="flex-1 min-w-0 px-2 py-2 text-sm uppercase focus:outline-none disabled:cursor-not-allowed"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-medium text-gray-500 mb-2">Ou escolha uma cor pronta</p>
+                <div className="flex flex-wrap gap-3">
+                  {(Object.entries(TEMAS) as [CorTema, (typeof TEMAS)[CorTema]][]).map(([key, tema]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      disabled={!ehPro}
+                      onClick={() => selecionarPreset(key)}
+                      title={tema.label}
+                      className="flex flex-col items-center gap-1.5 disabled:cursor-not-allowed"
                     >
-                      {corTema === key && <Check className="w-4 h-4 text-white" />}
-                    </span>
-                    <span className="text-[11px] text-gray-500">{tema.label}</span>
-                  </button>
-                ))}
+                      <span
+                        className="w-9 h-9 rounded-full flex items-center justify-center ring-offset-2 transition-all"
+                        style={{
+                          backgroundColor: tema.hex,
+                          boxShadow: corTema === key ? `0 0 0 2px white, 0 0 0 4px ${tema.hex}` : undefined,
+                        }}
+                      >
+                        {corTema === key && <Check className="w-4 h-4 text-white" />}
+                      </span>
+                      <span className="text-[11px] text-gray-500">{tema.label}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div className="flex items-center gap-3 rounded-xl p-4" style={{ backgroundColor: temaAtual.hexLight }}>
@@ -189,7 +241,7 @@ function PersonalizarPaginaModalInner({
 
         {/* Textos e badges */}
         <section className="pt-6 border-t border-gray-100">
-          <SectionHeader icon={<Type className="w-5 h-5 text-rose-400" />} title="📝 Textos e badges" />
+          <SectionHeader icon={<Type className="w-5 h-5 text-rose-400" />} title="Textos e badges" />
           <div className="space-y-3">
             <ToggleRow label="Mostrar texto abaixo do nome" checked={mostrarTextoAgendamento} onChange={setMostrarTextoAgendamento} />
             {mostrarTextoAgendamento && (
@@ -211,7 +263,7 @@ function PersonalizarPaginaModalInner({
 
         {/* Avaliações */}
         <section className="pt-6 border-t border-gray-100">
-          <SectionHeader icon={<Star className="w-5 h-5 text-rose-400" />} title="⭐ Avaliações" />
+          <SectionHeader icon={<Star className="w-5 h-5 text-rose-400" />} title="Avaliações" />
           <ToggleRow
             label='Mostrar seção "O que dizem sobre mim"'
             checked={mostrarAvaliacoes}
@@ -226,7 +278,7 @@ function PersonalizarPaginaModalInner({
 
         {/* Galeria de trabalhos */}
         <section className="pt-6 border-t border-gray-100">
-          <SectionHeader icon={<Images className="w-5 h-5 text-rose-400" />} title="📸 Galeria de trabalhos" />
+          <SectionHeader icon={<Images className="w-5 h-5 text-rose-400" />} title="Galeria de trabalhos" />
           <div className="relative">
             <div className={cn('space-y-4', !ehPro && 'pointer-events-none opacity-60')}>
               <ToggleRow label="Mostrar galeria na página pública" checked={mostrarGaleria} onChange={setMostrarGaleria} disabled={!ehPro} />
@@ -252,7 +304,7 @@ function PersonalizarPaginaModalInner({
 
         {/* Fotos do estabelecimento */}
         <section className="pt-6 border-t border-gray-100">
-          <SectionHeader icon={<Home className="w-5 h-5 text-rose-400" />} title="🏠 Fotos do estabelecimento" />
+          <SectionHeader icon={<Home className="w-5 h-5 text-rose-400" />} title="Fotos do estabelecimento" />
           <div className="space-y-4">
             <ToggleRow label="Mostrar seção de fotos do espaço" checked={mostrarEstabelecimento} onChange={setMostrarEstabelecimento} />
             {mostrarEstabelecimento && (
