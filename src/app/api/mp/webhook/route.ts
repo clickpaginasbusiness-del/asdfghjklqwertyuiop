@@ -61,17 +61,22 @@ export async function POST(request: NextRequest) {
   })
 
   try {
+    // NÃO passa `toleranceSeconds` de propósito: o SDK (mercadopago@3.2.1,
+    // node_modules/mercadopago/dist/utils/webhook/index.js) compara
+    // `Date.now()` (milissegundos) direto contra o `ts` do header (que o MP
+    // manda em SEGUNDOS) sem normalizar unidade — dá um "drift" de ~56 anos e
+    // estoura qualquer tolerância configurada, sempre (confirmado nos logs:
+    // delta real calculado à mão = 0s, mesmo assim rejeitado como
+    // TimestampOutOfTolerance mesmo com 3600s de tolerância). A checagem de
+    // timestamp no SDK só roda quando essa opção é passada — omitir desativa
+    // só essa parte quebrada, mantendo a validação HMAC (que não tem esse bug)
+    // como proteção real. Replay continua coberto pela idempotência de
+    // mp_eventos_processados, independente de timestamp.
     WebhookSignatureValidator.validate({
       xSignature,
       xRequestId,
       dataId,
       secret: process.env.MP_WEBHOOK_SECRET!,
-      // O MP pode demorar bastante pra entregar a notificação (fila própria,
-      // retries) — 300s (5min) rejeitava 100% das chamadas reais em produção
-      // (confirmado nos logs). Ainda é seguro contra replay porque
-      // mp_eventos_processados garante idempotência por payment_id
-      // independente da janela de tolerância.
-      toleranceSeconds: 3600,
     })
   } catch (err) {
     if (err instanceof InvalidWebhookSignatureError) {
