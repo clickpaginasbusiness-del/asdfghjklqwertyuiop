@@ -14,8 +14,13 @@ export type Prestadora = {
   instagram: string | null
   endereco: string | null
   telefone: string | null
-  stripe_customer_id: string | null
-  stripe_subscription_id: string | null
+  mp_customer_id: string | null
+  mp_subscription_id: string | null
+  mp_metodo_pagamento: 'cartao' | 'pix' | 'debito' | null
+  mp_ciclo: 'mensal' | 'anual' | null
+  mp_periodo_fim: string | null
+  mp_pagamento_pendente_id: string | null
+  cancelamento_agendado: boolean
   plano: Plano | null
   assinatura_ativa: boolean
   trial_fim: string | null
@@ -55,7 +60,7 @@ export type ParceiraComissao = {
   id: string
   parceira_id: string
   indicada_id: string
-  stripe_invoice_id: string
+  mp_payment_id: string
   valor_assinatura: number
   percentual: number
   valor_comissao: number
@@ -161,7 +166,7 @@ export type Notificacao = {
   prestadora_id: string
   mensagem: string
   lida: boolean
-  tipo: 'agendamento' | 'cancelamento' | 'indicacao' | 'missao'
+  tipo: 'agendamento' | 'cancelamento' | 'indicacao' | 'missao' | 'pagamento'
   created_at: string
 }
 
@@ -231,4 +236,16 @@ export type Avaliacao = {
   destaque: boolean
   created_at: string
   agendamentos?: { clientes: { nome: string } | null } | null
+}
+
+export type Cupom = {
+  id: string
+  codigo: string
+  percentual: number | null
+  valor_fixo: number | null
+  ativo: boolean
+  expira_em: string | null
+  max_usos: number | null
+  usos: number
+  created_at: string
 }

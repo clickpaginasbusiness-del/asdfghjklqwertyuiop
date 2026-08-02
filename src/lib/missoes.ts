@@ -15,7 +15,7 @@ import type { Missao, MissaoProgresso, MissaoDesconto } from '@/lib/types'
  * graça, sem precisar de tabela de dedupe.
  *
  * Única exceção: 'indicacao_bonus', que só é concluída via webhook do
- * Stripe (assinatura real de uma indicada) — nunca pelo recompute genérico.
+ * Mercado Pago (assinatura real de uma indicada) — nunca pelo recompute genérico.
  */
 
 const MESES_HISTORICO = 3
@@ -359,7 +359,7 @@ export async function calcularMetrica(admin: Admin, tipo: string, prestadoraId: 
     case 'taxa_retorno':
       return taxaRetornoMes(admin, prestadoraId, mes, ano)
     case 'indicacao_bonus':
-      return 0 // só avança via webhook do Stripe, nunca pelo recompute genérico
+      return 0 // só avança via webhook do Mercado Pago, nunca pelo recompute genérico
     default:
       return 0
   }
@@ -501,9 +501,9 @@ async function concluirMissao(admin: Admin, prestadoraId: string, linhaId: strin
   }).eq('id', linhaId)
 
   // Missão de indicação: a recompensa (extensão de 30 dias) já é concedida
-  // pelo fluxo de indicação existente no webhook do Stripe — aqui só marcamos
-  // a missão como concluída pra fins de exibição, sem gerar desconto de novo.
-  // Não expira (não entra na fila de descontos percentuais).
+  // pelo fluxo de indicação existente no webhook do Mercado Pago — aqui só
+  // marcamos a missão como concluída pra fins de exibição, sem gerar desconto
+  // de novo. Não expira (não entra na fila de descontos percentuais).
   if (missao.tipo === 'indicacao_bonus') {
     return
   }
@@ -622,7 +622,7 @@ export async function getMissoesDoMes(admin: Admin, prestadoraId: string, plano:
 }
 
 /**
- * Chamada a partir do webhook do Stripe (checkout.session.completed) quando
+ * Chamada a partir do webhook do Mercado Pago (pagamento aprovado) quando
  * uma prestadora indicada assina um plano. Marca a missão 'indicacao_bonus'
  * do mês corrente do referrer (se ela estiver ativa) como concluída — a
  * recompensa em si (extensão de 30 dias) já é aplicada pelo fluxo de

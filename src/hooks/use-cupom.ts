@@ -48,7 +48,7 @@ export function useCupom() {
     if (!code) return
     setCupomStatus('loading')
     try {
-      const res = await fetch('/api/stripe/validate-coupon', {
+      const res = await fetch('/api/mp/validate-coupon', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ codigo: code }),

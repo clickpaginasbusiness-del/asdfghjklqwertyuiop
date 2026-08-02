@@ -38,13 +38,13 @@ export default async function PlanosPage({
     assinatura_ativa: boolean
     trial_fim: string | null
     e_trial: boolean
-    stripe_subscription_id: string | null
+    mp_subscription_id: string | null
   } | null = null
 
   if (user) {
     const { data } = await supabase
       .from('prestadoras')
-      .select('id, plano, assinatura_ativa, trial_fim, e_trial, stripe_subscription_id')
+      .select('id, plano, assinatura_ativa, trial_fim, e_trial, mp_subscription_id')
       .eq('user_id', user.id)
       .single()
 
@@ -56,7 +56,7 @@ export default async function PlanosPage({
   }
 
   const cicloInicial = params.ciclo === 'anual' ? 'anual' : 'mensal'
-  const eTrial = Boolean(prestadora?.e_trial && !prestadora?.stripe_subscription_id)
+  const eTrial = Boolean(prestadora?.e_trial && !prestadora?.mp_subscription_id)
   const trialExpirado = Boolean(
     eTrial && prestadora?.trial_fim && new Date(prestadora.trial_fim) < new Date()
   )

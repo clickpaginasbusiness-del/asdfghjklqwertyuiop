@@ -30,7 +30,7 @@ const FAQ = [
   },
   {
     pergunta: 'Como cancelar minha assinatura?',
-    resposta: 'Acesse o menu "Assinatura" e clique em "Gerenciar assinatura". Você será levada ao portal seguro da Stripe, onde pode cancelar, trocar o cartão ou ver faturas.',
+    resposta: 'Acesse o menu "Assinatura" e clique em "Cancelar assinatura". Seu acesso continua até o fim do período já pago, sem cobrança automática depois disso.',
     link: { href: '/painel/assinatura', label: 'Ir para Assinatura' },
   },
 ]

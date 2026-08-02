@@ -5,9 +5,9 @@ import { NextResponse } from 'next/server'
 /**
  * Aplica de uma vez só as restrições do Plano Básico na conta autenticada
  * (desativa profissionais extras, limpa avaliações em destaque, reseta cor do
- * tema). Não mexe em cobrança/Stripe — isso é feito por quem chama.
- * Usado pelo webhook do Stripe e pela expiração do trial Pro; existe como rota
- * própria pra permitir reaplicar manualmente se precisar.
+ * tema). Não mexe em cobrança/Mercado Pago — isso é feito por quem chama.
+ * Usado pelo webhook do Mercado Pago e pela expiração do trial Pro; existe
+ * como rota própria pra permitir reaplicar manualmente se precisar.
  */
 export async function POST() {
   const supabase = await createClient()

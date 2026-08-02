@@ -1,4 +1,4 @@
-import { stripe } from '@/lib/stripe'
+import { preApproval } from '@/lib/mercadopago'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { NextResponse } from 'next/server'
@@ -30,7 +30,7 @@ export async function POST() {
 
   const { data: prestadora } = await supabaseAdmin
     .from('prestadoras')
-    .select('id, stripe_subscription_id, telefone')
+    .select('id, mp_subscription_id, telefone')
     .eq('user_id', user.id)
     .single()
 
@@ -49,23 +49,20 @@ export async function POST() {
     }
   }
 
-  // Cancela a assinatura na Stripe antes de excluir qualquer dado, para evitar
-  // que a cliente continue sendo cobrada após perder acesso à conta.
-  if (prestadora.stripe_subscription_id) {
+  // Cancela a assinatura no Mercado Pago antes de excluir qualquer dado, para
+  // evitar que a cliente continue sendo cobrada após perder acesso à conta.
+  if (prestadora.mp_subscription_id) {
     try {
-      const sub = await stripe.subscriptions.retrieve(prestadora.stripe_subscription_id)
-      if (sub.status !== 'canceled') {
-        await stripe.subscriptions.cancel(prestadora.stripe_subscription_id)
+      const sub = await preApproval.get({ id: prestadora.mp_subscription_id })
+      if (sub.status !== 'cancelled') {
+        await preApproval.update({ id: prestadora.mp_subscription_id, body: { status: 'cancelled' } })
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : ''
-      if (!msg.toLowerCase().includes('no such subscription')) {
-        console.error('[delete-account] falha ao cancelar assinatura', prestadora.stripe_subscription_id, msg)
-        return NextResponse.json(
-          { error: 'Não foi possível cancelar sua assinatura. Tente novamente ou contate o suporte.' },
-          { status: 500 }
-        )
-      }
+      console.error('[delete-account] falha ao cancelar assinatura', prestadora.mp_subscription_id, err)
+      return NextResponse.json(
+        { error: 'Não foi possível cancelar sua assinatura. Tente novamente ou contate o suporte.' },
+        { status: 500 }
+      )
     }
   }
 

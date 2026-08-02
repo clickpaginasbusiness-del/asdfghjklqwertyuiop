@@ -27,8 +27,8 @@ export async function POST() {
   }
 
   // Reativa todas as profissionais (mesmo comportamento do upgrade real via
-  // Stripe) — se ela tinha desativado alguma num downgrade anterior, o trial
-  // deve destravar o limite do Pro de verdade, não só o rótulo do plano.
+  // Mercado Pago) — se ela tinha desativado alguma num downgrade anterior, o
+  // trial deve destravar o limite do Pro de verdade, não só o rótulo do plano.
   await supabase
     .from('profissionais')
     .update({ ativa: true })

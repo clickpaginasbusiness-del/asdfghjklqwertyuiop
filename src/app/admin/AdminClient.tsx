@@ -19,7 +19,7 @@ type PrestadoraRow = {
   trial_fim: string | null
   e_trial: boolean
   created_at: string
-  stripe_customer_id: string | null
+  mp_metodo_pagamento: string | null
   last_seen_at: string | null
 }
 
@@ -442,8 +442,8 @@ export default function AdminClient({
                   </span>
                 </div>
                 <p className="text-xs text-gray-400 mt-1">
-                  {selectedPrestadora.assinatura_ativa && !selectedPrestadora.e_trial && selectedPrestadora.stripe_customer_id
-                    ? `Crédito de R$${selectedPrestadora.plano === 'pro' ? '89' : '49'} adicionado no Stripe (plano atual).`
+                  {selectedPrestadora.assinatura_ativa && !selectedPrestadora.e_trial && selectedPrestadora.mp_metodo_pagamento
+                    ? `Desconta R$${selectedPrestadora.plano === 'pro' ? '89' : '49'} da próxima cobrança (plano atual).`
                     : selectedPrestadora.e_trial && selectedPrestadora.trial_fim
                     ? 'Estende o trial atual por 30 dias.'
                     : 'Libera trial gratuito de 30 dias (Básico).'}
@@ -467,10 +467,10 @@ export default function AdminClient({
                   </span>
                 </div>
                 <p className="text-xs text-gray-400 mt-1">
-                  {selectedPrestadora.assinatura_ativa && !selectedPrestadora.e_trial && selectedPrestadora.stripe_customer_id
+                  {selectedPrestadora.assinatura_ativa && !selectedPrestadora.e_trial && selectedPrestadora.mp_metodo_pagamento
                     ? selectedPrestadora.plano === 'pro'
-                      ? 'Crédito de R$89 adicionado no Stripe (+30 dias Pro).'
-                      : 'Crédito de R$89 no Stripe + plano muda para Pro.'
+                      ? 'Desconta R$89 da próxima cobrança (+30 dias Pro).'
+                      : 'Desconta R$89 da próxima cobrança + plano muda para Pro.'
                     : selectedPrestadora.e_trial && selectedPrestadora.trial_fim
                     ? 'Plano muda para Pro e trial é estendido por 30 dias.'
                     : 'Libera trial Pro de 30 dias.'}

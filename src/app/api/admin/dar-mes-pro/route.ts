@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAdmin } from '@/lib/admin'
-import { stripe } from '@/lib/stripe'
+import { darDiasGratis } from '@/lib/mercadopago'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
   const admin = createAdminClient()
   const { data: p } = await admin
     .from('prestadoras')
-    .select('id, nome, plano, assinatura_ativa, e_trial, trial_fim, stripe_customer_id')
+    .select('id, plano, assinatura_ativa, e_trial, trial_fim, mp_metodo_pagamento')
     .eq('id', prestadora_id)
     .single()
 
@@ -31,13 +31,9 @@ export async function POST(request: NextRequest) {
         .from('prestadoras')
         .update({ plano: 'pro', trial_fim: newEnd.toISOString() })
         .eq('id', prestadora_id)
-    } else if (p.assinatura_ativa && !p.e_trial && p.stripe_customer_id) {
-      // Plano pago (básico ou pro) → crédito R$89 + muda para pro se necessário
-      await stripe.customers.createBalanceTransaction(p.stripe_customer_id, {
-        amount: -8900,
-        currency: 'brl',
-        description: '30 dias de Plano Pro concedido pelo admin',
-      })
+    } else if (p.assinatura_ativa && !p.e_trial && p.mp_metodo_pagamento) {
+      // Plano pago (básico ou pro) → 30 dias grátis no método atual + muda para pro
+      await darDiasGratis(admin, prestadora_id, 30, 'admin_mes_pro')
       if (p.plano !== 'pro') {
         await admin.from('prestadoras').update({ plano: 'pro' }).eq('id', prestadora_id)
       }

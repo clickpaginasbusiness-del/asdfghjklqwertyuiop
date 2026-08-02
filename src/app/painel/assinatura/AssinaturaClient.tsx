@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { CreditCard, Check, X, Zap, Sparkles, AlertCircle, RefreshCw, ArrowUpRight, Tag, FlaskConical } from 'lucide-react'
+import { CreditCard, Check, X, Zap, Sparkles, AlertCircle, RefreshCw, ArrowUpRight, Tag, FlaskConical, QrCode, Landmark } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -14,6 +14,7 @@ import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
 type Ciclo = 'mensal' | 'anual'
+type Metodo = 'cartao' | 'pix' | 'debito'
 
 const PLANO_INFO = {
   basico: {
@@ -46,18 +47,28 @@ const UPGRADE_PRO = {
   anual:  { valor: 'R$855', sufixo: '/ano', equivalente: 'R$71/mês', label: 'Profissionais ilimitadas + Galeria — no ciclo anual' },
 }
 
+const METODO_LABEL: Record<Metodo, string> = {
+  cartao: 'Cartão de crédito',
+  pix: 'Pix',
+  debito: 'Cartão de débito',
+}
+
+const METODO_ICON: Record<Metodo, typeof CreditCard> = {
+  cartao: CreditCard,
+  pix: QrCode,
+  debito: Landmark,
+}
+
 function formatData(iso: string | null): string {
   if (!iso) return '—'
   return format(parseISO(iso), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
 }
 
-function StatusBadge({ status, cancelAtPeriodEnd }: { status: string | null; cancelAtPeriodEnd: boolean }) {
-  if (cancelAtPeriodEnd) return <Badge variant="danger">Cancelado</Badge>
-  if (status === 'trialing')  return <Badge variant="pink">Trial gratuito</Badge>
-  if (status === 'active')    return <Badge variant="success">Ativo</Badge>
-  if (status === 'past_due')  return <Badge variant="danger">Pagamento pendente</Badge>
-  if (status === 'canceled')  return <Badge variant="default">Cancelado</Badge>
-  return <Badge variant="default">—</Badge>
+function StatusBadge({ assinaturaAtiva, eTrial, cancelamentoAgendado }: { assinaturaAtiva: boolean; eTrial: boolean; cancelamentoAgendado: boolean }) {
+  if (cancelamentoAgendado) return <Badge variant="danger">Cancelado</Badge>
+  if (!assinaturaAtiva) return <Badge variant="default">Sem assinatura</Badge>
+  if (eTrial) return <Badge variant="pink">Trial gratuito</Badge>
+  return <Badge variant="success">Ativo</Badge>
 }
 
 type EstadoSimulado = 'trial' | 'basico' | 'pro'
@@ -77,8 +88,8 @@ function estadoSimuladoAtual(plano: 'basico' | 'pro' | null, eTrial: boolean): E
 
 /**
  * Ferramenta de QA visível só pra conta admin — troca plano/trial direto no
- * banco (sem mexer no Stripe de verdade) pra testar os estados da página e os
- * gates de feature sem precisar de contas de teste separadas.
+ * banco (sem mexer no Mercado Pago de verdade) pra testar os estados da
+ * página e os gates de feature sem precisar de contas de teste separadas.
  */
 function SimuladorPlanoAdmin({ plano, eTrial }: { plano: 'basico' | 'pro' | null; eTrial: boolean }) {
   const router = useRouter()
@@ -98,7 +109,7 @@ function SimuladorPlanoAdmin({ plano, eTrial }: { plano: 'basico' | 'pro' | null
         toast.error(data.error ?? 'Erro ao simular plano')
         return
       }
-      toast.success(estado === 'real' ? 'Resetado para o status real do Stripe' : `Simulando: ${ESTADO_LABEL[estado]}`)
+      toast.success(estado === 'real' ? 'Resetado para o status real do Mercado Pago' : `Simulando: ${ESTADO_LABEL[estado]}`)
       router.refresh()
     } catch {
       toast.error('Erro de conexão')
@@ -115,7 +126,7 @@ function SimuladorPlanoAdmin({ plano, eTrial }: { plano: 'basico' | 'pro' | null
           <CardTitle className="text-base">🧪 Modo de teste (Admin)</CardTitle>
         </div>
         <p className="text-sm text-gray-500">
-          Simula o plano só no banco — não mexe na assinatura real do Stripe.
+          Simula o plano só no banco — não mexe na assinatura real do Mercado Pago.
         </p>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -162,10 +173,10 @@ export default function AssinaturaClient({
   assinaturaAtiva,
   trialFim,
   periodoFim,
-  stripeStatus,
-  cancelAtPeriodEnd,
-  temCustomer,
+  metodoPagamento,
   cicloAtual,
+  cancelamentoAgendado,
+  linkPagamentoPendente,
   eTrial,
   isAdmin,
 }: {
@@ -173,14 +184,14 @@ export default function AssinaturaClient({
   assinaturaAtiva: boolean
   trialFim: string | null
   periodoFim: string | null
-  stripeStatus: string | null
-  cancelAtPeriodEnd: boolean
-  temCustomer: boolean
+  metodoPagamento: Metodo | null
   cicloAtual: Ciclo
+  cancelamentoAgendado: boolean
+  linkPagamentoPendente: string | null
   eTrial: boolean
   isAdmin: boolean
 }) {
-  const [loadingPortal, setLoadingPortal] = useState(false)
+  const [loadingCancelar, setLoadingCancelar] = useState(false)
   const [loadingUpgrade, setLoadingUpgrade] = useState(false)
 
   const {
@@ -192,63 +203,52 @@ export default function AssinaturaClient({
 
   const info = plano ? PLANO_INFO[plano] : null
   const PlanIcon = info?.icon ?? CreditCard
-  const emTrial = stripeStatus === 'trialing'
-  const dataChave = emTrial ? trialFim : periodoFim
+  const dataChave = eTrial ? trialFim : periodoFim
+  const temMetodoPago = assinaturaAtiva && !eTrial && metodoPagamento !== null
 
-  async function abrirPortal() {
-    setLoadingPortal(true)
+  async function cancelarAssinatura() {
+    setLoadingCancelar(true)
     try {
-      const res = await fetch('/api/stripe/portal', { method: 'POST' })
+      const res = await fetch('/api/mp/cancelar-assinatura', { method: 'POST' })
       const data = await res.json()
-      if (!res.ok) { toast.error(data.error ?? 'Erro ao abrir portal'); return }
-      window.location.href = data.url
+      if (!res.ok) { toast.error(data.error ?? 'Erro ao cancelar'); return }
+      toast.success('Assinatura cancelada — seu acesso continua até o fim do período pago.')
+      window.location.reload()
     } catch {
       toast.error('Erro de conexão')
-      setLoadingPortal(false)
+    } finally {
+      setLoadingCancelar(false)
     }
   }
 
   async function fazerUpgrade() {
     setLoadingUpgrade(true)
     try {
-      if (!stripeStatus) {
-        // Sem assinatura Stripe ativa: cria checkout Pro direto sem trial
-        const res = await fetch('/api/stripe/checkout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ plano: 'pro', ciclo: cicloAtual, ...(cupomAplicado ? { cupom: cupomAplicado } : {}) }),
-        })
-        const data = await res.json()
-        if (!res.ok) {
-          if (data.tipo === 'cupom') { marcarCupomInvalido(); toast.error('Cupom inválido ou expirado') }
-          else { toast.error(data.error ?? 'Erro ao iniciar pagamento') }
-          setLoadingUpgrade(false)
-          return
-        }
-        window.location.href = data.url
-        return
-      }
-      const res = await fetch('/api/stripe/upgrade', {
+      const res = await fetch('/api/mp/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(cupomAplicado ? { cupom: cupomAplicado } : {}),
+        body: JSON.stringify({
+          plano: 'pro',
+          ciclo: cicloAtual,
+          metodo: metodoPagamento ?? 'cartao',
+          ...(cupomAplicado ? { cupom: cupomAplicado } : {}),
+        }),
       })
       const data = await res.json()
       if (!res.ok) {
         if (data.tipo === 'cupom') { marcarCupomInvalido(); toast.error('Cupom inválido ou expirado') }
-        else { toast.error(data.error ?? 'Erro ao fazer upgrade') }
+        else { toast.error(data.error ?? 'Erro ao iniciar pagamento') }
         setLoadingUpgrade(false)
         return
       }
-      toast.success('Upgrade realizado! Bem-vinda ao Plano Pro 🎉')
-      window.location.reload()
+      window.location.href = data.url
     } catch {
       toast.error('Erro de conexão')
       setLoadingUpgrade(false)
     }
   }
 
-  const renovacaoLabel = cancelAtPeriodEnd
+  const renovacaoLabel = cancelamentoAgendado
     ? 'Acesso até'
     : cicloAtual === 'anual'
       ? 'Renovação anual em'
@@ -262,6 +262,19 @@ export default function AssinaturaClient({
       </div>
 
       {isAdmin && <SimuladorPlanoAdmin plano={plano} eTrial={eTrial} />}
+
+      {linkPagamentoPendente && (
+        <div className="flex items-center gap-3 bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3">
+          <AlertCircle className="w-5 h-5 text-amber-500 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-amber-800">Pagamento pendente</p>
+            <p className="text-xs text-amber-600">Sua cobrança deste mês ainda não foi paga.</p>
+          </div>
+          <a href={linkPagamentoPendente} target="_blank" rel="noopener noreferrer">
+            <Button size="sm">Pagar agora</Button>
+          </a>
+        </div>
+      )}
 
       {/* Card do plano atual */}
       <Card>
@@ -279,21 +292,28 @@ export default function AssinaturaClient({
               </div>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              {/* Badge de ciclo */}
               {info && assinaturaAtiva && (
                 <Badge variant={cicloAtual === 'anual' ? 'success' : 'default'}>
                   {cicloAtual === 'anual' ? 'Plano Anual' : 'Plano Mensal'}
                 </Badge>
               )}
-              <StatusBadge status={stripeStatus} cancelAtPeriodEnd={cancelAtPeriodEnd} />
+              <StatusBadge assinaturaAtiva={assinaturaAtiva} eTrial={eTrial} cancelamentoAgendado={cancelamentoAgendado} />
             </div>
           </div>
         </CardHeader>
 
         <CardContent className="space-y-5">
+          {/* Método de pagamento */}
+          {temMetodoPago && metodoPagamento && (
+            <div className="flex items-center gap-2 text-sm text-gray-500">
+              {(() => { const Icone = METODO_ICON[metodoPagamento]; return <Icone className="w-4 h-4 text-gray-400" /> })()}
+              Pagamento via {METODO_LABEL[metodoPagamento]}
+            </div>
+          )}
+
           {/* Datas */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {cancelAtPeriodEnd && dataChave && (
+            {cancelamentoAgendado && dataChave && (
               <div className="bg-red-50 border border-red-100 rounded-2xl px-4 py-3 sm:col-span-2">
                 <p className="text-xs text-red-500 font-medium mb-0.5">{renovacaoLabel}</p>
                 <p className="text-sm font-semibold text-red-800">{formatData(dataChave)}</p>
@@ -302,14 +322,14 @@ export default function AssinaturaClient({
                 </p>
               </div>
             )}
-            {!cancelAtPeriodEnd && emTrial && dataChave && (
+            {!cancelamentoAgendado && eTrial && dataChave && (
               <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3">
                 <p className="text-xs text-amber-600 font-medium mb-0.5">Trial gratuito termina em</p>
                 <p className="text-sm font-semibold text-amber-800">{formatData(dataChave)}</p>
                 <p className="text-xs text-amber-500 mt-0.5">Você será cobrada automaticamente</p>
               </div>
             )}
-            {!cancelAtPeriodEnd && !emTrial && dataChave && (
+            {!cancelamentoAgendado && !eTrial && dataChave && (
               <div className="bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3">
                 <p className="text-xs text-gray-500 font-medium mb-0.5">{renovacaoLabel}</p>
                 <p className="text-sm font-semibold text-gray-800">{formatData(dataChave)}</p>
@@ -340,42 +360,47 @@ export default function AssinaturaClient({
           )}
 
           {/* Ações */}
-          {temCustomer && (
-            <div className="pt-2 border-t border-gray-100 flex flex-wrap gap-3">
-              {(eTrial || !stripeStatus) ? (
+          <div className="pt-2 border-t border-gray-100 flex flex-wrap gap-3">
+            {(eTrial || !assinaturaAtiva) ? (
+              <Button
+                variant="outline"
+                onClick={() => { window.location.href = '/planos' }}
+                className="gap-2"
+              >
+                <ArrowUpRight className="w-4 h-4" />
+                Escolher plano
+              </Button>
+            ) : cancelamentoAgendado ? (
+              <>
                 <Button
                   variant="outline"
                   onClick={() => { window.location.href = '/planos' }}
                   className="gap-2"
                 >
                   <ArrowUpRight className="w-4 h-4" />
-                  Escolher plano
+                  Assinar novamente
                 </Button>
-              ) : (
+                <p className="text-xs text-gray-400 self-center">Reative antes do fim do período pra não perder o acesso</p>
+              </>
+            ) : (
+              <>
                 <Button
                   variant="outline"
-                  onClick={abrirPortal}
-                  loading={loadingPortal}
+                  onClick={cancelarAssinatura}
+                  loading={loadingCancelar}
                   className="gap-2"
                 >
-                  <ArrowUpRight className="w-4 h-4" />
-                  Gerenciar assinatura
+                  Cancelar assinatura
                 </Button>
-              )}
-              <p className="text-xs text-gray-400 self-center">
-                {(eTrial || !stripeStatus)
-                  ? 'Inicie sua assinatura'
-                  : cancelAtPeriodEnd
-                    ? 'Reative sua assinatura ou veja faturas'
-                    : 'Ver faturas, atualizar cartão e cancelar'}
-              </p>
-            </div>
-          )}
+                <p className="text-xs text-gray-400 self-center">Seu acesso continua até o fim do período já pago</p>
+              </>
+            )}
+          </div>
         </CardContent>
       </Card>
 
       {/* Card de upgrade — só no Básico */}
-      {plano === 'basico' && assinaturaAtiva && (
+      {plano === 'basico' && assinaturaAtiva && !eTrial && !cancelamentoAgendado && (
         <Card className="border-rose-100 bg-rose-50/30">
           <CardContent className="p-6">
             <div className="flex items-start gap-4">
@@ -467,7 +492,7 @@ export default function AssinaturaClient({
                   Fazer upgrade agora
                 </Button>
                 <p className="text-xs text-gray-400 mt-2">
-                  Cobrança proporcional ao período restante. Sem novo trial.
+                  Cobrança integral do Pro a partir de agora, sem aproveitamento do período restante do Básico.
                 </p>
               </div>
             </div>
@@ -500,7 +525,7 @@ export default function AssinaturaClient({
 
       {/* Formas de pagamento */}
       <p className="text-center text-xs text-gray-400">
-        💳 Aceitamos: Cartão de crédito, Boleto e Apple/Google Pay
+        💳 Aceitamos Pix, cartão de crédito e cartão de débito via Mercado Pago
       </p>
     </div>
   )

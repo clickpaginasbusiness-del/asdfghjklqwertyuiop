@@ -399,7 +399,7 @@ export default function PainelLayoutClient({
         )}
 
         {/* Trial banner — parceira tem Pro vitalício pelo cargo, nunca precisa assinar */}
-        {!prestadora.e_parceira && prestadora.e_trial && !prestadora.stripe_subscription_id && trialDiasRestantes !== null && (
+        {!prestadora.e_parceira && prestadora.e_trial && !prestadora.mp_metodo_pagamento && trialDiasRestantes !== null && (
           <TrialBanner dias={trialDiasRestantes} />
         )}
 

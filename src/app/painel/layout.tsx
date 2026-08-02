@@ -31,12 +31,12 @@ export default async function PainelLayout({ children }: { children: React.React
   if (!prestadora) redirect('/painel/cadastro')
 
   // Sem assinatura ativa → página de planos
-  // Trial gratuito expirado (sem Stripe ativo) → página de planos
+  // Trial gratuito expirado (sem pagamento real via Mercado Pago) → página de planos
   // Parceira nunca é redirecionada aqui — ela tem Pro liberado pelo cargo,
-  // sem Stripe por trás, independente do que assinatura_ativa/plano digam.
+  // sem cobrança por trás, independente do que assinatura_ativa/plano digam.
   const isExpiredTrial = Boolean(
     prestadora.e_trial &&
-    !prestadora.stripe_subscription_id &&
+    !prestadora.mp_metodo_pagamento &&
     prestadora.trial_fim &&
     new Date(prestadora.trial_fim) < new Date()
   )

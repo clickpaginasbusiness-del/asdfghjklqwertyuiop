@@ -15,7 +15,7 @@ export default async function PrestadoraDetalhePage({ params }: { params: Promis
   const [{ data: prestadora }, { data: agendamentos }, { count: totalServicos }] = await Promise.all([
     admin
       .from('prestadoras')
-      .select('id, nome, email, telefone, slug, created_at, plano, assinatura_ativa, trial_fim, e_trial, last_seen_at, stripe_customer_id, e_parceira')
+      .select('id, nome, email, telefone, slug, created_at, plano, assinatura_ativa, trial_fim, e_trial, last_seen_at, mp_metodo_pagamento, e_parceira')
       .eq('id', id)
       .maybeSingle(),
     admin

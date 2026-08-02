@@ -2,8 +2,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 /**
  * Efeitos de desabilitar as features exclusivas do Pro — chamado sempre que uma
- * prestadora deixa de ser Pro (downgrade real via Stripe ou trial Pro expirado).
- * Não mexe em `plano`/`assinatura_ativa`/campos do Stripe — isso fica a cargo de
+ * prestadora deixa de ser Pro (downgrade real via Mercado Pago ou trial Pro expirado).
+ * Não mexe em `plano`/`assinatura_ativa`/campos do MP — isso fica a cargo de
  * quem chama, já que varia por contexto (webhook, expiração de trial, etc.).
  */
 export async function aplicarDowngradeParaBasico(supabase: SupabaseClient, prestadoraId: string): Promise<void> {

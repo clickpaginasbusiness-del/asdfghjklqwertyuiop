@@ -47,8 +47,9 @@ export default function TermosPage() {
           <li>Plano Pro: R$ 89/mês.</li>
           <li>Período de teste gratuito de 30 dias, sem necessidade de cartão de crédito.</li>
           <li>
-            Os pagamentos são processados pelo Stripe, com renovação automática mensal ou anual,
-            de acordo com o plano escolhido.
+            Os pagamentos são processados pelo Mercado Pago (Pix, cartão de crédito ou débito).
+            Planos mensais no cartão renovam automaticamente; planos mensais via Pix/débito e
+            planos anuais são cobrados manualmente a cada ciclo, sem renovação automática.
           </li>
         </ul>
       </LegalSection>

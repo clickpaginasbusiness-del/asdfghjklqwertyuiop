@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAdmin } from '@/lib/admin'
 import { aplicarDowngradeParaBasico } from '@/lib/downgrade'
-import { stripe, planByPrice } from '@/lib/stripe'
+import { preApproval } from '@/lib/mercadopago'
 import { NextRequest, NextResponse } from 'next/server'
 
 type Estado = 'trial' | 'basico' | 'pro' | 'real'
@@ -10,9 +10,9 @@ const ESTADOS_VALIDOS: Estado[] = ['trial', 'basico', 'pro', 'real']
 
 /**
  * Ferramenta de QA exclusiva da conta admin — simula os 3 estados de plano
- * direto no banco (sem tocar no Stripe de verdade) pra conseguir ver a página
- * de assinatura, os gates de feature, etc. em cada estado sem precisar de
- * contas de teste separadas nem esperar trial/cobrança de verdade.
+ * direto no banco (sem tocar no Mercado Pago de verdade) pra conseguir ver a
+ * página de assinatura, os gates de feature, etc. em cada estado sem
+ * precisar de contas de teste separadas nem esperar trial/cobrança de verdade.
  */
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   const { data: prestadora } = await supabase
     .from('prestadoras')
-    .select('id, stripe_subscription_id')
+    .select('id, mp_subscription_id, mp_metodo_pagamento')
     .eq('user_id', user!.id)
     .single()
 
@@ -43,30 +43,28 @@ export async function POST(request: NextRequest) {
 
   if (estado === 'real') {
     let update: Record<string, unknown> = {
-      // Sem trial_pro_fim: essa simulação nunca teve subscription de verdade,
+      // Sem trial_pro_fim: essa simulação nunca teve assinatura de verdade,
       // então volta pro estado limpo — sem isso um trial_pro_fim simulado no
       // passado dispararia a expiração do trial Pro no próximo carregamento.
       trial_pro_fim: null,
     }
 
-    if (prestadora.stripe_subscription_id) {
+    if (prestadora.mp_subscription_id && prestadora.mp_metodo_pagamento === 'cartao') {
       try {
-        const sub = await stripe.subscriptions.retrieve(prestadora.stripe_subscription_id)
-        const priceId = sub.items.data[0]?.price.id
-        const ativa = sub.status === 'active' || sub.status === 'trialing'
+        const sub = await preApproval.get({ id: prestadora.mp_subscription_id })
+        const ativa = sub.status === 'authorized'
         update = {
           ...update,
           assinatura_ativa: ativa,
-          plano: ativa ? (planByPrice(priceId ?? '') ?? sub.metadata?.plano ?? null) : null,
-          trial_fim: sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null,
+          mp_periodo_fim: sub.next_payment_date ?? null,
           e_trial: false,
         }
       } catch {
-        // Subscription pode ter sido deletada no Stripe — trata como sem assinatura
-        update = { ...update, assinatura_ativa: false, plano: null, trial_fim: null, e_trial: false }
+        // Assinatura pode ter sido deletada no MP — trata como sem assinatura
+        update = { ...update, assinatura_ativa: false, plano: null, mp_periodo_fim: null, e_trial: false }
       }
     } else {
-      update = { ...update, assinatura_ativa: false, plano: null, trial_fim: null, e_trial: false }
+      update = { ...update, assinatura_ativa: false, plano: null, mp_periodo_fim: null, e_trial: false }
     }
 
     // Se o status real não é Pro, reaplica as mesmas restrições do downgrade

@@ -23,8 +23,8 @@ export default function PrivacidadePage() {
           <li>Nome, email e telefone;</li>
           <li>Fotos e vídeos enviados para a galeria do perfil;</li>
           <li>
-            Dados de pagamento, processados diretamente pelo Stripe — nós não armazenamos número
-            de cartão de crédito.
+            Dados de pagamento, processados diretamente pelo Mercado Pago — nós não armazenamos
+            número de cartão de crédito.
           </li>
         </ul>
       </LegalSection>
@@ -41,7 +41,7 @@ export default function PrivacidadePage() {
       <LegalSection title="3. Compartilhamento com terceiros">
         <p>Para operar o BelleBook, compartilhamos dados com:</p>
         <ul className="list-disc pl-5 space-y-1.5">
-          <li><strong className="text-gray-800">Stripe</strong> — processamento de pagamentos;</li>
+          <li><strong className="text-gray-800">Mercado Pago</strong> — processamento de pagamentos;</li>
           <li><strong className="text-gray-800">Supabase</strong> — banco de dados e armazenamento, com infraestrutura no Brasil;</li>
           <li><strong className="text-gray-800">Twilio</strong> — envio de SMS para verificação por código;</li>
           <li><strong className="text-gray-800">Resend</strong> — envio de emails.</li>

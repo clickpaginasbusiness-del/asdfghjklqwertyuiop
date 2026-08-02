@@ -84,9 +84,9 @@ export default function PerfilPainelClient({
     return () => clearTimeout(timer)
   }, [slug, prestadora.slug, prestadora.id])
 
-  /* Realtime: reflete na hora quando o webhook do Stripe processa uma
-     recompensa de indicação (trial estendido ou cobrança pausada) — sem
-     precisar recarregar a página. */
+  /* Realtime: reflete na hora quando o webhook do Mercado Pago processa uma
+     recompensa de indicação (trial estendido ou desconto na próxima
+     cobrança) — sem precisar recarregar a página. */
   useEffect(() => {
     const supabase = createClient()
     const channel = supabase

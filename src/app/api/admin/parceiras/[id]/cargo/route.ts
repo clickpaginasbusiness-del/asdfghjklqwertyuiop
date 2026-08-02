@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAdmin } from '@/lib/admin'
 import { aplicarDowngradeParaBasico } from '@/lib/downgrade'
-import { stripe } from '@/lib/stripe'
+import { preApproval } from '@/lib/mercadopago'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const admin = createAdminClient()
   const { data: prestadora } = await admin
     .from('prestadoras')
-    .select('id, plano, stripe_subscription_id')
+    .select('id, plano, mp_subscription_id')
     .eq('id', id)
     .maybeSingle()
 
@@ -36,13 +36,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   if (body.acao === 'dar') {
-    // Ela vai ter Pro grátis — cancela qualquer assinatura Stripe ativa,
+    // Ela vai ter Pro grátis — cancela qualquer assinatura por cartão ativa,
     // não faz sentido continuar cobrando quem virou parceira.
-    if (prestadora.stripe_subscription_id) {
+    if (prestadora.mp_subscription_id) {
       try {
-        await stripe.subscriptions.cancel(prestadora.stripe_subscription_id)
+        await preApproval.update({ id: prestadora.mp_subscription_id, body: { status: 'cancelled' } })
       } catch (err) {
-        console.error('[admin/parceiras/cargo] falha ao cancelar assinatura Stripe', id, err)
+        console.error('[admin/parceiras/cargo] falha ao cancelar assinatura MP', id, err)
       }
     }
 
@@ -55,7 +55,10 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       assinatura_ativa: true,
       e_trial: false,
       trial_fim: null,
-      stripe_subscription_id: null,
+      mp_subscription_id: null,
+      mp_metodo_pagamento: null,
+      mp_periodo_fim: null,
+      mp_pagamento_pendente_id: null,
       parceira_desde: new Date().toISOString(),
       downgrade_aviso: false,
     }).eq('id', id)

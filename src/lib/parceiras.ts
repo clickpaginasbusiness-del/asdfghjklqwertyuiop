@@ -62,14 +62,14 @@ export async function atualizarComissaoParceira(admin: Admin, parceiraId: string
 }
 
 /**
- * Chamada quando uma fatura é paga (webhook invoice.paid). Só gera comissão
- * se quem pagou tiver `indicado_por` e quem indicou for `e_parceira`.
- * Idempotente por stripe_invoice_id (o índice único no banco é quem
- * garante isso de verdade em entregas concorrentes do webhook).
+ * Chamada quando um pagamento é aprovado (webhook `payment` do MP). Só gera
+ * comissão se quem pagou tiver `indicado_por` e quem indicou for
+ * `e_parceira`. Idempotente por mp_payment_id (o índice único no banco é
+ * quem garante isso de verdade em entregas concorrentes do webhook).
  */
 export async function criarComissaoSeAplicavel(
   admin: Admin,
-  { indicadaId, invoiceId, valorAssinatura }: { indicadaId: string; invoiceId: string; valorAssinatura: number }
+  { indicadaId, paymentId, valorAssinatura }: { indicadaId: string; paymentId: string; valorAssinatura: number }
 ): Promise<void> {
   const { data: indicada } = await admin
     .from('prestadoras')
@@ -90,7 +90,7 @@ export async function criarComissaoSeAplicavel(
   const { data: existente } = await admin
     .from('parceiras_comissoes')
     .select('id')
-    .eq('stripe_invoice_id', invoiceId)
+    .eq('mp_payment_id', paymentId)
     .maybeSingle()
   if (existente) return
 
@@ -101,7 +101,7 @@ export async function criarComissaoSeAplicavel(
   const { error } = await admin.from('parceiras_comissoes').insert({
     parceira_id: parceira.id,
     indicada_id: indicadaId,
-    stripe_invoice_id: invoiceId,
+    mp_payment_id: paymentId,
     valor_assinatura: valorAssinatura,
     percentual,
     valor_comissao: valorComissao,
@@ -109,10 +109,10 @@ export async function criarComissaoSeAplicavel(
     disponivel_em: disponivelEm.toISOString(),
   })
 
-  // Índice único de stripe_invoice_id pode rejeitar um insert concorrente
+  // Índice único de mp_payment_id pode rejeitar um insert concorrente
   // duplicado — nesse caso não é erro de verdade, só idempotência funcionando.
   if (error && error.code !== '23505') {
-    console.error('[parceiras] erro ao criar comissão', invoiceId, error)
+    console.error('[parceiras] erro ao criar comissão', paymentId, error)
     return
   }
   if (error) return
@@ -120,13 +120,13 @@ export async function criarComissaoSeAplicavel(
   await atualizarComissaoParceira(admin, parceira.id)
 }
 
-/** Cancela a comissão pendente ligada a uma fatura (reembolso, void, ou assinatura da indicada cancelada). */
-export async function cancelarComissaoPendente(admin: Admin, invoiceId: string | null | undefined): Promise<void> {
-  if (!invoiceId) return
+/** Cancela a comissão pendente ligada a um pagamento (reembolso, cancelamento, ou assinatura da indicada cancelada). */
+export async function cancelarComissaoPendente(admin: Admin, paymentId: string | null | undefined): Promise<void> {
+  if (!paymentId) return
   await admin
     .from('parceiras_comissoes')
     .update({ status: 'cancelado' })
-    .eq('stripe_invoice_id', invoiceId)
+    .eq('mp_payment_id', paymentId)
     .eq('status', 'pendente')
 }
 
