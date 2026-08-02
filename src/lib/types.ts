@@ -247,5 +247,14 @@ export type Cupom = {
   expira_em: string | null
   max_usos: number | null
   usos: number
+  duracao_cobracas: number | null
+  created_at: string
+}
+
+export type CupomUso = {
+  id: string
+  cupom_id: string
+  prestadora_id: string
+  cobracas_aplicadas: number
   created_at: string
 }

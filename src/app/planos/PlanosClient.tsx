@@ -2,19 +2,12 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { Check, X, Sparkles, Zap, Tag, CreditCard, QrCode, Landmark } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Check, X, Sparkles, Zap, Tag } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCupom, precoComDesconto } from '@/hooks/use-cupom'
-import toast from 'react-hot-toast'
 
 type Ciclo = 'mensal' | 'anual'
-type Metodo = 'cartao' | 'pix' | 'debito'
-
-const METODOS: { valor: Metodo; label: string; icon: typeof CreditCard }[] = [
-  { valor: 'cartao', label: 'Cartão de crédito', icon: CreditCard },
-  { valor: 'pix', label: 'Pix', icon: QrCode },
-  { valor: 'debito', label: 'Débito', icon: Landmark },
-]
 
 const FEATURES_BASICO = [
   { texto: 'Agendamentos ilimitados', incluido: true },
@@ -72,60 +65,33 @@ export default function PlanosClient({
   trialExpirado?: boolean
   auto?: 'basico' | 'pro'
 }) {
+  const router = useRouter()
   const [ciclo, setCiclo] = useState<Ciclo>(cicloInicial)
-  const [metodo, setMetodo] = useState<Metodo>('cartao')
   const [loading, setLoading] = useState<'basico' | 'pro' | null>(null)
 
   const autoFired = useRef(false)
   useEffect(() => {
     if (!auto || autoFired.current) return
     autoFired.current = true
-    if (!isLoggedIn) {
-      window.location.href = `/painel/cadastro?plano=${auto}`
-      return
-    }
     assinar(auto)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auto, isLoggedIn])
+  }, [auto])
 
   const {
     cupomAberto, setCupomAberto,
     cupomInput, onCupomInputChange,
-    cupomStatus, cupomAplicado, desconto,
-    aplicarCupom, marcarCupomInvalido,
+    cupomStatus, aplicarCupom,
+    desconto,
   } = useCupom()
 
-  async function assinar(plano: 'basico' | 'pro') {
+  function assinar(plano: 'basico' | 'pro') {
     if (!isLoggedIn) {
       window.location.href = `/painel/cadastro?plano=${plano}`
       return
     }
 
     setLoading(plano)
-    try {
-      const res = await fetch('/api/mp/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plano, ciclo, metodo, ...(cupomAplicado ? { cupom: cupomAplicado } : {}) }),
-      })
-      const data = await res.json()
-
-      if (!res.ok) {
-        if (data.tipo === 'cupom') {
-          marcarCupomInvalido()
-          toast.error('Cupom inválido ou expirado')
-        } else {
-          toast.error(data.error ?? 'Erro ao iniciar pagamento')
-        }
-        setLoading(null)
-        return
-      }
-
-      window.location.href = data.url
-    } catch {
-      toast.error('Erro de conexão. Tente novamente.')
-      setLoading(null)
-    }
+    router.push(`/planos/checkout?plano=${plano}&ciclo=${ciclo}`)
   }
 
   return (
@@ -215,34 +181,6 @@ export default function PlanosClient({
               20% off
             </span>
           </button>
-        </div>
-
-        {/* Forma de pagamento */}
-        <div className="mt-4 flex flex-col items-center gap-2">
-          <div className="inline-flex items-center bg-gray-100 rounded-full p-1 gap-1">
-            {METODOS.map(({ valor, label, icon: Icon }) => (
-              <button
-                key={valor}
-                onClick={() => setMetodo(valor)}
-                className={cn(
-                  'flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200',
-                  metodo === valor
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
-                )}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                {label}
-              </button>
-            ))}
-          </div>
-          <p className="text-xs text-gray-400">
-            {ciclo === 'anual'
-              ? 'Pagamento único do ano — sem renovação automática'
-              : metodo === 'cartao'
-                ? 'Cobrança automática todo mês no cartão'
-                : 'Você recebe um link pra pagar manualmente todo mês'}
-          </p>
         </div>
       </div>
 

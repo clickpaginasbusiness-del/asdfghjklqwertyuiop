@@ -88,6 +88,92 @@ export async function somarDescontosMissoesPendentes(
   return { percentual, ids: pendentes.map((d) => d.id) }
 }
 
+/**
+ * Cupom ainda válido pra aplicar na próxima cobrança de uma prestadora que já
+ * usou ele — pega o registro em cupons_usos (se houver, o mais recente) e
+ * confere se ainda não bateu `duracao_cobracas` (null = vitalício). Diferente
+ * de "cupom existe e está ativo" (checado na hora do checkout): aqui é
+ * especificamente "ela já resgatou esse cupom e ainda tem cobranças
+ * restantes com desconto".
+ */
+export async function buscarCupomAplicavel(
+  admin: SupabaseClient,
+  prestadoraId: string
+): Promise<{ cupomUsoId: string; percentual: number | null; valor_fixo: number | null } | null> {
+  const { data } = await admin
+    .from('cupons_usos')
+    .select('id, cobracas_aplicadas, cupons(percentual, valor_fixo, ativo, duracao_cobracas)')
+    .eq('prestadora_id', prestadoraId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (!data) return null
+  const cupom = data.cupons as unknown as { percentual: number | null; valor_fixo: number | null; ativo: boolean; duracao_cobracas: number | null } | null
+  if (!cupom || !cupom.ativo) return null
+  if (cupom.duracao_cobracas != null && data.cobracas_aplicadas >= cupom.duracao_cobracas) return null
+
+  return { cupomUsoId: data.id, percentual: cupom.percentual, valor_fixo: cupom.valor_fixo }
+}
+
+/** Registra o resgate inicial de um cupom no checkout — a cobrança que está
+ * prestes a acontecer já consome a 1ª das `duracao_cobracas` permitidas. */
+export async function registrarUsoCupomInicial(admin: SupabaseClient, cupomId: string, prestadoraId: string): Promise<void> {
+  await admin.from('cupons_usos').upsert(
+    { cupom_id: cupomId, prestadora_id: prestadoraId, cobracas_aplicadas: 1 },
+    { onConflict: 'cupom_id,prestadora_id' }
+  )
+}
+
+/** Soma +1 cobrança aplicada — chamado quando o cron decide descontar a
+ * próxima cobrança de uma assinatura já em andamento. */
+export async function incrementarUsoCupom(admin: SupabaseClient, cupomUsoId: string): Promise<void> {
+  const { data } = await admin.from('cupons_usos').select('cobracas_aplicadas').eq('id', cupomUsoId).maybeSingle()
+  if (!data) return
+  await admin.from('cupons_usos').update({ cobracas_aplicadas: data.cobracas_aplicadas + 1 }).eq('id', cupomUsoId)
+}
+
+export interface ProximaCobranca {
+  valor: number
+  missaoDescontoIds: string[]
+  cupomUsoId: string | null
+}
+
+/**
+ * Calcula o valor da próxima cobrança de uma prestadora já assinante,
+ * combinando desconto de missão pendente (sempre 1 ciclo, consumido na hora)
+ * com desconto de cupom ainda válido (por N cobranças, ver
+ * buscarCupomAplicavel). Usado tanto pro cron gerar a cobrança avulsa
+ * Pix/débito quanto pra ajustar o valor da próxima cobrança automática no
+ * cartão — quem chama decide o que fazer com `missaoDescontoIds`/`cupomUsoId`
+ * depois (marcar aplicado / incrementar contagem).
+ */
+export async function calcularProximaCobranca(
+  admin: SupabaseClient,
+  prestadoraId: string,
+  precoBase: number
+): Promise<ProximaCobranca> {
+  const [missao, cupom] = await Promise.all([
+    somarDescontosMissoesPendentes(admin, prestadoraId),
+    buscarCupomAplicavel(admin, prestadoraId),
+  ])
+
+  let percentual = missao.percentual
+  let valorFixo = 0
+  if (cupom?.percentual != null) percentual = Math.min(100, percentual + cupom.percentual)
+  if (cupom?.valor_fixo != null) valorFixo += cupom.valor_fixo
+
+  let valor = precoBase
+  if (percentual > 0) valor = valor * (1 - percentual / 100)
+  valor = Math.max(0, Math.round((valor - valorFixo) * 100) / 100)
+
+  return {
+    valor,
+    missaoDescontoIds: missao.ids,
+    cupomUsoId: cupom?.cupomUsoId ?? null,
+  }
+}
+
 const MS_DIA = 24 * 60 * 60 * 1000
 
 /**

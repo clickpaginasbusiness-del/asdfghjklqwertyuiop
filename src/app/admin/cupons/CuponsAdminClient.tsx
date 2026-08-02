@@ -15,6 +15,7 @@ import type { Cupom } from '@/lib/types'
 import toast from 'react-hot-toast'
 
 type TipoDesconto = 'percentual' | 'fixo'
+type DuracaoTipo = 'primeira' | 'meses' | 'vitalicio'
 
 const emptyForm = {
   codigo: '',
@@ -22,12 +23,26 @@ const emptyForm = {
   valor: '',
   maxUsos: '',
   expiraEm: '',
+  duracaoTipo: 'primeira' as DuracaoTipo,
+  duracaoMeses: '',
 }
+
+const DURACAO_OPCOES: { valor: DuracaoTipo; label: string }[] = [
+  { valor: 'primeira', label: 'Apenas na primeira cobrança' },
+  { valor: 'meses', label: 'Por X meses' },
+  { valor: 'vitalicio', label: 'Vitalício' },
+]
 
 function formatDesconto(cupom: Cupom): string {
   if (cupom.percentual != null) return `${cupom.percentual}%`
   if (cupom.valor_fixo != null) return `R$${cupom.valor_fixo.toFixed(2).replace('.', ',')}`
   return '—'
+}
+
+function formatDuracao(cupom: Cupom): string {
+  if (cupom.duracao_cobracas == null) return 'Vitalício'
+  if (cupom.duracao_cobracas === 1) return '1ª cobrança'
+  return `${cupom.duracao_cobracas} cobranças`
 }
 
 export default function CuponsAdminClient({ cuponsIniciais }: { cuponsIniciais: Cupom[] }) {
@@ -47,6 +62,10 @@ export default function CuponsAdminClient({ cuponsIniciais }: { cuponsIniciais: 
 
   async function criarCupom(e: React.FormEvent) {
     e.preventDefault()
+    if (form.duracaoTipo === 'meses' && (!form.duracaoMeses || Number(form.duracaoMeses) <= 0)) {
+      toast.error('Informe quantos meses o desconto deve durar')
+      return
+    }
     setSaving(true)
     try {
       const res = await fetch('/api/admin/cupons', {
@@ -58,6 +77,8 @@ export default function CuponsAdminClient({ cuponsIniciais }: { cuponsIniciais: 
           valor: Number(form.valor.replace(',', '.')),
           maxUsos: form.maxUsos ? Number(form.maxUsos) : null,
           expiraEm: form.expiraEm || null,
+          duracaoTipo: form.duracaoTipo,
+          ...(form.duracaoTipo === 'meses' ? { duracaoMeses: Number(form.duracaoMeses) } : {}),
         }),
       })
       const data = await res.json()
@@ -160,6 +181,7 @@ export default function CuponsAdminClient({ cuponsIniciais }: { cuponsIniciais: 
                     <tr className="border-b border-gray-100 text-left text-xs text-gray-400 uppercase tracking-wide">
                       <th className="pb-3 pr-4 font-medium">Código</th>
                       <th className="pb-3 pr-4 font-medium">Desconto</th>
+                      <th className="pb-3 pr-4 font-medium">Duração</th>
                       <th className="pb-3 pr-4 font-medium">Status</th>
                       <th className="pb-3 pr-4 font-medium">Usos</th>
                       <th className="pb-3 pr-4 font-medium">Expiração</th>
@@ -172,6 +194,7 @@ export default function CuponsAdminClient({ cuponsIniciais }: { cuponsIniciais: 
                       <tr key={c.id} className="hover:bg-gray-50 transition-colors">
                         <td className="py-3 pr-4 font-mono font-semibold text-gray-900 whitespace-nowrap">{c.codigo}</td>
                         <td className="py-3 pr-4 text-gray-700 whitespace-nowrap">{formatDesconto(c)}</td>
+                        <td className="py-3 pr-4 text-gray-500 whitespace-nowrap">{formatDuracao(c)}</td>
                         <td className="py-3 pr-4">
                           <Badge variant={c.ativo ? 'success' : 'default'}>{c.ativo ? 'Ativo' : 'Inativo'}</Badge>
                         </td>
@@ -256,6 +279,35 @@ export default function CuponsAdminClient({ cuponsIniciais }: { cuponsIniciais: 
             onChange={(e) => setForm({ ...form, valor: e.target.value })}
             required
           />
+
+          <div>
+            <label className="text-sm font-medium text-gray-700 block mb-1.5">Duração do desconto</label>
+            <div className="space-y-2">
+              {DURACAO_OPCOES.map(({ valor, label }) => (
+                <label key={valor} className="flex items-center gap-2.5 text-sm text-gray-700 cursor-pointer min-h-9">
+                  <input
+                    type="radio"
+                    name="duracaoTipo"
+                    checked={form.duracaoTipo === valor}
+                    onChange={() => setForm({ ...form, duracaoTipo: valor })}
+                    className="w-4 h-4 border-gray-300 text-rose-400 focus:ring-rose-300"
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+            {form.duracaoTipo === 'meses' && (
+              <input
+                type="number"
+                min="1"
+                placeholder="Ex: 3"
+                value={form.duracaoMeses}
+                onChange={(e) => setForm({ ...form, duracaoMeses: e.target.value })}
+                className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-300 transition-all"
+                required
+              />
+            )}
+          </div>
 
           <Input
             label="Máximo de usos (opcional)"

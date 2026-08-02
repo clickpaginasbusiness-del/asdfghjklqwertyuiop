@@ -1,4 +1,4 @@
-import { preApproval, preference, NOME_PLANO, PRECOS, somarDescontosMissoesPendentes, aplicarDesconto } from '@/lib/mercadopago'
+import { preApproval, preference, NOME_PLANO, PRECOS, calcularProximaCobranca, incrementarUsoCupom } from '@/lib/mercadopago'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextRequest, NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
@@ -10,10 +10,12 @@ const DIAS_TOLERANCIA_ATRASO = 5
  * Roda 1x/dia (ver vercel.json). Cuida do que o MP não faz sozinho:
  * - Pix/débito mensal: gera a cobrança avulsa do próximo ciclo quando vence,
  *   e suspende o acesso se passar de 5 dias sem pagar.
- * - Cartão mensal: aplica desconto de missão pendente na cobrança que está
- *   prestes a disparar (o MP cobra automaticamente — só dá pra ajustar o
- *   valor antes, não depois; o webhook reverte pro preço cheio assim que a
- *   cobrança descontada é confirmada).
+ * - Cartão mensal: ajusta o valor da cobrança que está prestes a disparar —
+ *   com desconto de missão pendente e/ou cupom ainda dentro da duração
+ *   contratada, ou de volta pro preço cheio quando nenhum dos dois se aplica
+ *   mais. O MP cobra automaticamente; só dá pra ajustar o valor antes, nunca
+ *   depois — por isso sempre define o valor correto na véspera de cada ciclo,
+ *   em vez de reagir depois que a cobrança já aconteceu.
  */
 export async function GET(request: NextRequest) {
   const auth = request.headers.get('authorization')
@@ -28,7 +30,7 @@ export async function GET(request: NextRequest) {
   const agora = Date.now()
   let renovadas = 0
   let suspensas = 0
-  let descontosAplicados = 0
+  let precosAjustados = 0
 
   // ── Pix/débito mensal — cobrança avulsa recorrente ──────────────────────
   const { data: manuais } = await admin
@@ -70,13 +72,13 @@ export async function GET(request: NextRequest) {
     if (p.mp_pagamento_pendente_id) continue // já gerou a cobrança desse ciclo, só aguardando pagamento
 
     try {
-      const { percentual, ids } = await somarDescontosMissoesPendentes(admin, p.id)
-      const valor = aplicarDesconto(PRECOS[p.plano as 'basico' | 'pro'].mensal, percentual > 0 ? { percentual, valor_fixo: null } : null)
+      const plano = p.plano as 'basico' | 'pro'
+      const { valor, missaoDescontoIds, cupomUsoId } = await calcularProximaCobranca(admin, p.id, PRECOS[plano].mensal)
       const referencia = randomUUID()
 
       const pref = await preference.create({
         body: {
-          items: [{ id: `${p.plano}_mensal`, title: `BelleBook Plano ${NOME_PLANO[p.plano as 'basico' | 'pro']} Mensal`, quantity: 1, unit_price: valor, currency_id: 'BRL' }],
+          items: [{ id: `${plano}_mensal`, title: `BelleBook Plano ${NOME_PLANO[plano]} Mensal`, quantity: 1, unit_price: valor, currency_id: 'BRL' }],
           payer: { email: p.email },
           back_urls: { success: `${appUrl}/painel?subscribed=1`, failure: `${appUrl}/painel/assinatura`, pending: `${appUrl}/painel/assinatura` },
           auto_return: 'approved',
@@ -86,11 +88,14 @@ export async function GET(request: NextRequest) {
       })
 
       await admin.from('mp_checkouts').insert({
-        prestadora_id: p.id, plano: p.plano, ciclo: 'mensal', metodo: 'pix', valor,
+        prestadora_id: p.id, plano, ciclo: 'mensal', metodo: 'pix', valor,
         mp_referencia: referencia,
       })
       await admin.from('prestadoras').update({ mp_pagamento_pendente_id: pref.id }).eq('id', p.id)
-      if (ids.length > 0) await admin.from('missoes_descontos').update({ aplicado: true, aplicado_em: new Date().toISOString() }).in('id', ids)
+      if (missaoDescontoIds.length > 0) {
+        await admin.from('missoes_descontos').update({ aplicado: true, aplicado_em: new Date().toISOString() }).in('id', missaoDescontoIds)
+      }
+      if (cupomUsoId) await incrementarUsoCupom(admin, cupomUsoId)
 
       await admin.from('notificacoes').insert({
         prestadora_id: p.id,
@@ -103,7 +108,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // ── Cartão mensal — desconto de missão na cobrança prestes a disparar ───
+  // ── Cartão mensal — ajusta o valor da cobrança prestes a disparar ───────
   const { data: cartoes } = await admin
     .from('prestadoras')
     .select('id, plano, mp_subscription_id, mp_periodo_fim')
@@ -118,15 +123,22 @@ export async function GET(request: NextRequest) {
     if (diasAteVencimento < 0 || diasAteVencimento > 1) continue // só ajusta na véspera
 
     try {
-      const { percentual, ids } = await somarDescontosMissoesPendentes(admin, p.id)
-      if (percentual <= 0) continue
+      const plano = p.plano as 'basico' | 'pro'
+      const { valor, missaoDescontoIds, cupomUsoId } = await calcularProximaCobranca(admin, p.id, PRECOS[plano].mensal)
 
-      const valor = aplicarDesconto(PRECOS[p.plano as 'basico' | 'pro'].mensal, { percentual, valor_fixo: null })
+      // Sempre define o valor certo (cheio ou descontado) — é a única forma
+      // de garantir que um desconto vencido (missão já usada, cupom que
+      // bateu a duração) volte pro preço cheio, já que não há como reverter
+      // depois que a cobrança já aconteceu.
       await preApproval.update({ id: p.mp_subscription_id, body: { auto_recurring: { transaction_amount: valor, currency_id: 'BRL' } } })
-      await admin.from('missoes_descontos').update({ aplicado: true, aplicado_em: new Date().toISOString() }).in('id', ids)
-      descontosAplicados++
+
+      if (missaoDescontoIds.length > 0) {
+        await admin.from('missoes_descontos').update({ aplicado: true, aplicado_em: new Date().toISOString() }).in('id', missaoDescontoIds)
+      }
+      if (cupomUsoId) await incrementarUsoCupom(admin, cupomUsoId)
+      precosAjustados++
     } catch (err) {
-      console.error('[cron/mp-renovacoes] erro ao aplicar desconto de missão', p.id, err)
+      console.error('[cron/mp-renovacoes] erro ao ajustar valor da cobrança', p.id, err)
     }
   }
 
@@ -150,5 +162,5 @@ export async function GET(request: NextRequest) {
     }).eq('id', p.id)
   }
 
-  return NextResponse.json({ ok: true, renovadas, suspensas, descontosAplicados })
+  return NextResponse.json({ ok: true, renovadas, suspensas, precosAjustados })
 }

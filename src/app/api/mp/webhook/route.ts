@@ -1,4 +1,4 @@
-import { preApproval, mpPayment, darDiasGratis, PRECOS } from '@/lib/mercadopago'
+import { preApproval, mpPayment, darDiasGratis } from '@/lib/mercadopago'
 import { aplicarDowngradeParaBasico } from '@/lib/downgrade'
 import { concluirMissaoIndicacaoBonus } from '@/lib/missoes'
 import { criarComissaoSeAplicavel, cancelarComissaoPendente } from '@/lib/parceiras'
@@ -133,10 +133,12 @@ async function processarPayment(paymentId: string) {
  * Cobrança recorrente de uma assinatura por cartão (o MP gera sozinho, sem
  * passar pelo nosso /api/mp/checkout — não tem external_reference nosso pra
  * correlacionar via mp_checkouts). plano/assinatura_ativa/mp_periodo_fim já
- * são mantidos por processarPreapproval a cada ping de status — aqui só
- * falta: reverter um desconto de 1 ciclo que o cron tenha aplicado (volta
- * pro preço cheio assim que a cobrança descontada é confirmada) e gerar a
- * comissão de parceira desse ciclo.
+ * são mantidos por processarPreapproval a cada ping de status; o valor da
+ * cobrança (com ou sem desconto de missão/cupom) já é ajustado com
+ * antecedência pelo cron, na véspera de cada ciclo (ver
+ * /api/cron/mp-renovacoes — só ele sabe quando reverter pro preço cheio,
+ * então não há nada reativo a fazer aqui). Só falta gerar a comissão de
+ * parceira desse ciclo.
  */
 async function processarCobrancaRecorrenteCartao(pago: Awaited<ReturnType<typeof mpPayment.get>>): Promise<void> {
   const email = pago.payer?.email
@@ -149,17 +151,6 @@ async function processarCobrancaRecorrenteCartao(pago: Awaited<ReturnType<typeof
     .maybeSingle() as { data: (PrestadoraIndicacao & { id: string; mp_subscription_id: string | null; mp_metodo_pagamento: string | null }) | null }
 
   if (!prestadora?.mp_subscription_id || prestadora.mp_metodo_pagamento !== 'cartao' || !prestadora.plano) return
-
-  if (pago.transaction_amount != null && pago.transaction_amount < PRECOS[prestadora.plano].mensal) {
-    try {
-      await preApproval.update({
-        id: prestadora.mp_subscription_id,
-        body: { auto_recurring: { transaction_amount: PRECOS[prestadora.plano].mensal, currency_id: 'BRL' } },
-      })
-    } catch (err) {
-      console.error('[mp webhook] falha ao reverter valor pós-desconto', prestadora.id, err)
-    }
-  }
 
   await processarRecompensaIndicacaoEComissao(prestadora.id, prestadora, pago.transaction_amount ?? 0, String(pago.id))
 }

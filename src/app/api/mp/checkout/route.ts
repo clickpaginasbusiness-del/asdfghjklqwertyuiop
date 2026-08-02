@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { preApprovalPlan, preference, getOrCreatePlanoMensal, PRECOS, NOME_PLANO, aplicarDesconto, type Plano, type Ciclo, type MetodoPagamento } from '@/lib/mercadopago'
+import { preApprovalPlan, preference, getOrCreatePlanoMensal, registrarUsoCupomInicial, PRECOS, NOME_PLANO, aplicarDesconto, type Plano, type Ciclo, type MetodoPagamento } from '@/lib/mercadopago'
 import { NextRequest, NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 
@@ -46,8 +46,10 @@ export async function POST(request: NextRequest) {
   const admin = createAdminClient()
 
   // Resolve e "consome" o cupom, se informado. Igual à validação em
-  // /api/mp/validate-coupon, mas aqui já incrementa `usos`.
-  let cupomRow: { percentual: number | null; valor_fixo: number | null } | null = null
+  // /api/mp/validate-coupon, mas aqui já incrementa `usos` e registra o
+  // resgate em cupons_usos (cobracas_aplicadas=1 — a cobrança que está
+  // prestes a acontecer já é a 1ª das `duracao_cobracas` permitidas).
+  let cupomRow: { id: string; percentual: number | null; valor_fixo: number | null } | null = null
   if (cupomCodigo) {
     const { data: cupom } = await admin
       .from('cupons')
@@ -62,7 +64,7 @@ export async function POST(request: NextRequest) {
     if (!valido) {
       return NextResponse.json({ error: 'Cupom inválido ou expirado', tipo: 'cupom' }, { status: 400 })
     }
-    cupomRow = { percentual: cupom.percentual, valor_fixo: cupom.valor_fixo }
+    cupomRow = { id: cupom.id, percentual: cupom.percentual, valor_fixo: cupom.valor_fixo }
     await admin.from('cupons').update({ usos: cupom.usos + 1 }).eq('id', cupom.id)
   }
 
@@ -99,6 +101,7 @@ export async function POST(request: NextRequest) {
         },
       })
       await registrarCheckout(referencia)
+      if (cupomRow) await registrarUsoCupomInicial(admin, cupomRow.id, prestadoraId)
       return NextResponse.json({ url: pref.init_point })
     }
 
@@ -119,6 +122,7 @@ export async function POST(request: NextRequest) {
       })
       await registrarCheckout(referencia)
       await admin.from('prestadoras').update({ mp_pagamento_pendente_id: pref.id }).eq('id', prestadora.id)
+      if (cupomRow) await registrarUsoCupomInicial(admin, cupomRow.id, prestadoraId)
       return NextResponse.json({ url: pref.init_point })
     }
 
@@ -157,6 +161,7 @@ export async function POST(request: NextRequest) {
     // prestadoras, então não serve como chave por-checkout; nesse caso o
     // webhook identifica a prestadora pelo payer_email (ver back_url abaixo).
     if (planoCustomizado) await registrarCheckout(planId)
+    if (cupomRow) await registrarUsoCupomInicial(admin, cupomRow.id, prestadoraId)
 
     const planoCompleto = await preApprovalPlan.get({ preApprovalPlanId: planId })
     if (!planoCompleto.init_point) throw new Error('Plano sem init_point')

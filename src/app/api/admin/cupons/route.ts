@@ -35,6 +35,8 @@ export async function POST(request: NextRequest) {
     valor?: number
     maxUsos?: number | null
     expiraEm?: string | null
+    duracaoTipo?: 'primeira' | 'meses' | 'vitalicio'
+    duracaoMeses?: number
   }
   try {
     body = await request.json()
@@ -64,6 +66,20 @@ export async function POST(request: NextRequest) {
     : null
   const expiraEm = body.expiraEm ? new Date(body.expiraEm).toISOString() : null
 
+  const duracaoTipo = body.duracaoTipo ?? 'primeira'
+  let duracaoCobracas: number | null
+  if (duracaoTipo === 'vitalicio') {
+    duracaoCobracas = null
+  } else if (duracaoTipo === 'meses') {
+    const meses = Number(body.duracaoMeses)
+    if (!Number.isFinite(meses) || meses <= 0) {
+      return NextResponse.json({ error: 'Informe uma duração em meses válida' }, { status: 400 })
+    }
+    duracaoCobracas = Math.trunc(meses)
+  } else {
+    duracaoCobracas = 1
+  }
+
   const admin = createAdminClient()
   const { data: cupom, error } = await admin
     .from('cupons')
@@ -73,6 +89,7 @@ export async function POST(request: NextRequest) {
       valor_fixo: tipo === 'fixo' ? valor : null,
       max_usos: maxUsos,
       expira_em: expiraEm,
+      duracao_cobracas: duracaoCobracas,
     })
     .select('*')
     .single()
