@@ -755,7 +755,10 @@ export default function PerfilPublicoClient({
         .filter((g): g is GaleriaItem => !!g)
     : galeriaCompleta
 
-  const estabelecimentoFotos = prestadora.pagina_mostrar_estabelecimento
+  // Assim como a galeria de trabalhos, fotos do estabelecimento são
+  // exclusivas do Plano Pro — reforça aqui também, não só no modal, pra um
+  // downgrade esconder a seção mesmo que os dados continuem salvos.
+  const estabelecimentoFotos = prestadora.pagina_mostrar_estabelecimento && (prestadora.plano === 'pro' || prestadora.e_parceira)
     ? prestadora.pagina_estabelecimento_fotos_ids
         .map((id) => galeria.find((g) => g.id === id))
         .filter((g): g is GaleriaItem => !!g)

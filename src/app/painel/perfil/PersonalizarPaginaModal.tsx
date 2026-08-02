@@ -305,21 +305,32 @@ function PersonalizarPaginaModalInner({
         {/* Fotos do estabelecimento */}
         <section className="pt-6 border-t border-gray-100">
           <SectionHeader icon={<Home className="w-5 h-5 text-rose-400" />} title="Fotos do estabelecimento" />
-          <div className="space-y-4">
-            <ToggleRow label="Mostrar seção de fotos do espaço" checked={mostrarEstabelecimento} onChange={setMostrarEstabelecimento} />
-            {mostrarEstabelecimento && (
-              <>
-                <input
-                  type="text"
-                  value={estabelecimentoTitulo}
-                  onChange={(e) => setEstabelecimentoTitulo(e.target.value)}
-                  placeholder="Nosso espaço"
-                  className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-300 transition-all"
-                />
-                <ModoSelector value={estabelecimentoModo} onChange={setEstabelecimentoModo} />
-                <p className="text-xs text-gray-400">Selecione até {MAX_FOTOS} fotos ({estabelecimentoFotosIds.length}/{MAX_FOTOS} selecionadas)</p>
-                <SeletorFotos galeria={galeria} selecionadas={estabelecimentoFotosIds} onChange={setEstabelecimentoFotosIds} max={MAX_FOTOS} />
-              </>
+          <div className="relative">
+            <div className={cn('space-y-4', !ehPro && 'pointer-events-none opacity-60')}>
+              <ToggleRow label="Mostrar seção de fotos do espaço" checked={mostrarEstabelecimento} onChange={setMostrarEstabelecimento} disabled={!ehPro} />
+              {mostrarEstabelecimento && (
+                <>
+                  <input
+                    type="text"
+                    value={estabelecimentoTitulo}
+                    onChange={(e) => setEstabelecimentoTitulo(e.target.value)}
+                    placeholder="Nosso espaço"
+                    className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-300 transition-all"
+                  />
+                  <ModoSelector value={estabelecimentoModo} onChange={setEstabelecimentoModo} />
+                  <p className="text-xs text-gray-400">Selecione até {MAX_FOTOS} fotos ({estabelecimentoFotosIds.length}/{MAX_FOTOS} selecionadas)</p>
+                  <SeletorFotos galeria={galeria} selecionadas={estabelecimentoFotosIds} onChange={setEstabelecimentoFotosIds} max={MAX_FOTOS} />
+                </>
+              )}
+            </div>
+            {!ehPro && (
+              <div className="absolute inset-0 -m-2 rounded-xl bg-white/70 backdrop-blur-[2px] flex flex-col items-center justify-center gap-2 text-center p-4">
+                <Lock className="w-6 h-6 text-gray-400" />
+                <p className="text-sm font-semibold text-gray-700">Exclusivo do Plano Pro</p>
+                <Link href="/painel/assinatura" className="text-xs font-semibold text-rose-500 hover:text-rose-600 underline underline-offset-2">
+                  Fazer upgrade
+                </Link>
+              </div>
             )}
           </div>
         </section>
