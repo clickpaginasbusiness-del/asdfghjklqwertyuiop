@@ -22,21 +22,66 @@ type PrestadoraIndicacao = {
   indicacao_recompensa_processada: boolean
 } | null | undefined
 
+/** Extrai o `ts=` do header x-signature manualmente, sem depender da
+ * validação passar — só pra diagnóstico (loga o delta contra o relógio do
+ * servidor mesmo quando a validação real rejeita por TimestampOutOfTolerance). */
+function extrairTimestampSignature(xSignature: string | null): { tsBruto: string | null; deltaSegundos: number | null } {
+  if (!xSignature) return { tsBruto: null, deltaSegundos: null }
+  const match = xSignature.match(/ts=(\d+)/)
+  if (!match) return { tsBruto: null, deltaSegundos: null }
+  const tsBruto = match[1]
+  const tsNum = Number(tsBruto)
+  // MP documenta `ts` em segundos desde epoch — se vier maior que ~10^12 é
+  // porque na verdade está em milissegundos (bug do lado de quem gerou, ou
+  // mudança de formato não documentada); normaliza pra segundos antes do delta.
+  const tsSegundos = tsNum > 1e12 ? Math.floor(tsNum / 1000) : tsNum
+  const agoraSegundos = Math.floor(Date.now() / 1000)
+  return { tsBruto, deltaSegundos: agoraSegundos - tsSegundos }
+}
+
 export async function POST(request: NextRequest) {
   const url = new URL(request.url)
   const dataId = url.searchParams.get('data.id')
+  const xSignature = request.headers.get('x-signature')
+  const xRequestId = request.headers.get('x-request-id')
+
+  // Log de TODA requisição recebida, antes de qualquer validação — confirma
+  // se o MP está de fato chamando o webhook, independente do que acontece depois.
+  const { tsBruto, deltaSegundos } = extrairTimestampSignature(xSignature)
+  console.log('[mp webhook] requisição recebida', {
+    url: request.url,
+    dataIdQuery: dataId,
+    xSignaturePresente: !!xSignature,
+    xSignatureRaw: xSignature,
+    xRequestId,
+    tsBrutoHeader: tsBruto,
+    agoraServidorEpochSegundos: Math.floor(Date.now() / 1000),
+    deltaSegundos, // positivo = header mais antigo que o relógio do servidor
+    secretConfigurado: !!process.env.MP_WEBHOOK_SECRET,
+  })
 
   try {
     WebhookSignatureValidator.validate({
-      xSignature: request.headers.get('x-signature'),
-      xRequestId: request.headers.get('x-request-id'),
+      xSignature,
+      xRequestId,
       dataId,
       secret: process.env.MP_WEBHOOK_SECRET!,
-      toleranceSeconds: 300,
+      // O MP pode demorar bastante pra entregar a notificação (fila própria,
+      // retries) — 300s (5min) rejeitava 100% das chamadas reais em produção
+      // (confirmado nos logs). Ainda é seguro contra replay porque
+      // mp_eventos_processados garante idempotência por payment_id
+      // independente da janela de tolerância.
+      toleranceSeconds: 3600,
     })
   } catch (err) {
     if (err instanceof InvalidWebhookSignatureError) {
-      console.error('[mp webhook] assinatura inválida', err.reason)
+      console.error('[mp webhook] assinatura inválida', {
+        reason: err.reason,
+        requestId: err.requestId,
+        timestamp: err.timestamp,
+        deltaSegundosCalculado: deltaSegundos,
+        secretConfigurado: !!process.env.MP_WEBHOOK_SECRET,
+      })
       return NextResponse.json({ error: 'Assinatura inválida' }, { status: 400 })
     }
     throw err
@@ -45,6 +90,7 @@ export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null) as { type?: string; data?: { id?: string } } | null
   const tipo = body?.type
   const id = body?.data?.id
+  console.log('[mp webhook] assinatura válida, evento identificado', { tipo, id, body })
   if (!tipo || !id) return NextResponse.json({ received: true })
 
   try {
@@ -63,22 +109,38 @@ export async function POST(request: NextRequest) {
 
 async function processarPayment(paymentId: string) {
   const pago = await mpPayment.get({ id: paymentId })
+  console.log('[mp webhook][payment] detalhes do pagamento', {
+    paymentId,
+    status: pago.status,
+    statusDetail: pago.status_detail,
+    externalReference: pago.external_reference,
+    transactionAmount: pago.transaction_amount,
+    payerEmail: pago.payer?.email,
+  })
 
   if (pago.status === 'refunded' || pago.status === 'cancelled') {
+    console.log('[mp webhook][payment] status refunded/cancelled — cancelando comissão pendente, se houver', { paymentId })
     await cancelarComissaoPendente(supabaseAdmin, String(pago.id))
     return
   }
 
-  if (pago.status !== 'approved') return
+  if (pago.status !== 'approved') {
+    console.log('[mp webhook][payment] status ainda não é approved — nada a fazer por enquanto', { paymentId, status: pago.status })
+    return
+  }
 
   // Idempotência — o MP pode reentregar a mesma notificação; o índice único
   // de payment_id é quem garante isso de verdade em entregas concorrentes.
   const { error: duplicado } = await supabaseAdmin
     .from('mp_eventos_processados')
     .insert({ payment_id: String(pago.id) })
-  if (duplicado) return
+  if (duplicado) {
+    console.log('[mp webhook][payment] payment_id já processado antes (reentrega do MP) — ignorando', { paymentId })
+    return
+  }
 
   const externalRef = pago.external_reference
+  console.log('[mp webhook][payment] buscando checkout correspondente', { paymentId, externalRef })
 
   const { data: checkout } = externalRef
     ? await supabaseAdmin
@@ -89,6 +151,8 @@ async function processarPayment(paymentId: string) {
         .maybeSingle()
     : { data: null }
 
+  console.log('[mp webhook][payment] resultado da busca em mp_checkouts', { paymentId, externalRef, encontrouCheckout: !!checkout, checkout })
+
   if (!checkout) {
     // Não veio de uma Preference nossa (Pix/débito, anual) — é provavelmente
     // uma cobrança recorrente de uma assinatura por cartão, que o MP gera
@@ -97,6 +161,7 @@ async function processarPayment(paymentId: string) {
     // assinatura por cartão já é feita inteiramente por processarPreapproval
     // (evento subscription_preapproval) — aqui só falta tratar a comissão de
     // parceira e reverter um desconto de 1 ciclo que o cron tenha aplicado.
+    console.log('[mp webhook][payment] sem checkout — tratando como cobrança recorrente de cartão', { paymentId, payerEmail: pago.payer?.email })
     await processarCobrancaRecorrenteCartao(pago)
     return
   }
@@ -113,7 +178,7 @@ async function processarPayment(paymentId: string) {
 
   const periodoFim = new Date(Date.now() + (ciclo === 'anual' ? MS_365_DIAS : MS_30_DIAS)).toISOString()
 
-  await supabaseAdmin.from('prestadoras').update({
+  const { error: erroUpdatePlano } = await supabaseAdmin.from('prestadoras').update({
     plano,
     assinatura_ativa: true,
     e_trial: false,
@@ -124,6 +189,12 @@ async function processarPayment(paymentId: string) {
     mp_pagamento_pendente_id: null,
     cancelamento_agendado: false,
   }).eq('id', prestadoraId)
+
+  console.log('[mp webhook][payment] update de plano na prestadora', {
+    paymentId, prestadoraId, plano, ciclo, metodo, periodoFim,
+    sucesso: !erroUpdatePlano,
+    erro: erroUpdatePlano ?? null,
+  })
 
   await aplicarMudancaDePlano(prestadoraId, prestadoraAntes?.plano ?? null, plano)
   await processarRecompensaIndicacaoEComissao(prestadoraId, prestadoraAntes, pago.transaction_amount ?? 0, String(pago.id))
