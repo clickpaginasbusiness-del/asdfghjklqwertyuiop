@@ -211,8 +211,8 @@ export function AgendaDoDiaSection({
                 {modalAg.cliente_e_prestadora && <VoceBadge />}
                 {modalAg.agendamento_manual && <ManualBadge />}
               </p>
-              <Badge variant={modalAg.status === 'concluido' ? 'concluido' : 'success'}>
-                {modalAg.status === 'concluido' ? 'Concluído' : 'Confirmado'}
+              <Badge variant={modalAg.status === 'concluido' ? 'concluido' : modalAg.status === 'aguardando_pagamento' ? 'warning' : 'success'}>
+                {modalAg.status === 'concluido' ? 'Concluído' : modalAg.status === 'aguardando_pagamento' ? 'Aguardando pagamento' : 'Confirmado'}
               </Badge>
             </div>
             <div className="space-y-2.5 text-sm text-gray-600">

@@ -8,9 +8,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Modal } from '@/components/ui/modal'
+import { Switch } from '@/components/ui/switch'
 import { ImageWithSkeleton } from '@/components/ui/image-with-skeleton'
 import { formatCurrency, cn } from '@/lib/utils'
-import { Plus, Pencil, Trash2, Clock, Scissors, ImageIcon, Check } from 'lucide-react'
+import { Plus, Pencil, Trash2, Clock, Scissors, ImageIcon, Check, CreditCard } from 'lucide-react'
 import { SERVICO_ICONE_OPTIONS, SERVICO_ICONE_PADRAO, getServicoIcone, type ServicoIcone } from '@/lib/servicoIcones'
 import type { Servico, GaleriaItem } from '@/lib/types'
 import toast from 'react-hot-toast'
@@ -22,6 +23,10 @@ interface ServicoForm {
   descricao: string
   icone: ServicoIcone
   fotoGaleriaId: string | null
+  aceitarPagamentoOnline: boolean
+  sinalObrigatorio: boolean
+  sinalTipo: 'fixo' | 'percentual'
+  sinalValor: string
 }
 
 export type ServicoComProfissionais = Servico & {
@@ -33,7 +38,29 @@ interface ProfissionalLite {
   nome: string
 }
 
-const emptyForm: ServicoForm = { nome: '', preco: '', duracao_minutos: '', descricao: '', icone: SERVICO_ICONE_PADRAO, fotoGaleriaId: null }
+const emptyForm: ServicoForm = {
+  nome: '', preco: '', duracao_minutos: '', descricao: '', icone: SERVICO_ICONE_PADRAO, fotoGaleriaId: null,
+  aceitarPagamentoOnline: false, sinalObrigatorio: false, sinalTipo: 'percentual', sinalValor: '',
+}
+
+function ToggleComSubtexto({
+  label, subtexto, checked, onChange,
+}: {
+  label: string
+  subtexto: string
+  checked: boolean
+  onChange: (v: boolean) => void
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 py-1">
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-gray-700">{label}</p>
+        <p className="text-xs text-gray-400 mt-0.5">{subtexto}</p>
+      </div>
+      <Switch checked={checked} onChange={onChange} label={label} />
+    </div>
+  )
+}
 
 function SeletorFotoIcone({
   galeria,
@@ -135,6 +162,10 @@ export default function ServicosClient({
       descricao: s.descricao ?? '',
       icone: (s.icone as ServicoIcone) ?? SERVICO_ICONE_PADRAO,
       fotoGaleriaId: s.foto_galeria_id,
+      aceitarPagamentoOnline: s.aceitar_pagamento_online,
+      sinalObrigatorio: s.sinal_obrigatorio,
+      sinalTipo: s.sinal_tipo ?? 'percentual',
+      sinalValor: s.sinal_valor != null ? String(s.sinal_valor) : '',
     })
     setProfissionaisSelecionadas(s.servico_profissionais.map((sp) => sp.profissional_id))
     setEditId(s.id)
@@ -144,6 +175,20 @@ export default function ServicosClient({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+
+    const sinalAtivo = form.aceitarPagamentoOnline && form.sinalObrigatorio
+    if (sinalAtivo) {
+      const valor = parseFloat(form.sinalValor)
+      if (!Number.isFinite(valor) || valor <= 0) {
+        toast.error('Informe um valor de sinal válido')
+        return
+      }
+      if (form.sinalTipo === 'percentual' && valor > 100) {
+        toast.error('O percentual do sinal não pode passar de 100%')
+        return
+      }
+    }
+
     setLoading(true)
     const supabase = createClient()
     const data = {
@@ -154,6 +199,10 @@ export default function ServicosClient({
       descricao: form.descricao || null,
       icone: form.icone,
       foto_galeria_id: form.fotoGaleriaId,
+      aceitar_pagamento_online: form.aceitarPagamentoOnline,
+      sinal_obrigatorio: sinalAtivo,
+      sinal_tipo: sinalAtivo ? form.sinalTipo : null,
+      sinal_valor: sinalAtivo ? parseFloat(form.sinalValor) : null,
     }
 
     let servicoId = editId
@@ -382,6 +431,65 @@ export default function ServicosClient({
               </div>
             </div>
           )}
+
+          <div className="border-t border-gray-100 pt-4">
+            <div className="flex items-center gap-2 mb-1">
+              <CreditCard className="w-4 h-4 text-rose-400" />
+              <label className="text-sm font-medium text-gray-700">Pagamento online</label>
+            </div>
+            <ToggleComSubtexto
+              label="Aceitar pagamento pelo app"
+              subtexto="Sua cliente pode pagar online ao agendar"
+              checked={form.aceitarPagamentoOnline}
+              onChange={(v) => setForm({ ...form, aceitarPagamentoOnline: v })}
+            />
+
+            {form.aceitarPagamentoOnline && (
+              <div className="mt-2 pl-3 border-l-2 border-rose-100 space-y-3">
+                <ToggleComSubtexto
+                  label="Cobrar sinal obrigatório"
+                  subtexto="O agendamento só é confirmado após o pagamento do sinal"
+                  checked={form.sinalObrigatorio}
+                  onChange={(v) => setForm({ ...form, sinalObrigatorio: v })}
+                />
+
+                {form.sinalObrigatorio && (
+                  <div className="space-y-2">
+                    <div className="flex gap-2" role="radiogroup" aria-label="Tipo de sinal">
+                      {(['fixo', 'percentual'] as const).map((tipo) => (
+                        <button
+                          key={tipo}
+                          type="button"
+                          role="radio"
+                          aria-checked={form.sinalTipo === tipo}
+                          onClick={() => setForm({ ...form, sinalTipo: tipo })}
+                          className={cn(
+                            'flex-1 px-3 py-2 rounded-xl text-sm font-medium border transition-colors',
+                            form.sinalTipo === tipo
+                              ? 'border-rose-400 bg-rose-50 text-rose-600'
+                              : 'border-gray-200 text-gray-500 hover:border-rose-200'
+                          )}
+                        >
+                          {tipo === 'fixo' ? 'Valor fixo (R$)' : 'Percentual (%)'}
+                        </button>
+                      ))}
+                    </div>
+                    <Input
+                      label={form.sinalTipo === 'fixo' ? 'Valor do sinal (R$)' : 'Percentual do sinal (%)'}
+                      type="number"
+                      step={form.sinalTipo === 'fixo' ? '0.01' : '1'}
+                      min="0"
+                      max={form.sinalTipo === 'percentual' ? '100' : undefined}
+                      placeholder={form.sinalTipo === 'fixo' ? '30.00' : '50'}
+                      value={form.sinalValor}
+                      onChange={(e) => setForm({ ...form, sinalValor: e.target.value })}
+                      required
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
 
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="outline" onClick={() => setModalOpen(false)} className="flex-1">

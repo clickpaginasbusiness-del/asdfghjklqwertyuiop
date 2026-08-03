@@ -1,4 +1,5 @@
 import { preApproval, preference, NOME_PLANO, PRECOS, calcularProximaCobranca, incrementarUsoCupom } from '@/lib/mercadopago'
+import { liberarCaixaVencido } from '@/lib/caixa'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextRequest, NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
@@ -164,6 +165,9 @@ export async function GET(request: NextRequest) {
       mp_periodo_fim: null, cancelamento_agendado: false,
     }).eq('id', p.id)
   }
+
+  // ── Caixa da prestadora — libera saldo cujo prazo de 7 dias já passou ───
+  await liberarCaixaVencido(admin)
 
   return NextResponse.json({ ok: true, renovadas, suspensas, precosAjustados })
 }

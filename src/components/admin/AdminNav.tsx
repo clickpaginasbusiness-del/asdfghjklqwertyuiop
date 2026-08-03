@@ -8,6 +8,7 @@ const ITEMS = [
   { href: '/admin', label: 'Visão geral' },
   { href: '/admin/parceiras', label: 'Parceiras' },
   { href: '/admin/saques', label: 'Saques' },
+  { href: '/admin/saques-caixa', label: 'Saques Caixa' },
   { href: '/admin/cupons', label: 'Cupons' },
 ]
 
@@ -17,7 +18,9 @@ export function AdminNav() {
   return (
     <nav className="flex items-center gap-1">
       {ITEMS.map((item) => {
-        const active = item.href === '/admin' ? pathname === '/admin' : pathname.startsWith(item.href)
+        const active = item.href === '/admin'
+          ? pathname === '/admin'
+          : pathname === item.href || pathname.startsWith(`${item.href}/`)
         return (
           <Link
             key={item.href}

@@ -2,6 +2,8 @@ import { preApproval, mpPayment, darDiasGratis } from '@/lib/mercadopago'
 import { aplicarDowngradeParaBasico } from '@/lib/downgrade'
 import { concluirMissaoIndicacaoBonus } from '@/lib/missoes'
 import { criarComissaoSeAplicavel, cancelarComissaoPendente } from '@/lib/parceiras'
+import { criarEntradaCaixa, reembolsarEntradaCaixa } from '@/lib/caixa'
+import { formatCurrency } from '@/lib/utils'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { WebhookSignatureValidator, InvalidWebhookSignatureError } from 'mercadopago'
 import { NextRequest, NextResponse } from 'next/server'
@@ -124,8 +126,9 @@ async function processarPayment(paymentId: string) {
   })
 
   if (pago.status === 'refunded' || pago.status === 'cancelled') {
-    console.log('[mp webhook][payment] status refunded/cancelled — cancelando comissão pendente, se houver', { paymentId })
+    console.log('[mp webhook][payment] status refunded/cancelled — cancelando comissão pendente e entrada de caixa, se houver', { paymentId })
     await cancelarComissaoPendente(supabaseAdmin, String(pago.id))
+    await reembolsarEntradaCaixa(supabaseAdmin, String(pago.id))
     return
   }
 
@@ -145,6 +148,15 @@ async function processarPayment(paymentId: string) {
   }
 
   const externalRef = pago.external_reference
+
+  // Pagamento de agendamento (sinal ou valor total do serviço) — identificado
+  // porque o external_reference é o id do próprio agendamento temporário
+  // (aguardando_pagamento), criado em /api/agendamentos/criar-pendente. Não
+  // usa mp_checkouts porque aquela tabela é específica de plano/ciclo de
+  // assinatura, sem nada a ver com um agendamento avulso.
+  const processouAgendamento = externalRef ? await processarPagamentoAgendamento(externalRef, pago) : false
+  if (processouAgendamento) return
+
   console.log('[mp webhook][payment] buscando checkout correspondente', { paymentId, externalRef })
 
   const { data: checkout } = externalRef
@@ -203,6 +215,54 @@ async function processarPayment(paymentId: string) {
 
   await aplicarMudancaDePlano(prestadoraId, prestadoraAntes?.plano ?? null, plano)
   await processarRecompensaIndicacaoEComissao(prestadoraId, prestadoraAntes, pago.transaction_amount ?? 0, String(pago.id))
+}
+
+/**
+ * Confirma o agendamento temporário (aguardando_pagamento) cujo id é o
+ * external_reference do pagamento, lança a entrada correspondente no caixa
+ * da prestadora e notifica ela. Retorna `false` quando o external_reference
+ * não corresponde a nenhum agendamento pendente de pagamento — nesse caso
+ * quem chamou segue pro fluxo normal de checkout de plano/assinatura.
+ */
+async function processarPagamentoAgendamento(
+  agendamentoId: string,
+  pago: Awaited<ReturnType<typeof mpPayment.get>>
+): Promise<boolean> {
+  const { data: agendamento } = await supabaseAdmin
+    .from('agendamentos')
+    .select('id, prestadora_id, servicos(nome, preco), clientes(nome)')
+    .eq('id', agendamentoId)
+    .eq('status', 'aguardando_pagamento')
+    .maybeSingle()
+
+  if (!agendamento) return false
+
+  const servico = agendamento.servicos as unknown as { nome: string; preco: number } | null
+  const cliente = agendamento.clientes as unknown as { nome: string } | null
+  const valorBruto = pago.transaction_amount ?? 0
+
+  await supabaseAdmin.from('agendamentos').update({ status: 'confirmado' }).eq('id', agendamento.id)
+
+  // Cobrou menos que o preço cheio do serviço → foi sinal; senão foi o
+  // valor total (cenário de pagamento online opcional).
+  const tipo = servico && valorBruto < servico.preco - 0.01 ? 'sinal' : 'pagamento_servico'
+
+  await criarEntradaCaixa(supabaseAdmin, {
+    prestadoraId: agendamento.prestadora_id,
+    agendamentoId: agendamento.id,
+    tipo,
+    valorBruto,
+    paymentId: String(pago.id),
+  })
+
+  const label = tipo === 'sinal' ? 'o sinal' : 'o pagamento'
+  await supabaseAdmin.from('notificacoes').insert({
+    prestadora_id: agendamento.prestadora_id,
+    tipo: 'pagamento',
+    mensagem: `${cliente?.nome ?? 'Cliente'} pagou ${label} de ${formatCurrency(valorBruto)} e confirmou o agendamento${servico ? ` de ${servico.nome}` : ''}.`,
+  })
+
+  return true
 }
 
 /**

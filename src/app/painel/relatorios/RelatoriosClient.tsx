@@ -27,7 +27,7 @@ export type Ag = {
   id: string
   data_hora: string
   created_at: string
-  status: 'confirmado' | 'cancelado' | 'concluido'
+  status: 'confirmado' | 'cancelado' | 'concluido' | 'aguardando_pagamento'
   servicos: { nome: string; preco: number } | null
   clientes: { id: string; nome: string } | null
   profissionais: { nome: string } | null

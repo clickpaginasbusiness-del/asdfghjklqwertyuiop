@@ -57,7 +57,7 @@ export default async function CalendarioPage() {
 export type AgendaSlotAg = {
   id: string
   data_hora: string
-  status: 'confirmado' | 'cancelado' | 'concluido'
+  status: 'confirmado' | 'cancelado' | 'concluido' | 'aguardando_pagamento'
   profissional_id: string | null
   cliente_e_prestadora: boolean
   agendamento_manual: boolean

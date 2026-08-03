@@ -105,11 +105,13 @@ export const DEMO_CLIENTES: Cliente[] = [
   { id: 'demo-cli-beatriz', nome: 'Beatriz Lima', telefone: '31999995555', cliente_manual: false, verificado_em: '2025-05-05T12:00:00Z', created_at: '2025-05-05T12:00:00Z' },
 ]
 
+const SEM_PAGAMENTO_ONLINE = { aceitar_pagamento_online: false, sinal_tipo: null, sinal_valor: null, sinal_obrigatorio: false } as const
+
 export const DEMO_SERVICOS: Servico[] = [
-  { id: 'demo-serv-manicure', prestadora_id: 'demo-prestadora', nome: 'Manicure completa', preco: 45, duracao_minutos: 60, descricao: 'Cutilagem, esmaltação e hidratação das mãos.', ativo: true, icone: 'Hand', foto_galeria_id: null, created_at: '2025-01-15T12:00:00Z' },
-  { id: 'demo-serv-pedicure', prestadora_id: 'demo-prestadora', nome: 'Pedicure completa', preco: 55, duracao_minutos: 60, descricao: 'Cutilagem, esmaltação e esfoliação dos pés.', ativo: true, icone: 'Hand', foto_galeria_id: null, created_at: '2025-01-15T12:00:00Z' },
-  { id: 'demo-serv-alongamento', prestadora_id: 'demo-prestadora', nome: 'Alongamento em gel', preco: 180, duracao_minutos: 120, descricao: 'Extensão das unhas em gel com formato e comprimento personalizados.', ativo: true, icone: 'Gem', foto_galeria_id: null, created_at: '2025-01-15T12:00:00Z' },
-  { id: 'demo-serv-esmaltacao', prestadora_id: 'demo-prestadora', nome: 'Esmaltação em gel', preco: 70, duracao_minutos: 60, descricao: 'Esmaltação em gel com maior durabilidade e brilho.', ativo: true, icone: 'Sparkles', foto_galeria_id: null, created_at: '2025-01-15T12:00:00Z' },
+  { id: 'demo-serv-manicure', prestadora_id: 'demo-prestadora', nome: 'Manicure completa', preco: 45, duracao_minutos: 60, descricao: 'Cutilagem, esmaltação e hidratação das mãos.', ativo: true, icone: 'Hand', foto_galeria_id: null, ...SEM_PAGAMENTO_ONLINE, created_at: '2025-01-15T12:00:00Z' },
+  { id: 'demo-serv-pedicure', prestadora_id: 'demo-prestadora', nome: 'Pedicure completa', preco: 55, duracao_minutos: 60, descricao: 'Cutilagem, esmaltação e esfoliação dos pés.', ativo: true, icone: 'Hand', foto_galeria_id: null, ...SEM_PAGAMENTO_ONLINE, created_at: '2025-01-15T12:00:00Z' },
+  { id: 'demo-serv-alongamento', prestadora_id: 'demo-prestadora', nome: 'Alongamento em gel', preco: 180, duracao_minutos: 120, descricao: 'Extensão das unhas em gel com formato e comprimento personalizados.', ativo: true, icone: 'Gem', foto_galeria_id: null, ...SEM_PAGAMENTO_ONLINE, created_at: '2025-01-15T12:00:00Z' },
+  { id: 'demo-serv-esmaltacao', prestadora_id: 'demo-prestadora', nome: 'Esmaltação em gel', preco: 70, duracao_minutos: 60, descricao: 'Esmaltação em gel com maior durabilidade e brilho.', ativo: true, icone: 'Sparkles', foto_galeria_id: null, ...SEM_PAGAMENTO_ONLINE, created_at: '2025-01-15T12:00:00Z' },
 ]
 
 const [manicure, pedicure, alongamento, esmaltacao] = DEMO_SERVICOS

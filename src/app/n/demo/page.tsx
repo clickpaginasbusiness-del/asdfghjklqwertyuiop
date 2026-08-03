@@ -79,6 +79,7 @@ const DEMO_SERVICOS: ServicoComProfissionais[] = [
     descricao: 'Cutilagem, esmaltação e hidratação das mãos.',
     icone: 'Hand',
     foto_galeria_id: null,
+    aceitar_pagamento_online: false, sinal_tipo: null, sinal_valor: null, sinal_obrigatorio: false,
     servico_profissionais: [],
   },
   {
@@ -89,6 +90,7 @@ const DEMO_SERVICOS: ServicoComProfissionais[] = [
     descricao: 'Cutilagem, esmaltação e esfoliação dos pés.',
     icone: 'Hand',
     foto_galeria_id: null,
+    aceitar_pagamento_online: false, sinal_tipo: null, sinal_valor: null, sinal_obrigatorio: false,
     servico_profissionais: [],
   },
   {
@@ -99,6 +101,7 @@ const DEMO_SERVICOS: ServicoComProfissionais[] = [
     descricao: 'Decoração artística nas unhas com glitter, strass e estampas.',
     icone: 'Palette',
     foto_galeria_id: null,
+    aceitar_pagamento_online: false, sinal_tipo: null, sinal_valor: null, sinal_obrigatorio: false,
     servico_profissionais: [],
   },
   {
@@ -109,6 +112,7 @@ const DEMO_SERVICOS: ServicoComProfissionais[] = [
     descricao: 'Extensão das unhas em gel com formato e comprimento personalizados.',
     icone: 'Gem',
     foto_galeria_id: null,
+    aceitar_pagamento_online: false, sinal_tipo: null, sinal_valor: null, sinal_obrigatorio: false,
     servico_profissionais: [],
   },
   {
@@ -119,6 +123,7 @@ const DEMO_SERVICOS: ServicoComProfissionais[] = [
     descricao: 'Reequilíbrio e esmaltação das unhas em gel com preenchimento da raiz.',
     icone: 'Sparkles',
     foto_galeria_id: null,
+    aceitar_pagamento_online: false, sinal_tipo: null, sinal_valor: null, sinal_obrigatorio: false,
     servico_profissionais: [],
   },
 ]

@@ -20,6 +20,7 @@ import {
   CalendarPlus, Share2, Quote, Trash2, Home, Eye, Sparkles,
 } from 'lucide-react'
 import { getServicoIcone } from '@/lib/servicoIcones'
+import { calcularValorSinal } from '@/lib/sinal'
 import type { Prestadora, Servico, GaleriaItem, Agendamento, Profissional, HorarioFuncionamento, Avaliacao } from '@/lib/types'
 import { getTema } from '@/lib/theme'
 import toast from 'react-hot-toast'
@@ -153,6 +154,10 @@ export default function PerfilPublicoClient({
 
   const [agendando, setAgendando] = useState(false)
   const [agendamentoFeito, setAgendamentoFeito] = useState<Agendamento | null>(null)
+
+  // Pagamento online (sinal obrigatório ou pagamento opcional do valor total)
+  const [concordaNaoReembolsavel, setConcordaNaoReembolsavel] = useState(false)
+  const [mostrarPagamentoOpcional, setMostrarPagamentoOpcional] = useState(false)
 
   const [loginModal, setLoginModal] = useState(false)
   const [authMode, setAuthMode] = useState<'login' | 'cadastro' | 'recuperacao'>('login')
@@ -660,6 +665,41 @@ export default function PerfilPublicoClient({
     setStep('confirmado')
   }
 
+  /** Serviço com pagamento online (sinal obrigatório ou "pagar agora" do
+   * valor total) — cria um agendamento temporário (aguardando_pagamento) e
+   * manda a cliente pro checkout de pagamento; o webhook do MP confirma o
+   * agendamento de verdade quando o pagamento é aprovado. */
+  async function pagarEIrParaCheckout() {
+    if (!servicoSelecionado || !dataSelecionada || !horarioSelecionado || !clienteLogado) return
+
+    const [h, m] = horarioSelecionado.split(':').map(Number)
+    const dataHora = new Date(dataSelecionada)
+    dataHora.setHours(h, m, 0, 0)
+
+    setAgendando(true)
+    const token = localStorage.getItem('clienteToken')
+    const res = await fetch('/api/agendamentos/criar-pendente', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        token,
+        prestadoraId: prestadora.id,
+        servicoId: servicoSelecionado.id,
+        profissionalId: profissionalSelecionada?.id ?? null,
+        dataHora: dataHora.toISOString(),
+      }),
+    })
+    const data = await res.json()
+
+    if (!res.ok) {
+      setAgendando(false)
+      toast.error(data.error ?? 'Erro ao agendar. Tente novamente.')
+      return
+    }
+
+    window.location.href = `/agendamento/checkout?agendamento_temp=${data.agendamentoId}`
+  }
+
   async function cancelarMeuAgendamento(id: string) {
     const token = localStorage.getItem('clienteToken')
     const res = await fetch('/api/agendamentos/cancelar', {
@@ -690,6 +730,8 @@ export default function PerfilPublicoClient({
     setDataSelecionada(null)
     setHorarioSelecionado(null)
     setAgendamentoFeito(null)
+    setConcordaNaoReembolsavel(false)
+    setMostrarPagamentoOpcional(false)
   }
 
   const horariosDisponiveis = servicoSelecionado && dataSelecionada
@@ -1422,15 +1464,103 @@ export default function PerfilPublicoClient({
                         </button>
                       </div>
 
-                      <Button
-                        onClick={confirmarAgendamento}
-                        loading={agendando}
-                        className="w-full hover:brightness-95"
-                        size="lg"
-                        style={{ backgroundColor: tema.hex }}
-                      >
-                        Confirmar agendamento
-                      </Button>
+                      {servicoSelecionado.aceitar_pagamento_online ? (
+                        servicoSelecionado.sinal_obrigatorio ? (
+                          <div className="space-y-3">
+                            <div className="rounded-xl bg-amber-50 border border-amber-100 px-3 py-2.5">
+                              <p className="text-sm font-semibold text-amber-800">
+                                Sinal: {formatCurrency(calcularValorSinal(servicoSelecionado.preco, servicoSelecionado.sinal_tipo, servicoSelecionado.sinal_valor))}
+                              </p>
+                              <p className="text-xs text-amber-700 mt-1">
+                                Este pagamento é não reembolsável. Em caso de cancelamento, o valor não será devolvido.
+                              </p>
+                            </div>
+                            <label className="flex items-start gap-2 text-xs text-gray-600 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={concordaNaoReembolsavel}
+                                onChange={(e) => setConcordaNaoReembolsavel(e.target.checked)}
+                                className="w-4 h-4 mt-0.5 rounded border-gray-300 text-rose-400 focus:ring-rose-300 shrink-0"
+                              />
+                              Li e concordo que este pagamento não é reembolsável
+                            </label>
+                            <Button
+                              onClick={pagarEIrParaCheckout}
+                              disabled={!concordaNaoReembolsavel}
+                              loading={agendando}
+                              className="w-full hover:brightness-95"
+                              size="lg"
+                              style={{ backgroundColor: tema.hex }}
+                            >
+                              Pagar sinal e confirmar agendamento
+                            </Button>
+                          </div>
+                        ) : !mostrarPagamentoOpcional ? (
+                          <div className="space-y-2.5">
+                            <Button
+                              onClick={() => setMostrarPagamentoOpcional(true)}
+                              className="w-full hover:brightness-95"
+                              size="lg"
+                              style={{ backgroundColor: tema.hex }}
+                            >
+                              Pagar agora ({formatCurrency(servicoSelecionado.preco)})
+                            </Button>
+                            <Button
+                              onClick={confirmarAgendamento}
+                              loading={agendando}
+                              variant="outline"
+                              className="w-full"
+                              size="lg"
+                            >
+                              Pagar na hora do atendimento
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            <div className="rounded-xl bg-amber-50 border border-amber-100 px-3 py-2.5">
+                              <p className="text-xs text-amber-700">
+                                Este pagamento é não reembolsável. Em caso de cancelamento, o valor não será devolvido.
+                              </p>
+                            </div>
+                            <label className="flex items-start gap-2 text-xs text-gray-600 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={concordaNaoReembolsavel}
+                                onChange={(e) => setConcordaNaoReembolsavel(e.target.checked)}
+                                className="w-4 h-4 mt-0.5 rounded border-gray-300 text-rose-400 focus:ring-rose-300 shrink-0"
+                              />
+                              Li e concordo que este pagamento não é reembolsável
+                            </label>
+                            <Button
+                              onClick={pagarEIrParaCheckout}
+                              disabled={!concordaNaoReembolsavel}
+                              loading={agendando}
+                              className="w-full hover:brightness-95"
+                              size="lg"
+                              style={{ backgroundColor: tema.hex }}
+                            >
+                              Pagar e confirmar agendamento
+                            </Button>
+                            <button
+                              type="button"
+                              onClick={() => setMostrarPagamentoOpcional(false)}
+                              className="text-xs text-gray-400 hover:underline w-full text-center"
+                            >
+                              Voltar
+                            </button>
+                          </div>
+                        )
+                      ) : (
+                        <Button
+                          onClick={confirmarAgendamento}
+                          loading={agendando}
+                          className="w-full hover:brightness-95"
+                          size="lg"
+                          style={{ backgroundColor: tema.hex }}
+                        >
+                          Confirmar agendamento
+                        </Button>
+                      )}
                     </>
                   ) : (
                     <Button

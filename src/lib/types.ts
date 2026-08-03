@@ -115,6 +115,35 @@ export type Servico = {
   ativo: boolean
   icone: string | null
   foto_galeria_id: string | null
+  aceitar_pagamento_online: boolean
+  sinal_tipo: 'fixo' | 'percentual' | null
+  sinal_valor: number | null
+  sinal_obrigatorio: boolean
+  created_at: string
+}
+
+export type CaixaPrestadora = {
+  id: string
+  prestadora_id: string
+  tipo: 'sinal' | 'pagamento_servico' | 'saque'
+  valor: number
+  valor_bruto: number
+  taxa_percentual: number
+  status: 'pendente' | 'disponivel' | 'sacado' | 'reembolsado'
+  agendamento_id: string | null
+  mp_payment_id: string | null
+  disponivel_em: string | null
+  created_at: string
+}
+
+export type CaixaSaque = {
+  id: string
+  prestadora_id: string
+  valor: number
+  pix_chave: string
+  status: 'solicitado' | 'pago'
+  solicitado_em: string
+  pago_em: string | null
   created_at: string
 }
 
@@ -134,7 +163,7 @@ export type Agendamento = {
   servico_id: string
   cliente_id: string
   data_hora: string
-  status: 'confirmado' | 'cancelado' | 'concluido'
+  status: 'confirmado' | 'cancelado' | 'concluido' | 'aguardando_pagamento'
   cancelado_por: 'prestadora' | 'cliente' | null
   arquivado: boolean
   cliente_e_prestadora: boolean

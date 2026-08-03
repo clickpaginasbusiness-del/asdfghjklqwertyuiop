@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, Calendar, CalendarDays, Scissors, ImageIcon,
-  Clock, Users, LogOut, Menu, X, ExternalLink, UserCircle, UserCircle2, CreditCard, AlertCircle, BarChart3, Headset, Sparkles, Settings,
+  Clock, Users, LogOut, Menu, X, ExternalLink, UserCircle, UserCircle2, CreditCard, AlertCircle, BarChart3, Headset, Sparkles, Settings, Wallet,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { createClient } from '@/lib/supabase/client'
@@ -250,7 +250,11 @@ const TOUR_NAV_KEYS: Record<string, string> = {
   '/painel/assinatura': 'tour-assinatura',
 }
 
-const navItems = [
+type NavEntry =
+  | { href: string; label: string; icon: typeof LayoutDashboard }
+  | { section: string }
+
+const navItems: NavEntry[] = [
   { href: '/painel', label: 'Painel', icon: LayoutDashboard },
   { href: '/painel/agendamentos', label: 'Agendamentos', icon: Calendar },
   { href: '/painel/calendario', label: 'Calendário', icon: CalendarDays },
@@ -258,8 +262,10 @@ const navItems = [
   { href: '/painel/galeria', label: 'Galeria', icon: ImageIcon },
   { href: '/painel/horarios', label: 'Horários', icon: Clock },
   { href: '/painel/clientes', label: 'Clientes', icon: Users },
-  { href: '/painel/relatorios', label: 'Relatórios', icon: BarChart3 },
   { href: '/painel/profissionais', label: 'Profissionais', icon: UserCircle2 },
+  { section: 'Controle' },
+  { href: '/painel/relatorios', label: 'Relatórios', icon: BarChart3 },
+  { href: '/painel/caixa', label: 'Caixa', icon: Wallet },
   { href: '/painel/perfil', label: 'Meu Perfil', icon: UserCircle },
   { href: '/painel/assinatura', label: 'Assinatura', icon: CreditCard },
   { href: '/painel/suporte', label: 'Suporte', icon: Headset },
@@ -321,6 +327,13 @@ export default function PainelLayoutClient({
 
         <nav className="flex-1 min-h-0 overflow-y-auto p-4 space-y-1">
           {navItems.map((item) => {
+            if ('section' in item) {
+              return (
+                <p key={item.section} className="px-3 pt-4 pb-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                  {item.section}
+                </p>
+              )
+            }
             const active = pathname === item.href
             return (
               <Link
