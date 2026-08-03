@@ -1,0 +1,30 @@
+-- Corrige exposição de dados sensíveis: a policy "Prestadoras publicas para
+-- leitura" (using (true)) liberava a tabela `prestadoras` inteira pra
+-- qualquer requisição anônima via API do Supabase — email, telefone,
+-- parceira_pix, mp_customer_id, mp_subscription_id etc. incluídos, porque
+-- RLS no Postgres é por LINHA, não por COLUNA. Confirmado em auditoria:
+-- dava pra ler email/telefone de todas as prestadoras e a chave Pix de uma
+-- parceira só com a anon key pública, sem login nenhum.
+--
+-- Correção: remove a leitura pública anônima da tabela. As páginas públicas
+-- (/n/[slug], sitemap.xml) passam a buscar os dados via service role, com
+-- select() explícito só das colunas seguras (ver src/app/n/[slug]/page.tsx
+-- e src/app/sitemap.ts) — o mesmo padrão já usado em mp_checkouts,
+-- caixa_prestadora etc. nesta base de código.
+--
+-- A policy "Prestadora gerencia proprio perfil" (auth.uid() = user_id)
+-- continua intacta — cada prestadora logada continua enxergando/editando o
+-- próprio registro completo (email, telefone, assinatura...) normalmente.
+--
+-- Nota sobre a abordagem alternativa de REVOKE SELECT (colunas) FROM anon,
+-- authenticated: não uso essa abordagem de propósito. No Postgres, revogar
+-- privilégio a nível de coluna não tem efeito se o role ainda tem SELECT a
+-- nível de tabela (que é a concessão padrão do Supabase pra anon/
+-- authenticated) — sem revogar a tabela inteira primeiro, o REVOKE de
+-- coluna seria um no-op. E mesmo revogando a tabela inteira antes, o role
+-- `authenticated` é compartilhado por TODAS as prestadoras logadas — RLS
+-- filtra linha, não coluna, então derrubar SELECT de email/telefone pro
+-- role `authenticated` quebraria a própria prestadora vendo o próprio
+-- email/telefone/assinatura em /painel/perfil e /painel/assinatura. Por
+-- isso a correção é a nível de policy (linha), não de GRANT (coluna).
+DROP POLICY IF EXISTS "Prestadoras publicas para leitura" ON prestadoras;

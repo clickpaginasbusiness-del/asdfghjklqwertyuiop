@@ -1,7 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { enviarCodigoVerificacao } from '@/lib/twilioVerify'
+import { telefoneLocal } from '@/lib/utils'
 import { NextRequest, NextResponse } from 'next/server'
+
+const UMA_HORA_MS = 60 * 60 * 1000
+const MAX_TENTATIVAS_POR_HORA = 3
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -28,6 +32,26 @@ export async function POST(request: NextRequest) {
   if (existing) {
     return NextResponse.json({ error: 'Este número já está vinculado a outra conta.' }, { status: 409 })
   }
+
+  // Mesmo limite de /api/clientes/auth/enviar-codigo (3/hora por telefone) —
+  // sem isso, uma sessão Google autenticada (grátis/trivial de conseguir)
+  // conseguia mandar SMS via Twilio pra qualquer número, sem nenhum limite.
+  const digitsLocal = telefoneLocal(telefone)
+  const desde = new Date(Date.now() - UMA_HORA_MS).toISOString()
+  const { count } = await admin
+    .from('otp_tentativas')
+    .select('id', { count: 'exact', head: true })
+    .eq('telefone', digitsLocal)
+    .gte('created_at', desde)
+
+  if ((count ?? 0) >= MAX_TENTATIVAS_POR_HORA) {
+    return NextResponse.json(
+      { error: 'Muitas tentativas. Tente novamente em 1 hora.' },
+      { status: 429 }
+    )
+  }
+
+  await admin.from('otp_tentativas').insert({ telefone: digitsLocal })
 
   try {
     await enviarCodigoVerificacao(telefone)

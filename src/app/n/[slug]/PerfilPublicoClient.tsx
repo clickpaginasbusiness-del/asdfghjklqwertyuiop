@@ -21,7 +21,7 @@ import {
 } from 'lucide-react'
 import { getServicoIcone } from '@/lib/servicoIcones'
 import { calcularValorSinal } from '@/lib/sinal'
-import type { Prestadora, Servico, GaleriaItem, Agendamento, Profissional, HorarioFuncionamento, Avaliacao } from '@/lib/types'
+import type { PrestadoraPublica, Servico, GaleriaItem, Agendamento, Profissional, HorarioFuncionamento, Avaliacao } from '@/lib/types'
 import { getTema } from '@/lib/theme'
 import toast from 'react-hot-toast'
 import { format, addDays, startOfDay, isSameDay, isToday, isBefore, getDay, subDays } from 'date-fns'
@@ -32,7 +32,7 @@ export type ServicoComProfissionais = Servico & {
 }
 
 interface Props {
-  prestadora: Prestadora
+  prestadora: PrestadoraPublica
   servicos: ServicoComProfissionais[]
   galeria: GaleriaItem[]
   diasBloqueados: string[]

@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { Plus, Pencil, Trash2, Upload, UserCircle2, ToggleLeft, ToggleRight, CalendarDays, Lock } from 'lucide-react'
 import type { Profissional } from '@/lib/types'
 import Link from 'next/link'
+import { validarArquivo } from '@/lib/uploadValidation'
 import toast from 'react-hot-toast'
 
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
@@ -158,6 +159,12 @@ export default function ProfissionaisClient({
   async function handleFotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file || !fotoTargetId) return
+    const erroValidacao = validarArquivo(file)
+    if (erroValidacao) {
+      toast.error(erroValidacao)
+      if (fotoRef.current) fotoRef.current.value = ''
+      return
+    }
     setUploadingId(fotoTargetId)
     const supabase = createClient()
     const ext = file.name.split('.').pop()

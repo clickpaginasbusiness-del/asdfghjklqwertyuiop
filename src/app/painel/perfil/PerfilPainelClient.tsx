@@ -19,6 +19,7 @@ import { TEMPLATE_VARS, MSG_CONFIRMACAO_DEFAULT, MSG_CANCELAMENTO_DEFAULT, MSG_L
 import { PersonalizarPaginaModal } from './PersonalizarPaginaModal'
 import { CodigoIndicacaoCard } from '@/components/painel/CodigoIndicacaoCard'
 import { ADMIN_EMAIL } from '@/lib/admin'
+import { validarArquivo } from '@/lib/uploadValidation'
 import toast from 'react-hot-toast'
 
 type SlugStatus = 'idle' | 'checking' | 'available' | 'taken'
@@ -172,6 +173,12 @@ export default function PerfilPainelClient({
   async function handleFoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+    const erroValidacao = validarArquivo(file)
+    if (erroValidacao) {
+      toast.error(erroValidacao)
+      if (fotoRef.current) fotoRef.current.value = ''
+      return
+    }
     setUploadingFoto(true)
     const supabase = createClient()
     const ext = file.name.split('.').pop()

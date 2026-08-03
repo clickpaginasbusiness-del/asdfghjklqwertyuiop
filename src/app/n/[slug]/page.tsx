@@ -1,15 +1,23 @@
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
 import PerfilPublicoClient from './PerfilPublicoClient'
 import { SITE_URL } from '@/lib/seo'
 
+// Colunas seguras pra expor num contexto público/anônimo — exclui email,
+// telefone, dados de pagamento (mp_*), chave Pix de parceira etc. Usa
+// service role de propósito: essa página não tem sessão de usuário (é
+// pública), então depender de RLS pra restringir colunas não funciona
+// (RLS é por linha, não por coluna) — a lista explícita abaixo é o que
+// garante que só dado público sai daqui. Ver PrestadoraPublica em types.ts.
+const COLUNAS_PUBLICAS = 'id, nome, bio, foto_url, slug, cor_tema, whatsapp, instagram, endereco, plano, e_parceira, hora_abertura, hora_fechamento, pagina_texto_agendamento, pagina_mostrar_texto_agendamento, pagina_mostrar_estrelas, pagina_mostrar_avaliacoes, pagina_mostrar_galeria, pagina_galeria_modo, pagina_galeria_fotos_ids, pagina_mostrar_estabelecimento, pagina_estabelecimento_modo, pagina_estabelecimento_fotos_ids, pagina_estabelecimento_titulo'
+
 export default async function PerfilPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const { data: prestadora } = await supabase
     .from('prestadoras')
-    .select('*')
+    .select(COLUNAS_PUBLICAS)
     .eq('slug', slug)
     .single()
 
@@ -46,7 +54,7 @@ export default async function PerfilPage({ params }: { params: Promise<{ slug: s
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const { data } = await supabase.from('prestadoras').select('nome, bio, foto_url').eq('slug', slug).single()
   if (!data) return {}
 

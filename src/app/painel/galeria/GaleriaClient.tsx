@@ -11,6 +11,7 @@ import Link from 'next/link'
 import toast from 'react-hot-toast'
 import Image from 'next/image'
 import { ImageWithSkeleton } from '@/components/ui/image-with-skeleton'
+import { validarArquivo } from '@/lib/uploadValidation'
 
 export default function GaleriaClient({
   galeria: initial,
@@ -44,6 +45,9 @@ export default function GaleriaClient({
     const supabase = createClient()
 
     for (const file of Array.from(files)) {
+      const erroValidacao = validarArquivo(file, { aceitarVideo: true })
+      if (erroValidacao) { toast.error(erroValidacao); continue }
+
       const ext = file.name.split('.').pop()
       const path = `${prestadoraId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
       const tipo = file.type.startsWith('video') ? 'video' : 'imagem'

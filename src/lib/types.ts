@@ -56,6 +56,22 @@ export type Prestadora = {
   created_at: string
 }
 
+/** Campos de `prestadoras` seguros pra expor em contexto público/anônimo
+ * (página /n/[slug], sitemap) — exclui email, telefone, dados de pagamento
+ * (mp_*), chave Pix de parceira e tudo mais que não precisa aparecer pra
+ * quem não é a própria prestadora logada. Mantida com Pick<> pra nunca
+ * divergir dos tipos reais das colunas que ela reaproveita. */
+export type PrestadoraPublica = Pick<Prestadora,
+  | 'id' | 'nome' | 'bio' | 'foto_url' | 'slug' | 'cor_tema'
+  | 'whatsapp' | 'instagram' | 'endereco' | 'plano' | 'e_parceira'
+  | 'hora_abertura' | 'hora_fechamento'
+  | 'pagina_texto_agendamento' | 'pagina_mostrar_texto_agendamento'
+  | 'pagina_mostrar_estrelas' | 'pagina_mostrar_avaliacoes' | 'pagina_mostrar_galeria'
+  | 'pagina_galeria_modo' | 'pagina_galeria_fotos_ids'
+  | 'pagina_mostrar_estabelecimento' | 'pagina_estabelecimento_modo'
+  | 'pagina_estabelecimento_fotos_ids' | 'pagina_estabelecimento_titulo'
+>
+
 export type ParceiraComissao = {
   id: string
   parceira_id: string

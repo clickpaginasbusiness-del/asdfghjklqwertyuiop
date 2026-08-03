@@ -25,6 +25,25 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') self.skipWaiting()
+
+  // Disparado no logout (ver handleLogout em PainelLayoutClient.tsx) — sem
+  // isso, o cache de páginas do /painel (nome/telefone de cliente, agenda,
+  // receita...) ficava salvo no Cache Storage do navegador indefinidamente
+  // depois do logout, e podia ser servido pro próximo usuário do mesmo
+  // aparelho (achado da auditoria de segurança).
+  if (event.data?.type === 'CLEAR_PAINEL_CACHE') {
+    event.waitUntil(
+      caches.open(CACHE_VERSION).then((cache) =>
+        cache.keys().then((requests) =>
+          Promise.all(
+            requests
+              .filter((request) => new URL(request.url).pathname.startsWith('/painel'))
+              .map((request) => cache.delete(request))
+          )
+        )
+      )
+    )
+  }
 })
 
 self.addEventListener('fetch', (event) => {

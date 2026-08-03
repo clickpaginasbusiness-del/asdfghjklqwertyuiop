@@ -305,6 +305,12 @@ export default function PainelLayoutClient({
   async function handleLogout() {
     const supabase = createClient()
     await supabase.auth.signOut()
+    // Limpa do Cache Storage as páginas do /painel que o service worker
+    // guardou (nome/telefone de cliente, agenda, receita...) — sem isso
+    // ficavam salvas no aparelho depois do logout e podiam ser servidas
+    // pro próximo usuário do mesmo aparelho (achado da auditoria de
+    // segurança). Best-effort: se não tiver SW ativo, só segue o logout.
+    navigator.serviceWorker?.controller?.postMessage({ type: 'CLEAR_PAINEL_CACHE' })
     // Reload completo (não router.push) — o layout autenticado é um Server
     // Component que só reavalia a sessão numa navegação de verdade; uma troca
     // client-side deixava a sidebar/topbar da sessão antiga visível por trás

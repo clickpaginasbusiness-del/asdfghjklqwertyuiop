@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { SITE_URL } from '@/lib/seo'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -11,7 +11,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/privacidade`, changeFrequency: 'yearly', priority: 0.3 },
   ]
 
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const { data: prestadoras } = await supabase
     .from('prestadoras')
     .select('slug, created_at')
