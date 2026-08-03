@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
@@ -11,13 +12,19 @@ import toast from 'react-hot-toast'
 import { createClient } from '@/lib/supabase/client'
 import { NotificacoesSino } from '@/components/painel/NotificacoesSino'
 import { MissoesDrawer } from '@/components/painel/MissoesDrawer'
-import { OnboardingTour } from '@/components/painel/OnboardingTour'
 import { WelcomeModal } from '@/components/painel/WelcomeModal'
 import { PushNotificationPrompt } from '@/components/painel/PushNotificationPrompt'
 import { InstallPwaModal } from '@/components/painel/InstallPwaModal'
 import { FeedbackModal } from '@/components/painel/FeedbackModal'
 import { cn } from '@/lib/utils'
 import type { Prestadora } from '@/lib/types'
+
+// driver.js (o tour em si) só roda de fato pra quem ainda não completou o
+// onboarding (checagem via localStorage dentro do próprio componente) — mas
+// import estático colocava a lib inteira no chunk compartilhado do layout do
+// painel, carregado em toda página autenticada, pra toda prestadora, pra
+// sempre. dynamic() tira isso do bundle principal.
+const OnboardingTour = dynamic(() => import('@/components/painel/OnboardingTour').then((m) => m.OnboardingTour), { ssr: false })
 
 function DowngradeBanner({ prestadoraId }: { prestadoraId: string }) {
   const [visivel, setVisivel] = useState(true)

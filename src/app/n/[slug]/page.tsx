@@ -11,6 +11,15 @@ import { SITE_URL } from '@/lib/seo'
 // garante que só dado público sai daqui. Ver PrestadoraPublica em types.ts.
 const COLUNAS_PUBLICAS = 'id, nome, bio, foto_url, slug, cor_tema, whatsapp, instagram, endereco, plano, e_parceira, hora_abertura, hora_fechamento, pagina_texto_agendamento, pagina_mostrar_texto_agendamento, pagina_mostrar_estrelas, pagina_mostrar_avaliacoes, pagina_mostrar_galeria, pagina_galeria_modo, pagina_galeria_fotos_ids, pagina_mostrar_estabelecimento, pagina_estabelecimento_modo, pagina_estabelecimento_fotos_ids, pagina_estabelecimento_titulo'
 
+// ISR: essa é a página de maior tráfego do app (perfil público, sem sessão),
+// e até agora renderizava 100% dinâmico — buscava tudo do banco a cada
+// request. Os dados aqui (bio, serviços, galeria, horários...) mudam pouco;
+// disponibilidade de horário é vazão à parte, buscada ao vivo pelo cliente
+// via /api/agendamentos/horarios-ocupados, então cachear esse shell não
+// arrisca overbooking. 60s equilibra "edições da prestadora aparecem rápido"
+// com "não bate no banco a cada visita".
+export const revalidate = 60
+
 export default async function PerfilPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const supabase = createAdminClient()

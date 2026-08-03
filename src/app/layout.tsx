@@ -1,9 +1,30 @@
 import type { Metadata, Viewport } from 'next'
+import { Inter, Playfair_Display } from 'next/font/google'
 import './globals.css'
 import { Toaster } from 'react-hot-toast'
 import { ServiceWorkerRegister } from '@/components/pwa/ServiceWorkerRegister'
 import { InstallPrompt } from '@/components/pwa/InstallPrompt'
 import { SITE_URL } from '@/lib/seo'
+
+// next/font self-hospeda os arquivos de fonte (baixados em build time) e
+// injeta preload automaticamente — antes vinham via @import no globals.css
+// direto do Google Fonts, o que força o navegador a descobrir e buscar a
+// fonte só depois de já ter baixado e parseado o CSS (uma volta a mais na
+// rede, bloqueando o texto até isso terminar, em toda página do site).
+const inter = Inter({
+  subsets: ['latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-inter',
+  display: 'swap',
+})
+
+const playfair = Playfair_Display({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  style: ['normal', 'italic'],
+  variable: '--font-playfair',
+  display: 'swap',
+})
 
 const TITLE = 'BelleBook — Agendamento para Profissionais de Beleza'
 const DESCRIPTION = 'A plataforma mais elegante para profissionais de beleza gerenciarem seus agendamentos'
@@ -54,7 +75,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" className={`${inter.variable} ${playfair.variable}`}>
       <body>
         {children}
         <ServiceWorkerRegister />

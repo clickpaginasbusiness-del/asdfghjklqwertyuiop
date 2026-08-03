@@ -962,6 +962,7 @@ export default function PerfilPublicoClient({
                       width={112}
                       height={112}
                       className="object-cover w-full h-full"
+                      priority
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-white font-bold text-4xl font-serif">
