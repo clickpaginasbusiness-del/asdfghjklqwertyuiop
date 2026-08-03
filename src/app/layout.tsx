@@ -27,6 +27,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     title: 'BelleBook',
     statusBarStyle: 'black-translucent',
+    startupImage: '/apple-splash.png',
   },
   openGraph: {
     title: TITLE,
