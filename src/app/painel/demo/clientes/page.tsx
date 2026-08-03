@@ -1,5 +1,5 @@
 import ClientesClient from '@/app/painel/clientes/ClientesClient'
-import { DEMO_AGENDAMENTOS, DEMO_PRESTADORA } from '@/lib/demoData'
+import { getDemoAgendamentos, DEMO_PRESTADORA } from '@/lib/demoData'
 import type { Agendamento } from '@/lib/types'
 
 type AgItem = {
@@ -59,7 +59,7 @@ function buildClienteEntries(agendamentos: Agendamento[]): ClienteEntry[] {
 }
 
 export default function ClientesDemoPage() {
-  const clientes = buildClienteEntries(DEMO_AGENDAMENTOS)
+  const clientes = buildClienteEntries(getDemoAgendamentos(new Date()))
 
   return <ClientesClient clientes={clientes} prestadoraNome={DEMO_PRESTADORA.nome} />
 }

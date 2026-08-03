@@ -1,8 +1,8 @@
 import RelatoriosClient from '@/app/painel/relatorios/RelatoriosClient'
-import { DEMO_AGENDAMENTOS, DEMO_PROFISSIONAIS, DEMO_AVALIACOES, DEMO_VISITAS_PAGINA, DEMO_PRESTADORA } from '@/lib/demoData'
+import { getDemoAgendamentos, DEMO_PROFISSIONAIS, DEMO_AVALIACOES, DEMO_VISITAS_PAGINA, DEMO_PRESTADORA } from '@/lib/demoData'
 
 export default function RelatoriosDemoPage() {
-  const agendamentos = DEMO_AGENDAMENTOS.map((a) => ({
+  const agendamentos = getDemoAgendamentos(new Date()).map((a) => ({
     id: a.id,
     data_hora: a.data_hora,
     created_at: a.created_at,

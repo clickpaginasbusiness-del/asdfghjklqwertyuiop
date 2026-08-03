@@ -1,10 +1,10 @@
 import AgendamentosDemoClient from './AgendamentosDemoClient'
-import { DEMO_AGENDAMENTOS, DEMO_PROFISSIONAIS, DEMO_PRESTADORA } from '@/lib/demoData'
+import { getDemoAgendamentos, DEMO_PROFISSIONAIS, DEMO_PRESTADORA } from '@/lib/demoData'
 
 export default function AgendamentosDemoPage() {
   return (
     <AgendamentosDemoClient
-      agendamentos={DEMO_AGENDAMENTOS}
+      agendamentos={getDemoAgendamentos(new Date())}
       profissionais={DEMO_PROFISSIONAIS}
       prestadoraNome={DEMO_PRESTADORA.nome}
       msgConfirmacao={DEMO_PRESTADORA.mensagem_confirmacao}

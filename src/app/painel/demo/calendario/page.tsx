@@ -1,8 +1,8 @@
 import { AgendaDoDiaSection } from '@/app/painel/calendario/AgendaDoDiaSection'
-import { DEMO_PRESTADORA, DEMO_HORARIOS_FUNCIONAMENTO, DEMO_PROFISSIONAIS, DEMO_AGENDAMENTOS } from '@/lib/demoData'
+import { DEMO_PRESTADORA, DEMO_HORARIOS_FUNCIONAMENTO, DEMO_PROFISSIONAIS, getDemoAgendamentos } from '@/lib/demoData'
 
 export default function CalendarioDemoPage() {
-  const agendamentos = DEMO_AGENDAMENTOS
+  const agendamentos = getDemoAgendamentos(new Date())
     .filter((a) => a.status !== 'cancelado')
     .map((a) => ({
       id: a.id,

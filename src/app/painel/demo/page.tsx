@@ -1,10 +1,10 @@
 import DemoDashboardClient from './DemoDashboardClient'
-import { DEMO_AGENDAMENTOS, DEMO_PRESTADORA } from '@/lib/demoData'
+import { getDemoAgendamentos, DEMO_PRESTADORA } from '@/lib/demoData'
 
 export default function PainelDemoPage() {
   return (
     <DemoDashboardClient
-      agendamentos={DEMO_AGENDAMENTOS}
+      agendamentos={getDemoAgendamentos(new Date())}
       horarioAbertura={DEMO_PRESTADORA.hora_abertura}
       horarioFechamento={DEMO_PRESTADORA.hora_fechamento}
       nomeUsuario={DEMO_PRESTADORA.nome}

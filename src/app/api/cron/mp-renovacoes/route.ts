@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
     .in('mp_metodo_pagamento', ['pix', 'debito'])
     .eq('mp_ciclo', 'mensal')
     .eq('assinatura_ativa', true)
+    .eq('e_parceira', false)
     .not('mp_periodo_fim', 'is', null)
 
   for (const p of manuais ?? []) {
@@ -114,6 +115,7 @@ export async function GET(request: NextRequest) {
     .select('id, plano, mp_subscription_id, mp_periodo_fim')
     .eq('mp_metodo_pagamento', 'cartao')
     .eq('assinatura_ativa', true)
+    .eq('e_parceira', false)
     .not('mp_subscription_id', 'is', null)
     .not('mp_periodo_fim', 'is', null)
 
@@ -151,6 +153,7 @@ export async function GET(request: NextRequest) {
     .select('id, mp_periodo_fim')
     .eq('cancelamento_agendado', true)
     .eq('assinatura_ativa', true)
+    .eq('e_parceira', false)
     .is('mp_subscription_id', null)
     .not('mp_periodo_fim', 'is', null)
 

@@ -116,7 +116,17 @@ const [manicure, pedicure, alongamento, esmaltacao] = DEMO_SERVICOS
 const [maria, julia, fernanda, camila, beatriz] = DEMO_CLIENTES
 const [ana, carol] = DEMO_PROFISSIONAIS
 
+// Data relativa a `agora` (recebido pelo chamador) em vez de `new Date()` no
+// escopo do módulo — que só seria recalculado no cold start da function
+// serverless, não a cada request, fazendo os agendamentos "de hoje" ficarem
+// presos num dia antigo assim que a instância esquenta por muito tempo.
+function dataRelativa(agora: Date, diasOffset: number, hora: number, minuto: number): string {
+  const base = setSeconds(setMinutes(setHours(startOfDay(addDays(agora, diasOffset)), hora), minuto), 0)
+  return base.toISOString()
+}
+
 function montarAgendamento(
+  agora: Date,
   id: string,
   offset: number, hora: number, minuto: number,
   cliente: Cliente, servico: Servico, profissional: Profissional,
@@ -128,36 +138,41 @@ function montarAgendamento(
     profissional_id: profissional.id,
     servico_id: servico.id,
     cliente_id: cliente.id,
-    data_hora: em(offset, hora, minuto),
+    data_hora: dataRelativa(agora, offset, hora, minuto),
     status,
     cancelado_por: status === 'cancelado' ? 'prestadora' : null,
     arquivado: false,
     cliente_e_prestadora: false,
     agendamento_manual: false,
-    created_at: em(offset - 3, 9, 0),
+    created_at: dataRelativa(agora, offset - 3, 9, 0),
     servicos: servico,
     clientes: cliente,
     profissionais: profissional,
   }
 }
 
-export const DEMO_AGENDAMENTOS: Agendamento[] = [
-  // Confirmados (6) — hoje e próximos dias
-  montarAgendamento('demo-ag-01', 0, 9, 0, maria, manicure, ana, 'confirmado'),
-  montarAgendamento('demo-ag-02', 0, 10, 30, julia, esmaltacao, carol, 'confirmado'),
-  montarAgendamento('demo-ag-03', 0, 14, 0, fernanda, pedicure, ana, 'confirmado'),
-  montarAgendamento('demo-ag-04', 1, 9, 0, camila, alongamento, ana, 'confirmado'),
-  montarAgendamento('demo-ag-05', 1, 11, 0, beatriz, manicure, carol, 'confirmado'),
-  montarAgendamento('demo-ag-06', 3, 15, 0, maria, esmaltacao, carol, 'confirmado'),
-  // Concluídos (4) — dias anteriores
-  montarAgendamento('demo-ag-07', -10, 10, 0, julia, manicure, ana, 'concluido'),
-  montarAgendamento('demo-ag-08', -7, 13, 0, maria, pedicure, carol, 'concluido'),
-  montarAgendamento('demo-ag-09', -5, 11, 0, camila, manicure, ana, 'concluido'),
-  montarAgendamento('demo-ag-10', -3, 16, 0, maria, alongamento, ana, 'concluido'),
-  // Cancelados (2)
-  montarAgendamento('demo-ag-11', -4, 9, 30, julia, esmaltacao, carol, 'cancelado'),
-  montarAgendamento('demo-ag-12', -2, 14, 30, fernanda, manicure, ana, 'cancelado'),
-]
+// Recebe `agora` de quem chama (Server Component, avaliado a cada request)
+// em vez de fixar a data internamente — servidor e cliente calculam a partir
+// do mesmo valor, então não há mismatch de hidratação.
+export function getDemoAgendamentos(agora: Date): Agendamento[] {
+  return [
+    // Confirmados (6) — hoje e próximos dias
+    montarAgendamento(agora, 'demo-ag-01', 0, 9, 0, maria, manicure, ana, 'confirmado'),
+    montarAgendamento(agora, 'demo-ag-02', 0, 10, 30, julia, esmaltacao, carol, 'confirmado'),
+    montarAgendamento(agora, 'demo-ag-03', 0, 14, 0, fernanda, pedicure, ana, 'confirmado'),
+    montarAgendamento(agora, 'demo-ag-04', 1, 9, 0, camila, alongamento, ana, 'confirmado'),
+    montarAgendamento(agora, 'demo-ag-05', 1, 11, 0, beatriz, manicure, carol, 'confirmado'),
+    montarAgendamento(agora, 'demo-ag-06', 3, 15, 0, maria, esmaltacao, carol, 'confirmado'),
+    // Concluídos (4) — dias anteriores
+    montarAgendamento(agora, 'demo-ag-07', -10, 10, 0, julia, manicure, ana, 'concluido'),
+    montarAgendamento(agora, 'demo-ag-08', -7, 13, 0, maria, pedicure, carol, 'concluido'),
+    montarAgendamento(agora, 'demo-ag-09', -5, 11, 0, camila, manicure, ana, 'concluido'),
+    montarAgendamento(agora, 'demo-ag-10', -3, 16, 0, maria, alongamento, ana, 'concluido'),
+    // Cancelados (2)
+    montarAgendamento(agora, 'demo-ag-11', -4, 9, 30, julia, esmaltacao, carol, 'cancelado'),
+    montarAgendamento(agora, 'demo-ag-12', -2, 14, 30, fernanda, manicure, ana, 'cancelado'),
+  ]
+}
 
 export const DEMO_HORARIOS_FUNCIONAMENTO: HorarioFuncionamento[] = [
   { id: 'demo-h0', prestadora_id: 'demo-prestadora', dia_semana: 0, ativo: false, hora_abertura: '09:00', hora_fechamento: '18:00', turno2_inicio: null, turno2_fim: null },

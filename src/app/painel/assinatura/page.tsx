@@ -12,7 +12,7 @@ export default async function AssinaturaPage() {
 
   const { data: prestadora } = await supabase
     .from('prestadoras')
-    .select('id, plano, assinatura_ativa, trial_fim, e_trial, mp_periodo_fim, mp_metodo_pagamento, mp_ciclo, mp_pagamento_pendente_id, cancelamento_agendado')
+    .select('id, plano, assinatura_ativa, trial_fim, e_trial, mp_periodo_fim, mp_metodo_pagamento, mp_ciclo, mp_pagamento_pendente_id, cancelamento_agendado, e_parceira')
     .eq('user_id', user.id)
     .single()
 
@@ -29,6 +29,7 @@ export default async function AssinaturaPage() {
       cancelamentoAgendado={prestadora.cancelamento_agendado}
       linkPagamentoPendente={prestadora.mp_pagamento_pendente_id ? `https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=${prestadora.mp_pagamento_pendente_id}` : null}
       eTrial={Boolean(prestadora.e_trial)}
+      eParceira={Boolean(prestadora.e_parceira)}
       isAdmin={user.email === ADMIN_EMAIL}
     />
   )

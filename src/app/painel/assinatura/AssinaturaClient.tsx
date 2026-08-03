@@ -178,6 +178,7 @@ export default function AssinaturaClient({
   cancelamentoAgendado,
   linkPagamentoPendente,
   eTrial,
+  eParceira,
   isAdmin,
 }: {
   plano: 'basico' | 'pro' | null
@@ -189,6 +190,7 @@ export default function AssinaturaClient({
   cancelamentoAgendado: boolean
   linkPagamentoPendente: string | null
   eTrial: boolean
+  eParceira: boolean
   isAdmin: boolean
 }) {
   const [loadingCancelar, setLoadingCancelar] = useState(false)
@@ -276,7 +278,25 @@ export default function AssinaturaClient({
         </div>
       )}
 
-      {/* Card do plano atual */}
+      {/* Parceira: acesso Pro gratuito por cargo — sem nada de assinatura/cobrança real */}
+      {eParceira ? (
+        <Card className="border-rose-200 bg-gradient-to-br from-rose-50 to-pink-50">
+          <CardContent className="p-6">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-2xl bg-rose-100 flex items-center justify-center shrink-0">
+                <Sparkles className="w-5 h-5 text-rose-500" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-gray-900 mb-1">Você tem acesso Pro como parceira BelleBook</h2>
+                <p className="text-sm text-gray-600">
+                  Profissionais ilimitadas, galeria de fotos e vídeos e suporte prioritário — liberados como
+                  benefício do programa de parceiras, sem nenhuma cobrança.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between flex-wrap gap-3">
@@ -398,9 +418,10 @@ export default function AssinaturaClient({
           </div>
         </CardContent>
       </Card>
+      )}
 
       {/* Card de upgrade — só no Básico */}
-      {plano === 'basico' && assinaturaAtiva && !eTrial && !cancelamentoAgendado && (
+      {!eParceira && plano === 'basico' && assinaturaAtiva && !eTrial && !cancelamentoAgendado && (
         <Card className="border-rose-100 bg-rose-50/30">
           <CardContent className="p-6">
             <div className="flex items-start gap-4">
@@ -524,9 +545,11 @@ export default function AssinaturaClient({
       )}
 
       {/* Formas de pagamento */}
-      <p className="text-center text-xs text-gray-400">
-        💳 Aceitamos Pix, cartão de crédito e cartão de débito via Mercado Pago
-      </p>
+      {!eParceira && (
+        <p className="text-center text-xs text-gray-400">
+          💳 Aceitamos Pix, cartão de crédito e cartão de débito via Mercado Pago
+        </p>
+      )}
     </div>
   )
 }
