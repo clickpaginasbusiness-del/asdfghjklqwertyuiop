@@ -253,19 +253,26 @@ const TOUR_NAV_KEYS: Record<string, string> = {
 type NavEntry =
   | { href: string; label: string; icon: typeof LayoutDashboard }
   | { section: string }
+  | { divider: true }
 
 const navItems: NavEntry[] = [
+  { section: 'Operação' },
   { href: '/painel', label: 'Painel', icon: LayoutDashboard },
   { href: '/painel/agendamentos', label: 'Agendamentos', icon: Calendar },
   { href: '/painel/calendario', label: 'Calendário', icon: CalendarDays },
+
+  { section: 'Configuração do negócio' },
   { href: '/painel/servicos', label: 'Serviços', icon: Scissors },
   { href: '/painel/galeria', label: 'Galeria', icon: ImageIcon },
   { href: '/painel/horarios', label: 'Horários', icon: Clock },
-  { href: '/painel/clientes', label: 'Clientes', icon: Users },
   { href: '/painel/profissionais', label: 'Profissionais', icon: UserCircle2 },
+
   { section: 'Controle' },
+  { href: '/painel/clientes', label: 'Clientes', icon: Users },
   { href: '/painel/relatorios', label: 'Relatórios', icon: BarChart3 },
   { href: '/painel/caixa', label: 'Caixa', icon: Wallet },
+
+  { divider: true },
   { href: '/painel/perfil', label: 'Meu Perfil', icon: UserCircle },
   { href: '/painel/assinatura', label: 'Assinatura', icon: CreditCard },
   { href: '/painel/suporte', label: 'Suporte', icon: Headset },
@@ -326,10 +333,13 @@ export default function PainelLayoutClient({
         </div>
 
         <nav className="flex-1 min-h-0 overflow-y-auto p-4 space-y-1">
-          {navItems.map((item) => {
+          {navItems.map((item, i) => {
+            if ('divider' in item) {
+              return <div key={`divider-${i}`} className="my-2 border-t border-gray-100" />
+            }
             if ('section' in item) {
               return (
-                <p key={item.section} className="px-3 pt-4 pb-1 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
+                <p key={item.section} className="px-3 pt-4 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">
                   {item.section}
                 </p>
               )

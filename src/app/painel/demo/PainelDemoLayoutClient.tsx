@@ -12,16 +12,28 @@ import { cn } from '@/lib/utils'
 
 const BANNER_HEIGHT = 'h-11'
 
-const navItems = [
+type NavEntry =
+  | { href: string; label: string; icon: typeof LayoutDashboard }
+  | { section: string }
+  | { divider: true }
+
+const navItems: NavEntry[] = [
+  { section: 'Operação' },
   { href: '/painel/demo', label: 'Painel', icon: LayoutDashboard },
   { href: '/painel/demo/agendamentos', label: 'Agendamentos', icon: Calendar },
   { href: '/painel/demo/calendario', label: 'Calendário', icon: CalendarDays },
+
+  { section: 'Configuração do negócio' },
   { href: '/painel/demo/servicos', label: 'Serviços', icon: Scissors },
   { href: '/painel/demo/galeria', label: 'Galeria', icon: ImageIcon },
   { href: '/painel/demo/horarios', label: 'Horários', icon: Clock },
+  { href: '/painel/demo/profissionais', label: 'Profissionais', icon: UserCircle2 },
+
+  { section: 'Controle' },
   { href: '/painel/demo/clientes', label: 'Clientes', icon: Users },
   { href: '/painel/demo/relatorios', label: 'Relatórios', icon: BarChart3 },
-  { href: '/painel/demo/profissionais', label: 'Profissionais', icon: UserCircle2 },
+
+  { divider: true },
   { href: '/painel/demo/perfil', label: 'Meu Perfil', icon: UserCircle },
   { href: '/painel/demo/assinatura', label: 'Assinatura', icon: CreditCard },
   { href: '/painel/demo/suporte', label: 'Suporte', icon: Headset },
@@ -70,7 +82,17 @@ export default function PainelDemoLayoutClient({
           </div>
 
           <nav className="flex-1 min-h-0 overflow-y-auto p-4 space-y-1">
-            {navItems.map((item) => {
+            {navItems.map((item, i) => {
+              if ('divider' in item) {
+                return <div key={`divider-${i}`} className="my-2 border-t border-gray-100" />
+              }
+              if ('section' in item) {
+                return (
+                  <p key={item.section} className="px-3 pt-4 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                    {item.section}
+                  </p>
+                )
+              }
               const active = pathname === item.href
               return (
                 <Link

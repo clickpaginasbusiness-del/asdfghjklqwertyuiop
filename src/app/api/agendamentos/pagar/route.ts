@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
 
   const { data: agendamento } = await admin
     .from('agendamentos')
-    .select('id, status, servicos(nome, preco, sinal_tipo, sinal_valor, sinal_obrigatorio, aceitar_pagamento_online)')
+    .select('id, status, servicos(nome, preco, sinal_tipo, sinal_valor, sinal_obrigatorio, aceitar_pagamento_online), clientes(nome, telefone)')
     .eq('id', agendamentoId)
     .eq('status', 'aguardando_pagamento')
     .maybeSingle()
@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
   const servico = agendamento?.servicos as unknown as
     | { nome: string; preco: number; sinal_tipo: 'fixo' | 'percentual' | null; sinal_valor: number | null; sinal_obrigatorio: boolean; aceitar_pagamento_online: boolean }
     | null
+  const cliente = agendamento?.clientes as unknown as { nome: string; telefone: string | null } | null
 
   if (!agendamento || !servico?.aceitar_pagamento_online) {
     return NextResponse.json({ error: 'Agendamento não encontrado ou já processado.' }, { status: 404 })
@@ -52,10 +53,23 @@ export async function POST(request: NextRequest) {
 
   const titulo = servico.sinal_obrigatorio ? `Sinal — ${servico.nome}` : servico.nome
 
+  // Cliente não tem email no sistema (só telefone) — manda nome/telefone
+  // como payer mesmo assim. Sem isso a Preference ia sem nenhum dado de
+  // identificação do comprador, diferente do checkout de assinatura (que
+  // sempre manda payer.email).
+  const digitos = cliente?.telefone?.replace(/\D/g, '') ?? ''
+  const payer = cliente
+    ? {
+        name: cliente.nome,
+        ...(digitos.length >= 10 ? { phone: { area_code: digitos.slice(0, 2), number: digitos.slice(2) } } : {}),
+      }
+    : undefined
+
   try {
     const pref = await preference.create({
       body: {
-        items: [{ id: `agendamento_${agendamentoId}`, title: titulo, quantity: 1, unit_price: valor, currency_id: 'BRL' }],
+        items: [{ id: `agendamento_${agendamentoId}`, title: titulo, quantity: 1, unit_price: valor, currency_id: 'BRL', category_id: 'services' }],
+        ...(payer ? { payer } : {}),
         back_urls: {
           success: `${appUrl}/agendamento/checkout?agendamento_temp=${agendamentoId}&pago=1`,
           failure: `${appUrl}/agendamento/checkout?agendamento_temp=${agendamentoId}`,
@@ -63,6 +77,7 @@ export async function POST(request: NextRequest) {
         },
         auto_return: 'approved',
         external_reference: agendamentoId,
+        binary_mode: false,
         ...(metodo !== 'cartao' ? { payment_methods: { excluded_payment_types: [{ id: 'credit_card' as const }] } } : {}),
       },
     })
