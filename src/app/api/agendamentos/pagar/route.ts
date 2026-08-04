@@ -71,9 +71,9 @@ export async function POST(request: NextRequest) {
         items: [{ id: `agendamento_${agendamentoId}`, title: titulo, quantity: 1, unit_price: valor, currency_id: 'BRL', category_id: 'services' }],
         ...(payer ? { payer } : {}),
         back_urls: {
-          success: `${appUrl}/agendamento/checkout?agendamento_temp=${agendamentoId}&pago=1`,
-          failure: `${appUrl}/agendamento/checkout?agendamento_temp=${agendamentoId}`,
-          pending: `${appUrl}/agendamento/checkout?agendamento_temp=${agendamentoId}&pago=1`,
+          success: `${appUrl}/agendamento/sucesso?agendamento_id=${agendamentoId}`,
+          failure: `${appUrl}/agendamento/checkout?agendamento_temp=${agendamentoId}&erro=pagamento`,
+          pending: `${appUrl}/agendamento/checkout?agendamento_temp=${agendamentoId}&pendente=true`,
         },
         auto_return: 'approved',
         external_reference: agendamentoId,

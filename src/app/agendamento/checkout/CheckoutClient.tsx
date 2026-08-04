@@ -31,6 +31,7 @@ export default function CheckoutClient({
   ehSinal,
   valor,
   mostrarAguardandoConfirmacao,
+  mostrarErroPagamento,
 }: {
   agendamentoId: string
   status: Status
@@ -42,6 +43,7 @@ export default function CheckoutClient({
   ehSinal: boolean
   valor: number
   mostrarAguardandoConfirmacao: boolean
+  mostrarErroPagamento: boolean
 }) {
   const router = useRouter()
   const [pagando, setPagando] = useState<Metodo | null>(null)
@@ -53,7 +55,10 @@ export default function CheckoutClient({
 
   // Voltou do checkout do MP com o pagamento aprovado — o webhook confirma o
   // agendamento de forma assíncrona, então aqui só espera (com um teto de
-  // tentativas) atualizando a página até o status virar 'confirmado'.
+  // tentativas) atualizando a página até o status virar 'confirmado'. Uma vez
+  // confirmado, manda pra página de sucesso dedicada em vez de só trocar o
+  // estado aqui — mesma experiência de sucesso não importa se o pagamento
+  // aprovou na hora (auto_return) ou enquanto esperava aqui (pix pendente).
   useEffect(() => {
     if (!aguardandoConfirmacao) return
     const id = setInterval(() => {
@@ -67,6 +72,12 @@ export default function CheckoutClient({
     }, INTERVALO_POLL_MS)
     return () => clearInterval(id)
   }, [aguardandoConfirmacao, router])
+
+  useEffect(() => {
+    if (status === 'confirmado' || status === 'concluido') {
+      router.replace(`/agendamento/sucesso?agendamento_id=${agendamentoId}`)
+    }
+  }, [status, agendamentoId, router])
 
   async function pagar(metodo: Metodo) {
     setPagando(metodo)
@@ -135,6 +146,15 @@ export default function CheckoutClient({
               <h1 className="font-serif text-2xl font-bold text-gray-900 mb-6">
                 {ehSinal ? 'Pagar sinal' : 'Confirmar pagamento'}
               </h1>
+
+              {mostrarErroPagamento && (
+                <div className="flex items-start gap-2 bg-red-50 border border-red-100 rounded-2xl px-4 py-3 mb-6">
+                  <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                  <p className="text-sm text-red-700 leading-relaxed">
+                    Não conseguimos confirmar seu pagamento. Nada foi cobrado — tente novamente.
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-2.5 pb-6 border-b border-gray-100">
                 <div className="flex items-center justify-between text-sm">

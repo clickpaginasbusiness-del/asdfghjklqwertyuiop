@@ -8,9 +8,9 @@ export const metadata = { title: 'Confirmar pagamento — BelleBook' }
 export default async function AgendamentoCheckoutPage({
   searchParams,
 }: {
-  searchParams: Promise<{ agendamento_temp?: string; pago?: string }>
+  searchParams: Promise<{ agendamento_temp?: string; pendente?: string; erro?: string }>
 }) {
-  const { agendamento_temp: agendamentoId, pago } = await searchParams
+  const { agendamento_temp: agendamentoId, pendente, erro } = await searchParams
   if (!agendamentoId) redirect('/')
 
   const admin = createAdminClient()
@@ -52,7 +52,8 @@ export default async function AgendamentoCheckoutPage({
       prestadoraSlug={prestadora.slug}
       ehSinal={servico.sinal_obrigatorio}
       valor={valor}
-      mostrarAguardandoConfirmacao={pago === '1'}
+      mostrarAguardandoConfirmacao={pendente === 'true'}
+      mostrarErroPagamento={erro === 'pagamento'}
     />
   )
 }

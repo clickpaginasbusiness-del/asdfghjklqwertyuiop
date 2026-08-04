@@ -49,7 +49,7 @@ export async function getOrCreatePlanoMensal(admin: SupabaseClient, plano: Plano
         transaction_amount: PRECOS[plano].mensal,
         currency_id: 'BRL',
       },
-      back_url: `${appUrl}/painel?subscribed=1`,
+      back_url: `${appUrl}/planos/sucesso?plano=${plano}&ciclo=mensal`,
       payment_methods_allowed: { payment_types: [{ id: 'credit_card' }] },
     },
   })

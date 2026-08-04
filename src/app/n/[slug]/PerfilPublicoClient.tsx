@@ -315,6 +315,19 @@ export default function PerfilPublicoClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDemo])
 
+  /* Chegou de /agendamento/sucesso com #meus-agendamentos (botão "Ver meus
+     agendamentos") — abre o modal direto. Só funciona se a sessão da cliente
+     já foi restaurada (efeito acima), por isso não recarrega a lista aqui: a
+     sessão de sinal exige login antes de agendar, então o token já deve
+     existir no localStorage nesse retorno. */
+  useEffect(() => {
+    if (isDemo) return
+    if (window.location.hash === '#meus-agendamentos') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sincroniza estado a partir do hash da URL (não dá pra ler window.location no SSR)
+      setMeusAgendamentosModal(true)
+    }
+  }, [isDemo])
+
   /* Fecha os dropdowns (perfil e logo) ao clicar fora */
   useEffect(() => {
     function handleClick(e: MouseEvent) {

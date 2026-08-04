@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
         body: {
           items: [{ id: `${plano}_anual`, title: `BelleBook Plano ${NOME_PLANO[plano]} Anual`, quantity: 1, unit_price: valorFinal, currency_id: 'BRL' }],
           payer: { email: prestadora.email },
-          back_urls: { success: `${appUrl}/painel?subscribed=1`, failure: `${appUrl}/planos`, pending: `${appUrl}/planos` },
+          back_urls: { success: `${appUrl}/planos/sucesso?plano=${plano}&ciclo=anual`, failure: `${appUrl}/planos`, pending: `${appUrl}/planos` },
           auto_return: 'approved',
           external_reference: referencia,
         },
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
         body: {
           items: [{ id: `${plano}_mensal`, title: `BelleBook Plano ${NOME_PLANO[plano]} Mensal`, quantity: 1, unit_price: valorFinal, currency_id: 'BRL' }],
           payer: { email: prestadora.email },
-          back_urls: { success: `${appUrl}/painel?subscribed=1`, failure: `${appUrl}/planos`, pending: `${appUrl}/planos` },
+          back_urls: { success: `${appUrl}/planos/sucesso?plano=${plano}&ciclo=mensal`, failure: `${appUrl}/planos`, pending: `${appUrl}/planos` },
           auto_return: 'approved',
           external_reference: referencia,
           payment_methods: { excluded_payment_types: [{ id: 'credit_card' }] },
@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
             currency_id: 'BRL',
             ...(incluirTrial ? { free_trial: { frequency: 30, frequency_type: 'days' } } : {}),
           },
-          back_url: `${appUrl}/painel?subscribed=1`,
+          back_url: `${appUrl}/planos/sucesso?plano=${plano}&ciclo=mensal`,
           payment_methods_allowed: { payment_types: [{ id: 'credit_card' }] },
         },
       })
