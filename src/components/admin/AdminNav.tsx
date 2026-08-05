@@ -10,6 +10,7 @@ const ITEMS = [
   { href: '/admin/saques', label: 'Saques' },
   { href: '/admin/saques-caixa', label: 'Saques Caixa' },
   { href: '/admin/cupons', label: 'Cupons' },
+  { href: '/admin/financeiro', label: 'Financeiro' },
 ]
 
 export function AdminNav() {
