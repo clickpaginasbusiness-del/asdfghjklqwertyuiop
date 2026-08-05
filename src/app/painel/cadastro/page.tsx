@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { slugify } from '@/lib/utils'
+import { trackLead } from '@/lib/metaPixel'
 import toast from 'react-hot-toast'
 import { Phone, ArrowLeft, CheckCircle2, XCircle, Loader2 } from 'lucide-react'
 
@@ -186,6 +187,10 @@ export default function CadastroPage() {
         if (json.error?.includes('link') || json.error?.includes('email')) setStep('form')
         return
       }
+
+      // Conta criada com sucesso no Supabase (mesmo se semTrial=true) — dispara
+      // aqui, antes do branch semTrial, senão perde quem tem trial já usado.
+      trackLead()
 
       if (json.semTrial) {
         toast.error('Você já utilizou o período gratuito anteriormente. Escolha um plano para continuar.')

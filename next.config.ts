@@ -17,12 +17,12 @@ const nextConfig: NextConfig = {
   async headers() {
     const csp = [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'",
+      "script-src 'self' 'unsafe-inline' https://connect.facebook.net",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
-      "img-src 'self' data: https://*.supabase.co https://images.unsplash.com",
+      "img-src 'self' data: https://*.supabase.co https://images.unsplash.com https://www.facebook.com",
       "media-src 'self' https://*.supabase.co",
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://www.facebook.com https://connect.facebook.net",
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",
