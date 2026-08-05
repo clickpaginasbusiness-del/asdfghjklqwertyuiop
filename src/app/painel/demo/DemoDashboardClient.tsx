@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { formatCurrency, buildWhatsappUrl } from '@/lib/utils'
-import { Calendar, DollarSign, Clock, MessageCircle, CheckCheck } from 'lucide-react'
+import { Calendar, DollarSign, Clock, MessageCircle, CheckCheck, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   format, isToday, startOfDay, endOfDay, parseISO, subDays, addDays,
@@ -14,6 +14,8 @@ import {
 import { ptBR } from 'date-fns/locale'
 import { renderTemplate, MSG_CONFIRMACAO_DEFAULT, MSG_CANCELAMENTO_DEFAULT, MSG_LEMBRETE_DEFAULT } from '@/lib/whatsappTemplates'
 import { demoToast } from '@/lib/demoData'
+import { VoceBadge } from '@/components/painel/VoceBadge'
+import { ManualBadge } from '@/components/painel/ManualBadge'
 import type { Agendamento } from '@/lib/types'
 
 /* ── Types ── */
@@ -63,7 +65,11 @@ function AgendamentoItem({
         </div>
 
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-gray-900 text-sm">{a.clientes?.nome}</p>
+          <p className="font-medium text-gray-900 text-sm flex items-center gap-1.5 flex-wrap">
+            {a.clientes?.nome}
+            {a.cliente_e_prestadora && <VoceBadge />}
+            {a.agendamento_manual && <ManualBadge />}
+          </p>
           <p className="text-xs text-gray-500 truncate">
             {a.servicos?.nome}
             {a.servicos?.duracao_minutos && <span className="text-gray-400"> · {a.servicos.duracao_minutos} min</span>}
@@ -323,7 +329,13 @@ export default function DemoDashboardClient({
       {/* ── Agenda de hoje ── */}
       <Card>
         <CardHeader>
-          <CardTitle>Agenda de hoje</CardTitle>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <CardTitle>Agenda de hoje</CardTitle>
+            <Button size="sm" onClick={demoToast}>
+              <Plus className="w-4 h-4" />
+              Agendar
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {agendaHoje.length === 0 ? (

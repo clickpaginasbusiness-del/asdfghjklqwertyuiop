@@ -1,5 +1,6 @@
 import { AgendaDoDiaSection } from '@/app/painel/calendario/AgendaDoDiaSection'
 import { DEMO_PRESTADORA, DEMO_HORARIOS_FUNCIONAMENTO, DEMO_PROFISSIONAIS, getDemoAgendamentos } from '@/lib/demoData'
+import { CalendarioDemoHeader } from './CalendarioDemoHeader'
 
 export default function CalendarioDemoPage() {
   const agendamentos = getDemoAgendamentos(new Date())
@@ -18,7 +19,7 @@ export default function CalendarioDemoPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="font-serif text-2xl font-semibold text-gray-900">Calendário</h1>
+      <CalendarioDemoHeader />
 
       <AgendaDoDiaSection
         prestadora={DEMO_PRESTADORA}

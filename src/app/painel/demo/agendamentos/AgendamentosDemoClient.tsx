@@ -8,12 +8,14 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { formatCurrency, formatDateTime, maskTelefone, buildWhatsappUrl } from '@/lib/utils'
-import { Calendar, Phone, Search, MessageCircle, ArrowDownAZ, ArrowUpAZ, Clock4, CheckCheck, Trash2, Star } from 'lucide-react'
+import { Calendar, Phone, Search, MessageCircle, ArrowDownAZ, ArrowUpAZ, Clock4, CheckCheck, Trash2, Star, Plus } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import type { Agendamento, Profissional } from '@/lib/types'
 import { renderTemplate, MSG_CONFIRMACAO_DEFAULT, MSG_CANCELAMENTO_DEFAULT, MSG_LEMBRETE_DEFAULT } from '@/lib/whatsappTemplates'
 import { demoToast } from '@/lib/demoData'
+import { VoceBadge } from '@/components/painel/VoceBadge'
+import { ManualBadge } from '@/components/painel/ManualBadge'
 
 type FiltroStatus = 'todos' | 'confirmado' | 'concluido' | 'cancelado'
 type Ordenacao = 'recente' | 'antigo' | 'proximo'
@@ -133,6 +135,10 @@ export default function AgendamentosDemoClient({
             </button>
           )}
           <Badge variant="pink">{confirmadosCount} confirmados</Badge>
+          <Button size="sm" onClick={demoToast}>
+            <Plus className="w-4 h-4" />
+            Agendar
+          </Button>
         </div>
       </div>
 
@@ -278,6 +284,8 @@ export default function AgendamentosDemoClient({
                       <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                         <p className="font-medium text-gray-900 text-sm">{a.clientes?.nome}</p>
                         <Badge variant={statusVariant(a.status)}>{statusLabel(a.status)}</Badge>
+                        {a.cliente_e_prestadora && <VoceBadge />}
+                        {a.agendamento_manual && <ManualBadge />}
                       </div>
                       <p className="text-xs text-gray-500 truncate">
                         {a.servicos?.nome}

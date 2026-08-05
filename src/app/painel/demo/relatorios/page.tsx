@@ -1,8 +1,9 @@
 import RelatoriosClient from '@/app/painel/relatorios/RelatoriosClient'
-import { getDemoAgendamentos, DEMO_PROFISSIONAIS, DEMO_AVALIACOES, DEMO_VISITAS_PAGINA, DEMO_PRESTADORA } from '@/lib/demoData'
+import { getDemoAgendamentos, getDemoLancamentos, DEMO_PROFISSIONAIS, DEMO_AVALIACOES, DEMO_VISITAS_PAGINA, DEMO_PRESTADORA } from '@/lib/demoData'
 
 export default function RelatoriosDemoPage() {
-  const agendamentos = getDemoAgendamentos(new Date()).map((a) => ({
+  const agora = new Date()
+  const agendamentos = getDemoAgendamentos(agora).map((a) => ({
     id: a.id,
     data_hora: a.data_hora,
     created_at: a.created_at,
@@ -20,7 +21,7 @@ export default function RelatoriosDemoPage() {
       profissionais={DEMO_PROFISSIONAIS.map((p) => ({ id: p.id, nome: p.nome }))}
       visitas={DEMO_VISITAS_PAGINA}
       avaliacoes={DEMO_AVALIACOES}
-      lancamentos={[]}
+      lancamentos={getDemoLancamentos(agora)}
       horaAbertura={DEMO_PRESTADORA.hora_abertura}
       horaFechamento={DEMO_PRESTADORA.hora_fechamento}
       eParceira={false}

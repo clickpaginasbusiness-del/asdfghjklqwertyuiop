@@ -5,9 +5,10 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Calendar, CalendarDays, Scissors, ImageIcon,
-  Clock, Users, LogOut, Menu, X, ExternalLink, UserCircle, UserCircle2, CreditCard, BarChart3, Headset, Bell, Sparkles,
+  Clock, Users, LogOut, Menu, X, ExternalLink, UserCircle, UserCircle2, CreditCard, BarChart3, Headset, Bell, Sparkles, Wallet,
 } from 'lucide-react'
-import { demoToast } from '@/lib/demoData'
+import { demoToast, getDemoMissoes } from '@/lib/demoData'
+import { MissoesDrawerDemo } from '@/components/painel/MissoesDrawerDemo'
 import { cn } from '@/lib/utils'
 
 const BANNER_HEIGHT = 'h-11'
@@ -32,6 +33,7 @@ const navItems: NavEntry[] = [
   { section: 'Controle' },
   { href: '/painel/demo/clientes', label: 'Clientes', icon: Users },
   { href: '/painel/demo/relatorios', label: 'Relatórios', icon: BarChart3 },
+  { href: '/painel/demo/caixa', label: 'Caixa', icon: Wallet },
 
   { divider: true },
   { href: '/painel/demo/perfil', label: 'Meu Perfil', icon: UserCircle },
@@ -49,6 +51,7 @@ export default function PainelDemoLayoutClient({
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [notifBannerAberto, setNotifBannerAberto] = useState(true)
+  const { missoes, descontosPendentes } = getDemoMissoes(new Date())
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -150,14 +153,17 @@ export default function PainelDemoLayoutClient({
               <p className="hidden lg:block text-sm text-gray-500">Olá, <span className="font-medium text-gray-900">{nomeUsuario}</span> 👋</p>
             </div>
 
-            <button
-              onClick={demoToast}
-              aria-label="Notificações"
-              className="relative w-11 h-11 flex items-center justify-center rounded-xl text-gray-500 hover:bg-gray-100 transition-colors"
-            >
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-400 rounded-full border border-white" />
-            </button>
+            <div className="flex items-center gap-1">
+              <MissoesDrawerDemo missoes={missoes} descontosPendentes={descontosPendentes} />
+              <button
+                onClick={demoToast}
+                aria-label="Notificações"
+                className="relative w-11 h-11 flex items-center justify-center rounded-xl text-gray-500 hover:bg-gray-100 transition-colors"
+              >
+                <Bell className="w-5 h-5" />
+                <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-400 rounded-full border border-white" />
+              </button>
+            </div>
           </header>
 
           {/* Prévia do banner "ativar notificações" do painel real — sem

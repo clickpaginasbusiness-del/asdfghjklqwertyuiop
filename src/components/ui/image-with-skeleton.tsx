@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Image, { type ImageProps } from 'next/image'
 import { cn } from '@/lib/utils'
 
@@ -11,16 +11,27 @@ import { cn } from '@/lib/utils'
 export function ImageWithSkeleton({ className, onLoad, src, alt, ...props }: ImageProps) {
   const [loaded, setLoaded] = useState(false)
   const [prevSrc, setPrevSrc] = useState(src)
+  const imgRef = useRef<HTMLImageElement>(null)
 
   if (src !== prevSrc) {
     setPrevSrc(src)
     setLoaded(false)
   }
 
+  // Imagens com `priority` (ou já em cache do navegador) podem terminar de
+  // carregar antes do React acabar de hidratar e anexar o onLoad — o evento
+  // "load" nativo já disparou e passa despercebido, deixando o skeleton
+  // preso pra sempre por cima de uma imagem que já carregou. Confere
+  // `.complete` assim que monta pra cobrir esse caso.
+  useEffect(() => {
+    if (imgRef.current?.complete) setLoaded(true)
+  }, [src])
+
   return (
     <div className="relative w-full h-full">
       {!loaded && <div className="absolute inset-0 bg-gray-200 animate-pulse" aria-hidden="true" />}
       <Image
+        ref={imgRef}
         src={src}
         alt={alt}
         className={cn('transition-opacity duration-500', loaded ? 'opacity-100' : 'opacity-0', className)}

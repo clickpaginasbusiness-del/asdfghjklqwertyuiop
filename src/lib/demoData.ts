@@ -2,7 +2,9 @@ import { addDays, setHours, setMinutes, setSeconds, startOfDay } from 'date-fns'
 import toast from 'react-hot-toast'
 import type {
   Prestadora, Profissional, Cliente, Servico, Agendamento, HorarioFuncionamento, Avaliacao,
+  CaixaPrestadora, CaixaSaque, Missao, MissaoProgresso, MissaoDesconto,
 } from '@/lib/types'
+import type { LancamentoFinanceiro } from '@/app/painel/relatorios/RelatoriosClient'
 
 /* ── Toast padrão para ações "reais" na demo ── */
 export function demoToast() {
@@ -109,7 +111,7 @@ const SEM_PAGAMENTO_ONLINE = { aceitar_pagamento_online: false, sinal_tipo: null
 
 export const DEMO_SERVICOS: Servico[] = [
   { id: 'demo-serv-manicure', prestadora_id: 'demo-prestadora', nome: 'Manicure completa', preco: 45, duracao_minutos: 60, descricao: 'Cutilagem, esmaltação e hidratação das mãos.', ativo: true, icone: 'Hand', foto_galeria_id: null, ...SEM_PAGAMENTO_ONLINE, created_at: '2025-01-15T12:00:00Z' },
-  { id: 'demo-serv-pedicure', prestadora_id: 'demo-prestadora', nome: 'Pedicure completa', preco: 55, duracao_minutos: 60, descricao: 'Cutilagem, esmaltação e esfoliação dos pés.', ativo: true, icone: 'Hand', foto_galeria_id: null, ...SEM_PAGAMENTO_ONLINE, created_at: '2025-01-15T12:00:00Z' },
+  { id: 'demo-serv-pedicure', prestadora_id: 'demo-prestadora', nome: 'Pedicure completa', preco: 55, duracao_minutos: 60, descricao: 'Cutilagem, esmaltação e esfoliação dos pés.', ativo: true, icone: 'Droplets', foto_galeria_id: null, ...SEM_PAGAMENTO_ONLINE, created_at: '2025-01-15T12:00:00Z' },
   { id: 'demo-serv-alongamento', prestadora_id: 'demo-prestadora', nome: 'Alongamento em gel', preco: 180, duracao_minutos: 120, descricao: 'Extensão das unhas em gel com formato e comprimento personalizados.', ativo: true, icone: 'Gem', foto_galeria_id: null, ...SEM_PAGAMENTO_ONLINE, created_at: '2025-01-15T12:00:00Z' },
   { id: 'demo-serv-esmaltacao', prestadora_id: 'demo-prestadora', nome: 'Esmaltação em gel', preco: 70, duracao_minutos: 60, descricao: 'Esmaltação em gel com maior durabilidade e brilho.', ativo: true, icone: 'Sparkles', foto_galeria_id: null, ...SEM_PAGAMENTO_ONLINE, created_at: '2025-01-15T12:00:00Z' },
 ]
@@ -127,12 +129,17 @@ function dataRelativa(agora: Date, diasOffset: number, hora: number, minuto: num
   return base.toISOString()
 }
 
+function diaDaSemana(agora: Date, offset: number): number {
+  return addDays(agora, offset).getDay()
+}
+
 function montarAgendamento(
   agora: Date,
   id: string,
   offset: number, hora: number, minuto: number,
   cliente: Cliente, servico: Servico, profissional: Profissional,
   status: Agendamento['status'],
+  opcoes: { manual?: boolean; voce?: boolean } = {},
 ): Agendamento {
   return {
     id,
@@ -144,8 +151,8 @@ function montarAgendamento(
     status,
     cancelado_por: status === 'cancelado' ? 'prestadora' : null,
     arquivado: false,
-    cliente_e_prestadora: false,
-    agendamento_manual: false,
+    cliente_e_prestadora: opcoes.voce ?? false,
+    agendamento_manual: opcoes.manual ?? false,
     created_at: dataRelativa(agora, offset - 3, 9, 0),
     servicos: servico,
     clientes: cliente,
@@ -156,24 +163,62 @@ function montarAgendamento(
 // Recebe `agora` de quem chama (Server Component, avaliado a cada request)
 // em vez de fixar a data internamente — servidor e cliente calculam a partir
 // do mesmo valor, então não há mismatch de hidratação.
+//
+// Agenda "cheia" de salão de sucesso: 96 atendimentos concluídos nos últimos
+// dias úteis (24 dias × manicure+pedicure+esmaltação+alongamento =
+// R$350/dia = R$8.400 no mês, batendo com o card de faturamento dos
+// relatórios) + 6 confirmados (hoje/próximos dias) + 12 cancelados
+// espalhados (deixando alguns dias com 5-6 agendamentos no total).
 export function getDemoAgendamentos(agora: Date): Agendamento[] {
-  return [
-    // Confirmados (6) — hoje e próximos dias
-    montarAgendamento(agora, 'demo-ag-01', 0, 9, 0, maria, manicure, ana, 'confirmado'),
-    montarAgendamento(agora, 'demo-ag-02', 0, 10, 30, julia, esmaltacao, carol, 'confirmado'),
-    montarAgendamento(agora, 'demo-ag-03', 0, 14, 0, fernanda, pedicure, ana, 'confirmado'),
-    montarAgendamento(agora, 'demo-ag-04', 1, 9, 0, camila, alongamento, ana, 'confirmado'),
-    montarAgendamento(agora, 'demo-ag-05', 1, 11, 0, beatriz, manicure, carol, 'confirmado'),
-    montarAgendamento(agora, 'demo-ag-06', 3, 15, 0, maria, esmaltacao, carol, 'confirmado'),
-    // Concluídos (4) — dias anteriores
-    montarAgendamento(agora, 'demo-ag-07', -10, 10, 0, julia, manicure, ana, 'concluido'),
-    montarAgendamento(agora, 'demo-ag-08', -7, 13, 0, maria, pedicure, carol, 'concluido'),
-    montarAgendamento(agora, 'demo-ag-09', -5, 11, 0, camila, manicure, ana, 'concluido'),
-    montarAgendamento(agora, 'demo-ag-10', -3, 16, 0, maria, alongamento, ana, 'concluido'),
-    // Cancelados (2)
-    montarAgendamento(agora, 'demo-ag-11', -4, 9, 30, julia, esmaltacao, carol, 'cancelado'),
-    montarAgendamento(agora, 'demo-ag-12', -2, 14, 30, fernanda, manicure, ana, 'cancelado'),
-  ]
+  const resultado: Agendamento[] = []
+  let n = 1
+  function novoId(): string { return `demo-ag-${String(n++).padStart(3, '0')}` }
+  function add(
+    offset: number, hora: number, minuto: number,
+    cliente: Cliente, servico: Servico, profissional: Profissional,
+    status: Agendamento['status'], opcoes?: { manual?: boolean; voce?: boolean },
+  ) {
+    resultado.push(montarAgendamento(agora, novoId(), offset, hora, minuto, cliente, servico, profissional, status, opcoes))
+  }
+
+  // Confirmados — hoje e próximos dias (agenda de hoje / próximos agendamentos)
+  add(0, 9, 0, maria, manicure, ana, 'confirmado')
+  add(0, 10, 30, julia, esmaltacao, carol, 'confirmado')
+  add(0, 14, 0, fernanda, pedicure, ana, 'confirmado')
+  add(1, 9, 0, camila, alongamento, ana, 'confirmado')
+  add(1, 11, 0, beatriz, manicure, carol, 'confirmado')
+  add(3, 15, 0, maria, esmaltacao, carol, 'confirmado')
+
+  // Concluídos — 24 dias úteis, 4 atendimentos/dia (R$350/dia = R$8.400/mês)
+  const clientesCiclo = [maria, julia, fernanda, camila, beatriz]
+  const profissionaisCiclo = [ana, carol]
+  const servicosCiclo = [manicure, pedicure, esmaltacao, alongamento]
+  const horariosDia: [number, number][] = [[9, 0], [10, 30], [13, 0], [15, 30]]
+
+  let offset = -1
+  for (let ciclo = 0; ciclo < 24; ciclo++) {
+    while (diaDaSemana(agora, offset) === 0) offset-- // pula domingo
+    for (let s = 0; s < servicosCiclo.length; s++) {
+      const i = ciclo * servicosCiclo.length + s
+      const [hora, minuto] = horariosDia[s]
+      add(
+        offset, hora, minuto,
+        clientesCiclo[i % clientesCiclo.length], servicosCiclo[s], profissionaisCiclo[i % profissionaisCiclo.length],
+        'concluido',
+        { manual: i === 12 || i === 40 || i === 70, voce: i === 55 },
+      )
+    }
+    offset--
+  }
+
+  // Cancelados — 12, espalhados pelos mesmos dias (alguns dias chegam a 5-6
+  // agendamentos no total, contando confirmado+concluído+cancelado).
+  for (let i = 0; i < 12; i++) {
+    const diaOffset = -1 - i * 2
+    add(diaOffset, 11, 0, clientesCiclo[i % clientesCiclo.length], servicosCiclo[i % servicosCiclo.length], profissionaisCiclo[i % 2], 'cancelado')
+  }
+
+  return resultado
 }
 
 export const DEMO_HORARIOS_FUNCIONAMENTO: HorarioFuncionamento[] = [
@@ -188,22 +233,46 @@ export const DEMO_HORARIOS_FUNCIONAMENTO: HorarioFuncionamento[] = [
 
 export const DEMO_AVALIACOES: (Avaliacao & { agendamentos: { clientes: { nome: string } | null; servicos: { nome: string } | null } | null })[] = [
   {
-    id: 'demo-av-1', agendamento_id: 'demo-ag-07', prestadora_id: 'demo-prestadora', nota: 5,
+    id: 'demo-av-1', agendamento_id: 'demo-ag-005', prestadora_id: 'demo-prestadora', nota: 5,
     comentario: 'Atendimento incrível, super atenciosa! Minhas unhas ficaram perfeitas.', destaque: true,
     created_at: em(-9, 12, 0),
     agendamentos: { clientes: { nome: 'Júlia Santos' }, servicos: { nome: 'Manicure completa' } },
   },
   {
-    id: 'demo-av-2', agendamento_id: 'demo-ag-08', prestadora_id: 'demo-prestadora', nota: 5,
+    id: 'demo-av-2', agendamento_id: 'demo-ag-009', prestadora_id: 'demo-prestadora', nota: 5,
     comentario: 'Profissional excelente, ambiente acolhedor. Recomendo demais!', destaque: true,
-    created_at: em(-6, 15, 0),
+    created_at: em(-8, 15, 0),
     agendamentos: { clientes: { nome: 'Maria Silva' }, servicos: { nome: 'Pedicure completa' } },
   },
   {
-    id: 'demo-av-3', agendamento_id: 'demo-ag-09', prestadora_id: 'demo-prestadora', nota: 4,
+    id: 'demo-av-3', agendamento_id: 'demo-ag-013', prestadora_id: 'demo-prestadora', nota: 4,
     comentario: 'Muito bom, só achei o horário um pouco apertado.', destaque: false,
-    created_at: em(-4, 9, 0),
+    created_at: em(-7, 9, 0),
     agendamentos: { clientes: { nome: 'Camila Oliveira' }, servicos: { nome: 'Manicure completa' } },
+  },
+  {
+    id: 'demo-av-4', agendamento_id: 'demo-ag-017', prestadora_id: 'demo-prestadora', nota: 5,
+    comentario: 'Melhor alongamento que já fiz, ficou super natural!', destaque: true,
+    created_at: em(-6, 16, 0),
+    agendamentos: { clientes: { nome: 'Beatriz Lima' }, servicos: { nome: 'Alongamento em gel' } },
+  },
+  {
+    id: 'demo-av-5', agendamento_id: 'demo-ag-021', prestadora_id: 'demo-prestadora', nota: 5,
+    comentario: 'Sempre saio satisfeita, virei cliente fiel!', destaque: false,
+    created_at: em(-5, 10, 0),
+    agendamentos: { clientes: { nome: 'Fernanda Costa' }, servicos: { nome: 'Esmaltação em gel' } },
+  },
+  {
+    id: 'demo-av-6', agendamento_id: 'demo-ag-025', prestadora_id: 'demo-prestadora', nota: 4,
+    comentario: 'Gostei bastante, voltarei com certeza.', destaque: false,
+    created_at: em(-4, 14, 0),
+    agendamentos: { clientes: { nome: 'Maria Silva' }, servicos: { nome: 'Manicure completa' } },
+  },
+  {
+    id: 'demo-av-7', agendamento_id: 'demo-ag-029', prestadora_id: 'demo-prestadora', nota: 5,
+    comentario: 'Trabalho impecável, atenção incrível aos detalhes!', destaque: false,
+    created_at: em(-3, 11, 0),
+    agendamentos: { clientes: { nome: 'Júlia Santos' }, servicos: { nome: 'Pedicure completa' } },
   },
 ]
 
@@ -213,3 +282,84 @@ export const DEMO_VISITAS_PAGINA: { id: string; prestadora_id: string; created_a
     prestadora_id: 'demo-prestadora',
     created_at: em(-Math.floor(i / 2), 8 + (i % 10), 0),
   }))
+
+// ── Financeiro (aba Financeiro em /painel/demo/relatorios) ────────────────
+// Despesas somam -R$3.200 — com o faturamento de ~R$8.400 acima (só
+// concluídos), fecha um lucro de ~R$5.200/mês, como um salão saudável.
+export function getDemoLancamentos(agora: Date): LancamentoFinanceiro[] {
+  const dataStr = (offset: number) => dataRelativa(agora, offset, 12, 0).slice(0, 10)
+  return [
+    { id: 'demo-lanc-1', descricao: 'Aluguel do salão', valor: -1200, categoria: 'Aluguel', data: dataStr(-20), created_at: dataRelativa(agora, -20, 12, 0) },
+    { id: 'demo-lanc-2', descricao: 'Esmaltes e materiais', valor: -800, categoria: 'Material', data: dataStr(-15), created_at: dataRelativa(agora, -15, 12, 0) },
+    { id: 'demo-lanc-3', descricao: 'Lima elétrica nova', valor: -600, categoria: 'Equipamento', data: dataStr(-10), created_at: dataRelativa(agora, -10, 12, 0) },
+    { id: 'demo-lanc-4', descricao: 'Internet e energia', valor: -600, categoria: 'Outro', data: dataStr(-5), created_at: dataRelativa(agora, -5, 12, 0) },
+  ]
+}
+
+// ── Caixa (sinal/pagamento pelo app — /painel/demo/caixa) ─────────────────
+export function getDemoCaixaResumo(agora: Date): {
+  disponivelParaSaque: number
+  pendente: number
+  totalRecebidoHistorico: number
+  historico: (CaixaPrestadora & { servicoNome: string | null })[]
+  historicoSaques: CaixaSaque[]
+} {
+  const dataH = (offset: number) => dataRelativa(agora, offset, 10, 0)
+  const historico: (CaixaPrestadora & { servicoNome: string | null })[] = [
+    { id: 'demo-caixa-1', prestadora_id: 'demo-prestadora', tipo: 'sinal', valor: 41.85, valor_bruto: 45, taxa_percentual: 7, status: 'disponivel', agendamento_id: null, mp_payment_id: null, disponivel_em: dataH(-13), created_at: dataH(-20), servicoNome: 'Manicure completa' },
+    { id: 'demo-caixa-2', prestadora_id: 'demo-prestadora', tipo: 'sinal', valor: 65.10, valor_bruto: 70, taxa_percentual: 7, status: 'disponivel', agendamento_id: null, mp_payment_id: null, disponivel_em: dataH(-11), created_at: dataH(-18), servicoNome: 'Esmaltação em gel' },
+    { id: 'demo-caixa-3', prestadora_id: 'demo-prestadora', tipo: 'pagamento_servico', valor: 167.40, valor_bruto: 180, taxa_percentual: 7, status: 'disponivel', agendamento_id: null, mp_payment_id: null, disponivel_em: dataH(-9), created_at: dataH(-16), servicoNome: 'Alongamento em gel' },
+    { id: 'demo-caixa-4', prestadora_id: 'demo-prestadora', tipo: 'sinal', valor: 51.15, valor_bruto: 55, taxa_percentual: 7, status: 'disponivel', agendamento_id: null, mp_payment_id: null, disponivel_em: dataH(-8), created_at: dataH(-15), servicoNome: 'Pedicure completa' },
+    { id: 'demo-caixa-5', prestadora_id: 'demo-prestadora', tipo: 'sinal', valor: 41.85, valor_bruto: 45, taxa_percentual: 7, status: 'pendente', agendamento_id: null, mp_payment_id: null, disponivel_em: dataH(4), created_at: dataH(-3), servicoNome: 'Manicure completa' },
+    { id: 'demo-caixa-6', prestadora_id: 'demo-prestadora', tipo: 'sinal', valor: 65.10, valor_bruto: 70, taxa_percentual: 7, status: 'pendente', agendamento_id: null, mp_payment_id: null, disponivel_em: dataH(5), created_at: dataH(-2), servicoNome: 'Esmaltação em gel' },
+    { id: 'demo-caixa-7', prestadora_id: 'demo-prestadora', tipo: 'sinal', valor: 51.15, valor_bruto: 55, taxa_percentual: 7, status: 'pendente', agendamento_id: null, mp_payment_id: null, disponivel_em: dataH(6), created_at: dataH(-1), servicoNome: 'Pedicure completa' },
+    { id: 'demo-caixa-8', prestadora_id: 'demo-prestadora', tipo: 'sinal', valor: 234, valor_bruto: 251.61, taxa_percentual: 7, status: 'sacado', agendamento_id: null, mp_payment_id: null, disponivel_em: dataH(-25), created_at: dataH(-30), servicoNome: 'Alongamento em gel' },
+  ]
+  const historicoSaques: CaixaSaque[] = [
+    { id: 'demo-saque-1', prestadora_id: 'demo-prestadora', valor: 234, pix_chave: 'ana.nails@pix.com', status: 'pago', solicitado_em: dataH(-28), pago_em: dataH(-27), created_at: dataH(-28) },
+  ]
+  const disponivelParaSaque = historico.filter((h) => h.status === 'disponivel').reduce((s, h) => s + h.valor, 0)
+  const pendente = historico.filter((h) => h.status === 'pendente').reduce((s, h) => s + h.valor, 0)
+  const totalRecebidoHistorico = historico.filter((h) => h.status !== 'reembolsado').reduce((s, h) => s + h.valor, 0)
+  return { disponivelParaSaque, pendente, totalRecebidoHistorico, historico, historicoSaques }
+}
+
+// ── Missões (drawer de objetivos do mês) ───────────────────────────────────
+export function getDemoMissoes(agora: Date): { missoes: (MissaoProgresso & { missoes: Missao })[]; descontosPendentes: MissaoDesconto[] } {
+  const base: Omit<Missao, 'id' | 'titulo' | 'descricao' | 'icone' | 'tipo' | 'meta_base'> = {
+    desconto_percentual: 10, disponivel_basico: true, disponivel_pro: true, ativo: true, created_at: '2025-01-01T00:00:00Z',
+  }
+  const missaoAgendamentos: Missao = { id: 'demo-missao-agendamentos', titulo: 'Conclua atendimentos', descricao: 'Conclua X atendimentos este mês', icone: 'CheckCircle', tipo: 'agendamentos', meta_base: 80, ...base }
+  const missaoAvaliacoes: Missao = { id: 'demo-missao-avaliacoes', titulo: 'Receba avaliações', descricao: 'Receba X avaliações este mês', icone: 'Star', tipo: 'avaliacoes', meta_base: 5, ...base }
+  const missaoClientesNovos: Missao = { id: 'demo-missao-clientes-novos', titulo: 'Atraia clientes novos', descricao: 'Atenda X clientes novos este mês', icone: 'UserPlus', tipo: 'clientes_novos', meta_base: 5, ...base }
+
+  const missoes: (MissaoProgresso & { missoes: Missao })[] = [
+    {
+      id: 'demo-missao-progresso-1', prestadora_id: 'demo-prestadora', missao_id: missaoAgendamentos.id,
+      mes: 8, ano: 2026, meta_adaptada: 80, progresso: 80, concluida: true,
+      concluida_em: dataRelativa(agora, -2, 18, 0), desconto_aplicado: true, e_bonus: false,
+      created_at: dataRelativa(agora, -25, 9, 0), missoes: missaoAgendamentos,
+    },
+    {
+      id: 'demo-missao-progresso-2', prestadora_id: 'demo-prestadora', missao_id: missaoAvaliacoes.id,
+      mes: 8, ano: 2026, meta_adaptada: 7, progresso: 5, concluida: false,
+      concluida_em: null, desconto_aplicado: false, e_bonus: false,
+      created_at: dataRelativa(agora, -25, 9, 0), missoes: missaoAvaliacoes,
+    },
+    {
+      id: 'demo-missao-progresso-3', prestadora_id: 'demo-prestadora', missao_id: missaoClientesNovos.id,
+      mes: 8, ano: 2026, meta_adaptada: 5, progresso: 3, concluida: false,
+      concluida_em: null, desconto_aplicado: false, e_bonus: false,
+      created_at: dataRelativa(agora, -25, 9, 0), missoes: missaoClientesNovos,
+    },
+  ]
+
+  const descontosPendentes: MissaoDesconto[] = [
+    {
+      id: 'demo-desconto-1', prestadora_id: 'demo-prestadora', percentual: 10, origem: 'Conclua atendimentos',
+      aplicado: false, aplicado_em: null, expira_em: dataRelativa(agora, 5, 0, 0), created_at: dataRelativa(agora, -2, 18, 0),
+    },
+  ]
+
+  return { missoes, descontosPendentes }
+}

@@ -52,9 +52,9 @@ const DEMO_PRESTADORA: Prestadora = {
   pagina_mostrar_galeria: true,
   pagina_galeria_modo: 'empilhada',
   pagina_galeria_fotos_ids: [],
-  pagina_mostrar_estabelecimento: false,
+  pagina_mostrar_estabelecimento: true,
   pagina_estabelecimento_modo: 'empilhada',
-  pagina_estabelecimento_fotos_ids: [],
+  pagina_estabelecimento_fotos_ids: ['g7', 'g8', 'g9'],
   pagina_estabelecimento_titulo: 'Nosso espaço',
   created_at: new Date().toISOString(),
 }
@@ -88,7 +88,7 @@ const DEMO_SERVICOS: ServicoComProfissionais[] = [
     preco: 55,
     duracao_minutos: 60,
     descricao: 'Cutilagem, esmaltação e esfoliação dos pés.',
-    icone: 'Hand',
+    icone: 'Droplets',
     foto_galeria_id: null,
     aceitar_pagamento_online: false, sinal_tipo: null, sinal_valor: null, sinal_obrigatorio: false,
     servico_profissionais: [],
@@ -121,7 +121,7 @@ const DEMO_SERVICOS: ServicoComProfissionais[] = [
     preco: 90,
     duracao_minutos: 60,
     descricao: 'Reequilíbrio e esmaltação das unhas em gel com preenchimento da raiz.',
-    icone: 'Sparkles',
+    icone: 'Wand2',
     foto_galeria_id: null,
     aceitar_pagamento_online: false, sinal_tipo: null, sinal_valor: null, sinal_obrigatorio: false,
     servico_profissionais: [],
@@ -183,12 +183,26 @@ const DEMO_GALERIA: GaleriaItem[] = [
     id: 'g6', prestadora_id: 'demo', tipo: 'imagem', created_at: '',
     url: 'https://images.unsplash.com/photo-1612887390768-fb02affea7a6?w=400&q=80',
   },
+  // Fotos do estabelecimento (seção separada da galeria de trabalhos acima)
+  {
+    id: 'g7', prestadora_id: 'demo', tipo: 'imagem', created_at: '',
+    url: 'https://images.unsplash.com/photo-1633681926022-84c23e8cb2d6?w=400&q=80',
+  },
+  {
+    id: 'g8', prestadora_id: 'demo', tipo: 'imagem', created_at: '',
+    url: 'https://images.unsplash.com/photo-1600948836101-f9ffda59d250?w=400&q=80',
+  },
+  {
+    id: 'g9', prestadora_id: 'demo', tipo: 'imagem', created_at: '',
+    url: 'https://images.unsplash.com/photo-1610992015732-2449b76344bc?w=400&q=80',
+  },
 ]
 
 const DEMO_AVALIACOES: Avaliacao[] = [
-  { id: 'av1', agendamento_id: 'a1', prestadora_id: 'demo', nota: 5, comentario: 'Atendimento incrível, super atenciosa! Minhas unhas ficaram perfeitas.', destaque: true, created_at: '2026-06-10T12:00:00Z' },
-  { id: 'av2', agendamento_id: 'a2', prestadora_id: 'demo', nota: 5, comentario: 'Profissional excelente, ambiente acolhedor. Recomendo demais!', destaque: true, created_at: '2026-06-05T12:00:00Z' },
-  { id: 'av3', agendamento_id: 'a3', prestadora_id: 'demo', nota: 4, comentario: 'Muito bom, só achei o horário um pouco apertado.', destaque: false, created_at: '2026-05-28T12:00:00Z' },
+  { id: 'av1', agendamento_id: 'a1', prestadora_id: 'demo', nota: 5, comentario: 'Atendimento incrível, super atenciosa! Minhas unhas ficaram perfeitas.', destaque: true, created_at: '2026-06-10T12:00:00Z', agendamentos: { clientes: { nome: 'Maria Silva' } } },
+  { id: 'av2', agendamento_id: 'a2', prestadora_id: 'demo', nota: 5, comentario: 'Profissional excelente, ambiente acolhedor. Recomendo demais!', destaque: true, created_at: '2026-06-05T12:00:00Z', agendamentos: { clientes: { nome: 'Júlia Santos' } } },
+  { id: 'av3', agendamento_id: 'a3', prestadora_id: 'demo', nota: 4, comentario: 'Muito bom, só achei o horário um pouco apertado.', destaque: false, created_at: '2026-05-28T12:00:00Z', agendamentos: { clientes: { nome: 'Camila Oliveira' } } },
+  { id: 'av4', agendamento_id: 'a4', prestadora_id: 'demo', nota: 5, comentario: 'Melhor manicure da região! Ficou impecável.', destaque: true, created_at: '2026-05-20T12:00:00Z', agendamentos: { clientes: { nome: 'Beatriz Lima' } } },
 ]
 
 const TITLE = 'Ana Nails Studio — Exemplo BelleBook'
