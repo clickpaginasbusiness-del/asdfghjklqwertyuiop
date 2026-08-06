@@ -9,20 +9,24 @@ import {
   BarChart3, UserCircle2, UserCircle, Headset, CheckCheck,
   DollarSign, Smartphone, Camera, Palette, Gift,
   Monitor, Menu, Tag, X,
+  ClipboardList, ShieldCheck, Wallet, Paintbrush,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { InstallAppSection } from './InstallAppSection'
 import { FeaturesGridSection } from './FeaturesGridSection'
+import { TestimonialsMarqueeSection } from './TestimonialsMarqueeSection'
 import { useCupom, precoComDesconto } from '@/hooks/use-cupom'
 import Lenis from 'lenis'
 
 /* ─── Types ─────────────────────────────────── */
-type NavId = 'hero' | 'como-funciona' | 'depoimentos' | 'precos'
+type NavId = 'hero' | 'como-funciona' | 'precos' | 'recursos' | 'depoimentos' | 'instalar-app'
 
 const NAV_ITEMS: { id: NavId; label: string }[] = [
   { id: 'como-funciona', label: 'Como funciona' },
   { id: 'precos', label: 'Planos' },
+  { id: 'recursos', label: 'Recursos' },
   { id: 'depoimentos', label: 'Depoimentos' },
+  { id: 'instalar-app', label: 'App' },
 ]
 
 /* ─── Data ───────────────────────────────────── */
@@ -67,6 +71,12 @@ const RECURSOS_CARROSSEL = [
   { icon: Palette, title: 'Personalização de cor', desc: 'Deixe sua página pública com a cara do seu negócio.' },
   { icon: Gift, title: 'Sistema de indicação', desc: 'Indique outras profissionais e ganhe dias grátis de assinatura.' },
   { icon: Smartphone, title: 'PWA', desc: 'Instale como app na tela inicial do celular, sem loja de aplicativos.' },
+  { icon: ClipboardList, title: 'Agendamento manual', desc: 'Adicione agendamentos feitos fora do sistema sem perder o controle da agenda.' },
+  { icon: CreditCard, title: 'Pagamento online', desc: 'Aceite pagamento do serviço direto pelo site, com Pix, cartão e débito.' },
+  { icon: ShieldCheck, title: 'Sinal de compromisso', desc: 'Cobre um valor antecipado para confirmar o agendamento e eliminar cancelamentos.' },
+  { icon: Wallet, title: 'Caixa e saques', desc: 'Acompanhe seu saldo de pagamentos online e solicite saques direto pelo painel.' },
+  { icon: BarChart3, title: 'Relatório financeiro', desc: 'Lance despesas, calcule lucro e veja sua margem real num livro caixa simples.' },
+  { icon: Paintbrush, title: 'Personalizar página', desc: 'Controle o que aparece na sua página pública: fotos, avaliações, textos e muito mais.' },
 ]
 
 const SIDEBAR_ITEMS = [
@@ -102,27 +112,6 @@ const DASHBOARD_FEATURES = [
   { icon: Bell,       title: 'Notificações instantâneas', desc: 'Saiba na hora quando alguém agendar ou cancelar' },
   { icon: Smartphone, title: 'WhatsApp integrado',        desc: 'Fale com a cliente direto pelo WhatsApp com um clique' },
   { icon: Camera,     title: 'Galeria de trabalhos',      desc: 'Mostre seus melhores trabalhos na sua página pública' },
-]
-
-const TESTIMONIALS = [
-  {
-    text: 'Antes eu perdia cliente por não responder rápido. Agora a agenda se organiza sozinha e eu foco só no trabalho.',
-    name: 'Amanda Silva',
-    role: 'Profissional de beleza · Rio de Janeiro',
-    rating: 5,
-  },
-  {
-    text: 'Profissional demais! Minha página ficou linda e minhas clientes adoraram poder agendar pelo celular a qualquer hora.',
-    name: 'Carla Mendes',
-    role: 'Proprietária · Studio CM Nails · São Paulo',
-    rating: 5,
-  },
-  {
-    text: 'Não fico mais no WhatsApp confirmando horário. As clientes agendam sozinhas e eu só apareço para atender.',
-    name: 'Juliana Costa',
-    role: 'Profissional de beleza · Belo Horizonte',
-    rating: 5,
-  },
 ]
 
 /* ─── Telas do carrossel mobile (Painel BelleBook) ────── */
@@ -591,7 +580,7 @@ export default function LandingPage() {
 
   /* Active section tracker */
   useEffect(() => {
-    const ids: NavId[] = ['hero', 'como-funciona', 'precos', 'depoimentos']
+    const ids: NavId[] = ['hero', 'como-funciona', 'precos', 'recursos', 'depoimentos', 'instalar-app']
     const handler = () => {
       for (const id of [...ids].reverse()) {
         const el = document.getElementById(id)
@@ -1383,7 +1372,10 @@ export default function LandingPage() {
       </section>
 
       {/* ── RECURSOS EM DETALHE ───────────────── */}
-      <section className="relative z-[2] bg-white px-6 py-20 rounded-t-[40px] shadow-[0_-4px_60px_rgba(0,0,0,0.04)]">
+      <section
+        id="recursos"
+        className="relative z-[2] bg-white px-6 py-20 rounded-t-[40px] shadow-[0_-4px_60px_rgba(0,0,0,0.04)]"
+      >
         <div className="max-w-lg md:max-w-4xl mx-auto w-full">
           <div className="text-center mb-10">
             <p data-animate className="text-rose-400 text-sm font-semibold uppercase tracking-widest mb-4">
@@ -1453,52 +1445,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── DEPOIMENTOS ───────────────────────── */}
-      <section
-        id="depoimentos"
-        className="relative z-[2] bg-[#0f0f0f] min-h-screen flex flex-col items-center justify-center px-6 py-24 rounded-t-[40px]"
-      >
-        {/* Subtle glow */}
-        <div aria-hidden className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] rounded-full bg-rose-500/10 blur-3xl" />
-
-        <div className="relative max-w-5xl mx-auto w-full">
-          <div className="text-center mb-16">
-            <p data-animate className="text-rose-400 text-sm font-semibold uppercase tracking-widest mb-4">
-              Depoimentos
-            </p>
-            <h2 data-animate data-delay="100" className="font-serif text-[clamp(2rem,5vw,3.5rem)] font-bold text-white leading-tight">
-              Quem usa, não<br />
-              consegue largar
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {TESTIMONIALS.map((t, i) => (
-              <div
-                key={t.name}
-                data-animate
-                data-delay={String(i * 120)}
-                className="bg-white/[0.06] border border-white/10 rounded-2xl p-7 flex flex-col gap-5 hover:bg-white/10 transition-colors"
-              >
-                {/* Stars */}
-                <div className="flex gap-1">
-                  {Array.from({ length: t.rating }).map((_, j) => (
-                    <Star key={j} className="w-4 h-4 fill-rose-400 text-rose-400" />
-                  ))}
-                </div>
-
-                <p className="text-gray-300 text-sm leading-relaxed flex-1">
-                  &ldquo;{t.text}&rdquo;
-                </p>
-
-                <div className="border-t border-white/10 pt-5">
-                  <p className="text-white font-medium text-sm">{t.name}</p>
-                  <p className="text-gray-500 text-xs mt-0.5">{t.role}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <TestimonialsMarqueeSection />
 
       {/* ── INSTALAR APP ──────────────────────── */}
       <InstallAppSection />

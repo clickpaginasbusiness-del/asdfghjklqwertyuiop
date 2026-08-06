@@ -87,6 +87,29 @@ body {
   .hero-blob-1, .hero-blob-2, .hero-blob-3, .ticker-track { animation: none; }
 }
 
+/* ── Marquee (depoimentos) — scroll horizontal contínuo, duas fileiras ── */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-100%); }
+}
+@keyframes marquee-reverse {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+.animate-marquee {
+  animation: marquee var(--marquee-duration, 25s) linear infinite;
+}
+.animate-marquee-reverse {
+  animation: marquee-reverse var(--marquee-duration, 25s) linear infinite;
+}
+.marquee-pause-on-hover:hover .animate-marquee,
+.marquee-pause-on-hover:hover .animate-marquee-reverse {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee, .animate-marquee-reverse { animation: none; }
+}
+
 /* ── Check de sucesso (pagamento/agendamento confirmado) ── */
 @keyframes checkPop {
   0% { transform: scale(0); opacity: 0; }
