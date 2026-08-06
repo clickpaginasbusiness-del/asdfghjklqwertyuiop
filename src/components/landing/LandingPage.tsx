@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { InstallAppSection } from './InstallAppSection'
+import { FeaturesGridSection } from './FeaturesGridSection'
 import { useCupom, precoComDesconto } from '@/hooks/use-cupom'
 import Lenis from 'lenis'
 
@@ -775,6 +776,9 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* ── TUDO QUE VOCÊ PRECISA ─────────────── */}
+      <FeaturesGridSection />
 
       {/* ── PAINEL DEMO ───────────────────────── */}
       <section
