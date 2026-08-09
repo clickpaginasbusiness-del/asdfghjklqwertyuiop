@@ -1,12 +1,11 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Modal } from '@/components/ui/modal'
 import { formatCurrency, cn } from '@/lib/utils'
 import {
-  Lock, DollarSign, Percent, UserPlus, TrendingUp, Eye, Star, MessageSquareQuote, Wallet,
+  DollarSign, Percent, UserPlus, TrendingUp, Eye, Star, MessageSquareQuote, Wallet,
 } from 'lucide-react'
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
@@ -18,7 +17,6 @@ import {
 import { RelatorioParceiraClient } from '@/components/parceiras/RelatorioParceiraClient'
 import { FinanceiroTabClient } from '@/components/relatorios/FinanceiroTabClient'
 import type { ResumoParceira } from '@/lib/parceiras'
-import { ehPro, type Plano } from '@/lib/plano'
 
 const ROSE = '#fb7185'
 const ROSE_LIGHT = '#fecdd3'
@@ -55,7 +53,6 @@ export type LancamentoFinanceiro = {
 }
 
 interface Props {
-  plano: Plano | null
   prestadoraId: string
   agendamentos: Ag[]
   profissionais: ProfissionalLite[]
@@ -88,7 +85,7 @@ function heatColor(value: number, max: number) {
 }
 
 export default function RelatoriosClient({
-  plano, prestadoraId, agendamentos, profissionais, visitas, avaliacoes, lancamentos, horaAbertura, horaFechamento,
+  prestadoraId, agendamentos, profissionais, visitas, avaliacoes, lancamentos, horaAbertura, horaFechamento,
   eParceira, codigoIndicacao, resumoParceira,
 }: Props) {
   const todayStr = format(new Date(), 'yyyy-MM-dd')
@@ -276,31 +273,6 @@ export default function RelatoriosClient({
     const max = Math.max(1, ...dist.map((d) => d.qtd))
     return dist.map((d) => ({ ...d, pct: (d.qtd / max) * 100 }))
   }, [avaliacoesNoPeriodo])
-
-  if (!ehPro(plano)) {
-    return (
-      <div className="space-y-6">
-        <h1 className="font-serif text-2xl font-semibold text-gray-900">Relatórios</h1>
-        <div className="bg-white rounded-3xl border border-gray-100 p-12 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto mb-4">
-            <Lock className="w-7 h-7 text-amber-400" />
-          </div>
-          <h2 className="font-serif text-xl font-semibold text-gray-900 mb-2">
-            Relatórios disponíveis a partir do Plano Pro
-          </h2>
-          <p className="text-gray-500 text-sm max-w-xs mx-auto mb-6">
-            Acompanhe receita, serviços mais vendidos, taxa de cancelamento e muito mais com relatórios completos do seu negócio.
-          </p>
-          <Link
-            href="/planos"
-            className="inline-flex items-center gap-2 bg-rose-400 text-white px-6 py-3 rounded-2xl font-semibold text-sm hover:bg-rose-500 transition-colors"
-          >
-            Fazer upgrade para Pro
-          </Link>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="space-y-6">

@@ -15,7 +15,6 @@ export default function RelatoriosDemoPage() {
 
   return (
     <RelatoriosClient
-      plano="pro"
       prestadoraId={DEMO_PRESTADORA.id}
       agendamentos={agendamentos}
       profissionais={DEMO_PROFISSIONAIS.map((p) => ({ id: p.id, nome: p.nome }))}

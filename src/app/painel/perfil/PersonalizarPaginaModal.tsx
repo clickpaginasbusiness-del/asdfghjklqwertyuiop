@@ -150,94 +150,78 @@ function PersonalizarPaginaModalInner({
         {/* Aparência */}
         <section>
           <SectionHeader icon={<Palette className="w-5 h-5 text-rose-400" />} title="Aparência" />
-          <div className="relative">
-            <div className={cn('space-y-5 rounded-2xl border border-gray-100 bg-gray-50/60 p-4', !ehPro && 'pointer-events-none opacity-60')}>
-              <div className="flex items-center gap-4">
-                <div className="relative shrink-0">
-                  <button
-                    type="button"
-                    disabled={!ehPro}
-                    onClick={() => colorInputRef.current?.click()}
-                    title="Escolher cor"
-                    className="w-12 h-12 rounded-2xl shadow-sm ring-1 ring-black/5 hover:brightness-95 transition-all disabled:cursor-not-allowed"
-                    style={{ backgroundColor: temaAtual.hex }}
-                  />
-                  <span className="absolute -bottom-1.5 -right-1.5 w-5 h-5 rounded-full bg-white shadow ring-1 ring-black/5 flex items-center justify-center pointer-events-none">
-                    <Pencil className="w-2.5 h-2.5 text-gray-500" />
-                  </span>
-                  <input
-                    ref={colorInputRef}
-                    type="color"
-                    value={temaAtual.hex}
-                    disabled={!ehPro}
-                    onChange={(e) => applyCor(e.target.value)}
-                    className="sr-only"
-                    tabIndex={-1}
-                  />
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-gray-600 mb-1.5">Clique no círculo para escolher qualquer cor</p>
-                  <div className="flex items-center rounded-xl border border-gray-200 bg-white overflow-hidden focus-within:ring-2 focus-within:ring-rose-300 focus-within:border-rose-300 transition-all w-32">
-                    <span className="pl-3 text-sm text-gray-400 select-none">#</span>
-                    <input
-                      type="text"
-                      value={hexDraft}
-                      disabled={!ehPro}
-                      onChange={(e) => handleHexChange(e.target.value)}
-                      onBlur={() => setHexDraft(temaAtual.hex.replace('#', ''))}
-                      placeholder="f472b6"
-                      maxLength={6}
-                      className="flex-1 min-w-0 px-2 py-2 text-sm uppercase focus:outline-none disabled:cursor-not-allowed"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-xs font-medium text-gray-500 mb-2">Ou escolha uma cor pronta</p>
-                <div className="flex flex-wrap gap-3">
-                  {(Object.entries(TEMAS) as [CorTema, (typeof TEMAS)[CorTema]][]).map(([key, tema]) => (
-                    <button
-                      key={key}
-                      type="button"
-                      disabled={!ehPro}
-                      onClick={() => selecionarPreset(key)}
-                      title={tema.label}
-                      className="flex flex-col items-center gap-1.5 disabled:cursor-not-allowed"
-                    >
-                      <span
-                        className="w-9 h-9 rounded-full flex items-center justify-center ring-offset-2 transition-all"
-                        style={{
-                          backgroundColor: tema.hex,
-                          boxShadow: corTema === key ? `0 0 0 2px white, 0 0 0 4px ${tema.hex}` : undefined,
-                        }}
-                      >
-                        {corTema === key && <Check className="w-4 h-4 text-white" />}
-                      </span>
-                      <span className="text-[11px] text-gray-500">{tema.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 rounded-xl p-4" style={{ backgroundColor: temaAtual.hexLight }}>
-                <span className="text-sm text-gray-600">Pré-visualização:</span>
-                <span className="px-4 py-2 rounded-xl text-sm font-semibold text-white" style={{ backgroundColor: temaAtual.hex }}>
-                  Botão de exemplo
+          <div className="space-y-5 rounded-2xl border border-gray-100 bg-gray-50/60 p-4">
+            <div className="flex items-center gap-4">
+              <div className="relative shrink-0">
+                <button
+                  type="button"
+                  onClick={() => colorInputRef.current?.click()}
+                  title="Escolher cor"
+                  className="w-12 h-12 rounded-2xl shadow-sm ring-1 ring-black/5 hover:brightness-95 transition-all"
+                  style={{ backgroundColor: temaAtual.hex }}
+                />
+                <span className="absolute -bottom-1.5 -right-1.5 w-5 h-5 rounded-full bg-white shadow ring-1 ring-black/5 flex items-center justify-center pointer-events-none">
+                  <Pencil className="w-2.5 h-2.5 text-gray-500" />
                 </span>
+                <input
+                  ref={colorInputRef}
+                  type="color"
+                  value={temaAtual.hex}
+                  onChange={(e) => applyCor(e.target.value)}
+                  className="sr-only"
+                  tabIndex={-1}
+                />
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-gray-600 mb-1.5">Clique no círculo para escolher qualquer cor</p>
+                <div className="flex items-center rounded-xl border border-gray-200 bg-white overflow-hidden focus-within:ring-2 focus-within:ring-rose-300 focus-within:border-rose-300 transition-all w-32">
+                  <span className="pl-3 text-sm text-gray-400 select-none">#</span>
+                  <input
+                    type="text"
+                    value={hexDraft}
+                    onChange={(e) => handleHexChange(e.target.value)}
+                    onBlur={() => setHexDraft(temaAtual.hex.replace('#', ''))}
+                    placeholder="f472b6"
+                    maxLength={6}
+                    className="flex-1 min-w-0 px-2 py-2 text-sm uppercase focus:outline-none"
+                  />
+                </div>
               </div>
             </div>
 
-            {!ehPro && (
-              <div className="absolute inset-0 -m-2 rounded-xl bg-white/70 backdrop-blur-[2px] flex flex-col items-center justify-center gap-2 text-center p-4">
-                <Lock className="w-6 h-6 text-gray-400" />
-                <p className="text-sm font-semibold text-gray-700">Disponível a partir do Plano Pro</p>
-                <Link href="/painel/assinatura" className="text-xs font-semibold text-rose-500 hover:text-rose-600 underline underline-offset-2">
-                  Fazer upgrade
-                </Link>
+            <div>
+              <p className="text-xs font-medium text-gray-500 mb-2">Ou escolha uma cor pronta</p>
+              <div className="flex flex-wrap gap-3">
+                {(Object.entries(TEMAS) as [CorTema, (typeof TEMAS)[CorTema]][]).map(([key, tema]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => selecionarPreset(key)}
+                    title={tema.label}
+                    className="flex flex-col items-center gap-1.5"
+                  >
+                    <span
+                      className="w-9 h-9 rounded-full flex items-center justify-center ring-offset-2 transition-all"
+                      style={{
+                        backgroundColor: tema.hex,
+                        boxShadow: corTema === key ? `0 0 0 2px white, 0 0 0 4px ${tema.hex}` : undefined,
+                      }}
+                    >
+                      {corTema === key && <Check className="w-4 h-4 text-white" />}
+                    </span>
+                    <span className="text-[11px] text-gray-500">{tema.label}</span>
+                  </button>
+                ))}
               </div>
-            )}
+            </div>
+
+            <div className="flex items-center gap-3 rounded-xl p-4" style={{ backgroundColor: temaAtual.hexLight }}>
+              <span className="text-sm text-gray-600">Pré-visualização:</span>
+              <span className="px-4 py-2 rounded-xl text-sm font-semibold text-white" style={{ backgroundColor: temaAtual.hex }}>
+                Botão de exemplo
+              </span>
+            </div>
           </div>
         </section>
 

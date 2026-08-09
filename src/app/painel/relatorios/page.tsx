@@ -2,7 +2,6 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { getResumoParceira } from '@/lib/parceiras'
-import { planoEfetivo, ehPro } from '@/lib/plano'
 import RelatoriosClient, { type Ag, type AvaliacaoRel, type LancamentoFinanceiro } from './RelatoriosClient'
 
 export default async function RelatoriosPage() {
@@ -12,13 +11,11 @@ export default async function RelatoriosPage() {
 
   const { data: prestadora } = await supabase
     .from('prestadoras')
-    .select('id, plano, hora_abertura, hora_fechamento, e_parceira, codigo_indicacao')
+    .select('id, hora_abertura, hora_fechamento, e_parceira, codigo_indicacao')
     .eq('user_id', user.id)
     .single()
 
   if (!prestadora) redirect('/painel/login')
-
-  const plano = planoEfetivo({ plano: prestadora.plano, e_parceira: prestadora.e_parceira })
 
   // Resumo de parceira usa o cliente admin (não o autenticado por RLS)
   // porque liberar comissões vencidas exige um UPDATE, e a policy de
@@ -26,25 +23,6 @@ export default async function RelatoriosPage() {
   const resumoParceira = prestadora.e_parceira
     ? await getResumoParceira(createAdminClient(), prestadora.id)
     : null
-
-  if (!ehPro(plano)) {
-    return (
-      <RelatoriosClient
-        plano={plano}
-        prestadoraId={prestadora.id}
-        agendamentos={[]}
-        profissionais={[]}
-        visitas={[]}
-        avaliacoes={[]}
-        lancamentos={[]}
-        horaAbertura="09:00"
-        horaFechamento="18:00"
-        eParceira={prestadora.e_parceira}
-        codigoIndicacao={prestadora.codigo_indicacao}
-        resumoParceira={resumoParceira}
-      />
-    )
-  }
 
   const [
     { data: agendamentos },
@@ -80,7 +58,6 @@ export default async function RelatoriosPage() {
 
   return (
     <RelatoriosClient
-      plano={plano}
       prestadoraId={prestadora.id}
       agendamentos={(agendamentos ?? []) as unknown as Ag[]}
       profissionais={profissionais ?? []}
