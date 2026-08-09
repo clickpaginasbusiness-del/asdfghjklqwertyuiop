@@ -1,7 +1,10 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
 import PerfilPublicoClient from './PerfilPublicoClient'
+import PerfilPublicoLandingClient from './PerfilPublicoLandingClient'
 import { SITE_URL } from '@/lib/seo'
+import { planoEfetivo } from '@/lib/plano'
+import { limitesPlano } from '@/lib/planoLimites'
 
 // Colunas seguras pra expor num contexto público/anônimo — exclui email,
 // telefone, dados de pagamento (mp_*), chave Pix de parceira etc. Usa
@@ -9,7 +12,7 @@ import { SITE_URL } from '@/lib/seo'
 // pública), então depender de RLS pra restringir colunas não funciona
 // (RLS é por linha, não por coluna) — a lista explícita abaixo é o que
 // garante que só dado público sai daqui. Ver PrestadoraPublica em types.ts.
-const COLUNAS_PUBLICAS = 'id, nome, bio, foto_url, slug, cor_tema, whatsapp, instagram, endereco, plano, e_parceira, hora_abertura, hora_fechamento, pagina_texto_agendamento, pagina_mostrar_texto_agendamento, pagina_mostrar_estrelas, pagina_mostrar_avaliacoes, pagina_mostrar_galeria, pagina_galeria_modo, pagina_galeria_fotos_ids, pagina_mostrar_estabelecimento, pagina_estabelecimento_modo, pagina_estabelecimento_fotos_ids, pagina_estabelecimento_titulo'
+const COLUNAS_PUBLICAS = 'id, nome, bio, foto_url, slug, cor_tema, whatsapp, instagram, endereco, plano, e_parceira, hora_abertura, hora_fechamento, pagina_texto_agendamento, pagina_mostrar_texto_agendamento, pagina_mostrar_estrelas, pagina_mostrar_avaliacoes, pagina_mostrar_galeria, pagina_galeria_modo, pagina_galeria_fotos_ids, pagina_mostrar_estabelecimento, pagina_estabelecimento_modo, pagina_estabelecimento_fotos_ids, pagina_estabelecimento_titulo, pagina_preset, pagina_banner_foto_id'
 
 // ISR: essa é a página de maior tráfego do app (perfil público, sem sessão),
 // e até agora renderizava 100% dinâmico — buscava tudo do banco a cada
@@ -32,6 +35,15 @@ export default async function PerfilPage({ params }: { params: Promise<{ slug: s
 
   if (!prestadora) notFound()
 
+  // Preset "landing" é exclusivo do Studio/Studio Pro — se a prestadora
+  // escolheu esse preset e depois caiu pra um plano sem acesso a ele (ex.:
+  // downgrade), volta pro clássico automaticamente. A escolha continua salva
+  // no banco (pagina_preset), só a renderização é que respeita o plano atual.
+  const planoAtual = planoEfetivo({ plano: prestadora.plano, e_parceira: prestadora.e_parceira })
+  const presetEfetivo = prestadora.pagina_preset === 'landing' && limitesPlano(planoAtual).presets
+    ? 'landing'
+    : 'classico'
+
   const [
     { data: servicos },
     { data: galeria },
@@ -48,17 +60,19 @@ export default async function PerfilPage({ params }: { params: Promise<{ slug: s
     supabase.from('avaliacoes').select('*, agendamentos(clientes(nome))').eq('prestadora_id', prestadora.id).order('created_at', { ascending: false }),
   ])
 
-  return (
-    <PerfilPublicoClient
-      prestadora={prestadora}
-      servicos={servicos ?? []}
-      galeria={galeria ?? []}
-      diasBloqueados={(diasBloqueados ?? []).map((d) => d.data)}
-      profissionais={profissionais ?? []}
-      horariosFuncionamento={horariosFuncionamento ?? []}
-      avaliacoes={avaliacoes ?? []}
-    />
-  )
+  const props = {
+    prestadora,
+    servicos: servicos ?? [],
+    galeria: galeria ?? [],
+    diasBloqueados: (diasBloqueados ?? []).map((d) => d.data),
+    profissionais: profissionais ?? [],
+    horariosFuncionamento: horariosFuncionamento ?? [],
+    avaliacoes: avaliacoes ?? [],
+  }
+
+  return presetEfetivo === 'landing'
+    ? <PerfilPublicoLandingClient {...props} />
+    : <PerfilPublicoClient {...props} />
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {

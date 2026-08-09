@@ -7,15 +7,61 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { SeletorFotos } from './SeletorFotos'
 import { AvaliacoesDestaqueSection } from './AvaliacoesDestaqueSection'
+import { PresetPaginaModal } from './PresetPaginaModal'
 import { TEMAS, TEMA_DEFAULT, getTema, type CorTema } from '@/lib/theme'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
-import { Palette, Type, Star, Images, Home, Eye, Check, Lock, Pencil } from 'lucide-react'
-import type { Prestadora, GaleriaItem } from '@/lib/types'
+import { ImageWithSkeleton } from '@/components/ui/image-with-skeleton'
+import { Palette, Type, Star, Images, Home, Eye, Check, Lock, Pencil, LayoutTemplate, ImageIcon } from 'lucide-react'
+import type { Prestadora, GaleriaItem, PresetPagina } from '@/lib/types'
 import type { AvaliacaoComCliente } from './PerfilPainelClient'
 import { ehPro as calcEhPro, type Plano } from '@/lib/plano'
 import { limitesPlano } from '@/lib/planoLimites'
 import toast from 'react-hot-toast'
+
+const NOME_PRESET: Record<PresetPagina, string> = { classico: 'Clássico', landing: 'Landing Page' }
+
+function SeletorFotoUnica({ galeria, selecionada, onChange }: { galeria: GaleriaItem[]; selecionada: string | null; onChange: (id: string | null) => void }) {
+  if (galeria.length === 0) {
+    return (
+      <div className="text-center py-6 text-gray-400 border border-dashed border-gray-200 rounded-xl">
+        <ImageIcon className="w-5 h-5 mx-auto mb-1 opacity-30" />
+        <p className="text-xs">Nenhuma foto na galeria ainda</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+      {galeria.map((item) => {
+        const checked = selecionada === item.id
+        return (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => onChange(checked ? null : item.id)}
+            className="group relative aspect-square rounded-xl overflow-hidden bg-gray-100"
+          >
+            {item.tipo === 'video' ? (
+              <video src={item.url} className="w-full h-full object-cover" muted />
+            ) : (
+              <ImageWithSkeleton src={item.url} alt="Foto" fill className="object-cover" />
+            )}
+            <div className={cn('absolute inset-0 transition-colors', checked ? 'bg-rose-400/30' : 'bg-black/0 group-hover:bg-black/10')} />
+            <span
+              className={cn(
+                'absolute top-1.5 right-1.5 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors',
+                checked ? 'bg-rose-400 border-rose-400' : 'bg-white/80 border-white'
+              )}
+            >
+              {checked && <Check className="w-3.5 h-3.5 text-white" />}
+            </span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
 
 type ModoExibicao = 'empilhada' | 'carrossel'
 
@@ -96,6 +142,9 @@ function PersonalizarPaginaModalInner({
   const [estabelecimentoModo, setEstabelecimentoModo] = useState<ModoExibicao>(prestadora.pagina_estabelecimento_modo)
   const [estabelecimentoFotosIds, setEstabelecimentoFotosIds] = useState<string[]>(prestadora.pagina_estabelecimento_fotos_ids)
   const [estabelecimentoTitulo, setEstabelecimentoTitulo] = useState(prestadora.pagina_estabelecimento_titulo ?? 'Nosso espaço')
+  const [paginaPreset, setPaginaPreset] = useState<PresetPagina>(prestadora.pagina_preset)
+  const [bannerFotoId, setBannerFotoId] = useState<string | null>(prestadora.pagina_banner_foto_id)
+  const [presetModalOpen, setPresetModalOpen] = useState(false)
   const [saving, setSaving] = useState(false)
 
   const temaAtual = getTema(corTema)
@@ -132,6 +181,8 @@ function PersonalizarPaginaModalInner({
       pagina_estabelecimento_modo: estabelecimentoModo,
       pagina_estabelecimento_fotos_ids: estabelecimentoFotosIds,
       pagina_estabelecimento_titulo: estabelecimentoTitulo.trim() || null,
+      pagina_preset: paginaPreset,
+      pagina_banner_foto_id: bannerFotoId,
     }
     const { error } = await supabase.from('prestadoras').update(patch).eq('id', prestadora.id)
     if (error) {
@@ -147,6 +198,27 @@ function PersonalizarPaginaModalInner({
   return (
     <Modal open onClose={onClose} title="Personalizar Página" className="max-w-2xl">
       <div className="p-6 space-y-8">
+        {/* Preset da página */}
+        <section>
+          <button
+            type="button"
+            onClick={() => setPresetModalOpen(true)}
+            className="w-full flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50/60 p-4 hover:border-gray-200 transition-colors text-left"
+          >
+            <div className="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center shrink-0">
+              <LayoutTemplate className="w-5 h-5 text-rose-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-gray-900 text-sm">Preset da página</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Estilo atual: {NOME_PRESET[paginaPreset]}
+                {!limites.presets && ' · Landing Page exclusivo do Studio'}
+              </p>
+            </div>
+            <span className="text-xs font-semibold text-rose-500 shrink-0">Escolher</span>
+          </button>
+        </section>
+
         {/* Aparência */}
         <section>
           <SectionHeader icon={<Palette className="w-5 h-5 text-rose-400" />} title="Aparência" />
@@ -275,6 +347,16 @@ function PersonalizarPaginaModalInner({
                   : `Selecione até ${limites.fotos_trabalhos} fotos (${galeriaFotosIds.length}/${limites.fotos_trabalhos} selecionadas)`}
               </p>
               <SeletorFotos galeria={galeria} selecionadas={galeriaFotosIds} onChange={setGaleriaFotosIds} max={limites.fotos_trabalhos} />
+
+              {paginaPreset === 'landing' && (
+                <div className="pt-4 mt-2 border-t border-gray-100">
+                  <p className="text-sm font-medium text-gray-700 mb-1">Foto do banner (hero)</p>
+                  <p className="text-xs text-gray-400 mb-3">
+                    Usada como imagem de fundo no topo da página landing. Se não escolher, usa a primeira foto da galeria de trabalhos.
+                  </p>
+                  <SeletorFotoUnica galeria={galeria} selecionada={bannerFotoId} onChange={setBannerFotoId} />
+                </div>
+              )}
             </div>
           )}
         </section>
@@ -332,6 +414,14 @@ function PersonalizarPaginaModalInner({
           <Button type="button" size="sm" onClick={salvar} loading={saving}>Salvar alterações</Button>
         </div>
       </div>
+
+      <PresetPaginaModal
+        open={presetModalOpen}
+        onClose={() => setPresetModalOpen(false)}
+        presetAtual={paginaPreset}
+        podeUsarPresets={limites.presets}
+        onAplicar={setPaginaPreset}
+      />
     </Modal>
   )
 }

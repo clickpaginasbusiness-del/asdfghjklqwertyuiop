@@ -17,7 +17,7 @@ import {
 import {
   Clock, CheckCircle2, Calendar, ChevronLeft, ChevronRight, X,
   UserCircle2, MessageCircle, AtSign, MapPin, Star,
-  CalendarPlus, Share2, Quote, Trash2, Home, Eye, Sparkles,
+  CalendarPlus, Share2, Quote, Trash2, Home, Eye, Sparkles, ArrowRight,
 } from 'lucide-react'
 import { getServicoIcone } from '@/lib/servicoIcones'
 import { calcularValorSinal } from '@/lib/sinal'
@@ -25,13 +25,13 @@ import type { PrestadoraPublica, Servico, GaleriaItem, Agendamento, Profissional
 import { getTema } from '@/lib/theme'
 import { planoEfetivo, ehPro } from '@/lib/plano'
 import { limitesPlano } from '@/lib/planoLimites'
+import {
+  buildGoogleCalendarUrl, formatHora, GaleriaGrid,
+  type Step, type ServicoComProfissionais,
+} from './PerfilPublicoClient'
 import toast from 'react-hot-toast'
 import { format, addDays, startOfDay, isSameDay, isToday, isBefore, getDay, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-
-export type ServicoComProfissionais = Servico & {
-  servico_profissionais: { profissional_id: string }[]
-}
 
 interface Props {
   prestadora: PrestadoraPublica
@@ -44,85 +44,7 @@ interface Props {
   isDemo?: boolean
 }
 
-export function buildGoogleCalendarUrl(a: Agendamento, prestadoraNome: string): string {
-  const inicio = new Date(a.data_hora)
-  const duracao = a.servicos?.duracao_minutos ?? 30
-  const fim = new Date(inicio.getTime() + duracao * 60000)
-  const toUTC = (d: Date) => format(d, "yyyyMMdd'T'HHmmss")
-  const params = new URLSearchParams({
-    action: 'TEMPLATE',
-    text: `${a.servicos?.nome} - ${prestadoraNome}`,
-    dates: `${toUTC(inicio)}/${toUTC(fim)}`,
-    details: `Agendamento de ${a.servicos?.nome}${a.profissionais ? ` com ${a.profissionais.nome}` : ''} - ${prestadoraNome}`,
-  })
-  return `https://calendar.google.com/calendar/render?${params.toString()}`
-}
-
-export type Step = 'servico' | 'profissional' | 'data' | 'horario' | 'cliente' | 'confirmado'
-
-export function formatHora(h: string): string {
-  const [hora, min] = h.split(':')
-  return min === '00' ? `${parseInt(hora)}h` : `${parseInt(hora)}h${min}`
-}
-
-export function GaleriaGrid({
-  itens, modo, altPrefixo, nomePrestadora, onItemClick,
-}: {
-  itens: GaleriaItem[]
-  modo: 'empilhada' | 'carrossel'
-  altPrefixo: string
-  nomePrestadora: string
-  onItemClick: (index: number) => void
-}) {
-  const tile = (item: GaleriaItem, i: number) => (
-    <div
-      key={item.id}
-      className="aspect-square rounded-2xl overflow-hidden bg-gray-100 cursor-pointer relative group"
-      onClick={() => onItemClick(i)}
-    >
-      {item.tipo === 'video' ? (
-        <video
-          src={item.url}
-          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-          muted
-        />
-      ) : (
-        /* Inner div for scale — absolute fills parent, Image fills this div */
-        <div className="absolute inset-0 transition-transform duration-300 group-hover:scale-110">
-          <ImageWithSkeleton
-            src={item.url}
-            alt={`${altPrefixo} ${i + 1} de ${nomePrestadora}`}
-            fill
-            className="object-cover"
-            sizes="33vw"
-          />
-        </div>
-      )}
-      {/* Subtle overlay */}
-      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" aria-hidden />
-    </div>
-  )
-
-  if (modo === 'carrossel') {
-    return (
-      <div className="flex gap-2 overflow-x-auto snap-x snap-mandatory pb-1 -mx-4 px-4">
-        {itens.map((item, i) => (
-          <div key={item.id} className="w-32 sm:w-40 shrink-0 snap-center">
-            {tile(item, i)}
-          </div>
-        ))}
-      </div>
-    )
-  }
-
-  return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-      {itens.map((item, i) => tile(item, i))}
-    </div>
-  )
-}
-
-export default function PerfilPublicoClient({
+export default function PerfilPublicoLandingClient({
   prestadora, servicos, galeria, diasBloqueados, profissionais, horariosFuncionamento, avaliacoes, isDemo = false,
 }: Props) {
   const temMultiplasProfissionais = profissionais.length >= 2
@@ -135,7 +57,6 @@ export default function PerfilPublicoClient({
 
   const profissionaisDoServico = useMemo(() => {
     const ids = servicoSelecionado?.servico_profissionais?.map((sp) => sp.profissional_id) ?? []
-    // Sem restrição cadastrada → serviço disponível para todas
     return ids.length === 0 ? profissionais : profissionais.filter((p) => ids.includes(p.id))
   }, [servicoSelecionado, profissionais])
   const [dataSelecionada, setDataSelecionada] = useState<Date | null>(null)
@@ -157,7 +78,6 @@ export default function PerfilPublicoClient({
   const [agendando, setAgendando] = useState(false)
   const [agendamentoFeito, setAgendamentoFeito] = useState<Agendamento | null>(null)
 
-  // Pagamento online (sinal obrigatório ou pagamento opcional do valor total)
   const [concordaNaoReembolsavel, setConcordaNaoReembolsavel] = useState(false)
   const [mostrarPagamentoOpcional, setMostrarPagamentoOpcional] = useState(false)
 
@@ -188,7 +108,6 @@ export default function PerfilPublicoClient({
   const [logoMenuAberto, setLogoMenuAberto] = useState(false)
   const logoMenuRef = useRef<HTMLDivElement>(null)
 
-  /* Exibe: confirmados futuros + últimos 7 dias (não deleta do banco) */
   const meusAgendamentosVisiveis = useMemo(() => {
     const agora = new Date()
     const limiteHistorico = subDays(agora, 7)
@@ -207,25 +126,6 @@ export default function PerfilPublicoClient({
   const weekStart = addDays(today, weekOffset * 7)
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
 
-  /* Scroll-triggered fade-in animations */
-  useEffect(() => {
-    const els = document.querySelectorAll('[data-animate]')
-    const obs = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((e) => {
-          if (e.isIntersecting) {
-            e.target.classList.add('in-view')
-            obs.unobserve(e.target)
-          }
-        })
-      },
-      { threshold: 0.1, rootMargin: '0px 0px -20px 0px' }
-    )
-    els.forEach((el) => obs.observe(el))
-    return () => obs.disconnect()
-  }, [])
-
-  /* Registra uma visita por sessao (para relatorios de conversao) */
   useEffect(() => {
     if (isDemo) return
     const key = `visita_${prestadora.id}`
@@ -246,9 +146,6 @@ export default function PerfilPublicoClient({
     setMeusAgendamentos(agendamentos ?? [])
   }
 
-  /* Restaura sessão do cliente. Também processa o retorno do Google OAuth
-     (?google_login=1 para login direto — o token vem num cookie httpOnly,
-     não na URL — ou ?ge=email&gn=nome para cadastro assistido). */
   useEffect(() => {
     if (isDemo) return
 
@@ -317,11 +214,6 @@ export default function PerfilPublicoClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDemo])
 
-  /* Chegou de /agendamento/sucesso com #meus-agendamentos (botão "Ver meus
-     agendamentos") — abre o modal direto. Só funciona se a sessão da cliente
-     já foi restaurada (efeito acima), por isso não recarrega a lista aqui: a
-     sessão de sinal exige login antes de agendar, então o token já deve
-     existir no localStorage nesse retorno. */
   useEffect(() => {
     if (isDemo) return
     if (window.location.hash === '#meus-agendamentos') {
@@ -330,7 +222,6 @@ export default function PerfilPublicoClient({
     }
   }, [isDemo])
 
-  /* Fecha os dropdowns (perfil e logo) ao clicar fora */
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (perfilRef.current && !perfilRef.current.contains(e.target as Node)) {
@@ -345,19 +236,12 @@ export default function PerfilPublicoClient({
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  /* Today's opening hours */
   const diaHoje = getDay(new Date())
   const horarioHoje = horariosFuncionamento.find((h) => h.dia_semana === diaHoje)
   const aberturaHoje = horarioHoje?.hora_abertura ?? prestadora.hora_abertura
   const fechamentoHoje = horarioHoje?.hora_fechamento ?? prestadora.hora_fechamento
-  // Sem linha salva pra esse dia (prestadora nunca configurou Horários), assume
-  // o mesmo padrão mostrado no painel — domingo fechado, resto aberto — em vez
-  // de tratar "sem configuração" como "sempre aberto".
   const abertoHoje = horarioHoje ? horarioHoje.ativo : diaAtivoPadrao(diaHoje)
 
-  // Lógica de disponibilidade (horários por dia + dias indisponíveis) mora em
-  // @/lib/utils, compartilhada com o agendamento manual do painel — evita as
-  // duas telas divergirem silenciosamente sobre o que conta como disponível.
   function isDiaDesativado(d: Date): boolean {
     if (isBefore(d, today)) return true
     return diaIndisponivelParaAgendar(getDay(d), format(d, 'yyyy-MM-dd'), diasBloqueados, horariosFuncionamento, profissionalSelecionada)
@@ -365,6 +249,10 @@ export default function PerfilPublicoClient({
 
   function computeHorasDia(d: Date, prof: Profissional | null) {
     return computeHorasDoDia(getDay(d), horariosFuncionamento, prof, prestadora.hora_abertura, prestadora.hora_fechamento)
+  }
+
+  function scrollParaAgendar() {
+    document.getElementById('agendar')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   function selecionarServico(s: ServicoComProfissionais) {
@@ -680,10 +568,6 @@ export default function PerfilPublicoClient({
     setStep('confirmado')
   }
 
-  /** Serviço com pagamento online (sinal obrigatório ou "pagar agora" do
-   * valor total) — cria um agendamento temporário (aguardando_pagamento) e
-   * manda a cliente pro checkout de pagamento; o webhook do MP confirma o
-   * agendamento de verdade quando o pagamento é aprovado. */
   async function pagarEIrParaCheckout() {
     if (!servicoSelecionado || !dataSelecionada || !horarioSelecionado || !clienteLogado) return
 
@@ -760,7 +644,6 @@ export default function PerfilPublicoClient({
             dataSelecionada.getFullYear(), dataSelecionada.getMonth(), dataSelecionada.getDate(), hh, mm
           ).getTime()
           const slotEnd = slotStart + servicoSelecionado.duracao_minutos * 60000
-          // Bloqueia se o novo slot sobrepõe qualquer agendamento existente
           return !agendamentosExistentes.some(({ start, end }) => slotStart < end && slotEnd > start)
         })
         .filter((h) => {
@@ -796,18 +679,11 @@ export default function PerfilPublicoClient({
   const planoAtual = planoEfetivo({ plano: prestadora.plano, e_parceira: prestadora.e_parceira })
   const limitesAtuais = limitesPlano(planoAtual)
 
-  // Destaque é recurso exclusivo do Plano Pro+ — se a prestadora não é mais
-  // Pro+ (ex.: downgrade após ter marcado destaques), ignora marcações antigas.
-  // Sem nenhuma marcada, a seção de avaliações simplesmente não aparece —
-  // sem fallback para "mais recentes".
   const avaliacoesDestaque = prestadora.pagina_mostrar_avaliacoes && ehPro(planoAtual)
     ? avaliacoes.filter((a) => a.destaque)
     : []
   const avaliacoesExibidas = avaliacoesDestaque.slice(0, 3)
 
-  // Galeria de trabalhos: disponível em todos os planos, respeitando o limite
-  // de fotos de cada um — o slice extra cobre contas com mais ids salvos do
-  // que o plano atual permite (ex.: downgrade depois de ter selecionado mais).
   const galeriaCompleta = prestadora.pagina_mostrar_galeria ? galeria : []
   const galeriaVisivel = (
     prestadora.pagina_galeria_fotos_ids.length > 0
@@ -817,15 +693,19 @@ export default function PerfilPublicoClient({
       : galeriaCompleta
   ).slice(0, limitesAtuais.fotos_trabalhos)
 
-  // Fotos do estabelecimento: bloqueadas no Start (limite 0) — reforça aqui
-  // também, não só no modal, pra um downgrade esconder a seção mesmo que os
-  // dados continuem salvos. Nos demais planos, respeita o limite de fotos.
   const estabelecimentoFotos = prestadora.pagina_mostrar_estabelecimento && limitesAtuais.fotos_estabelecimento > 0
     ? prestadora.pagina_estabelecimento_fotos_ids
         .map((id) => galeria.find((g) => g.id === id))
         .filter((g): g is GaleriaItem => !!g)
         .slice(0, limitesAtuais.fotos_estabelecimento)
     : []
+
+  // Foto do banner (hero): a escolhida explicitamente, senão a 1ª da galeria de
+  // trabalhos selecionada, senão nenhuma (fundo em degradê da cor do tema).
+  const fotoBanner = prestadora.pagina_banner_foto_id
+    ? galeria.find((g) => g.id === prestadora.pagina_banner_foto_id && g.tipo === 'imagem')
+    : null
+  const fotoBannerEfetiva = fotoBanner ?? galeriaVisivel.find((g) => g.tipo === 'imagem') ?? null
 
   async function compartilharAgendamento() {
     if (!agendamentoFeito) return
@@ -844,256 +724,238 @@ export default function PerfilPublicoClient({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
 
-      {/* ── HEADER ─────────────────────────────── */}
-      <div
-        className="relative overflow-hidden pb-14"
-        style={{ background: `linear-gradient(to bottom, ${tema.hexHeader}, white)` }}
-      >
-        {/* Decorative blobs */}
-        <div aria-hidden className="absolute -top-20 -right-20 w-72 h-72 rounded-full blur-3xl pointer-events-none" style={{ backgroundColor: tema.hex, opacity: 0.18 }} />
-        <div aria-hidden className="absolute top-10 -left-16 w-56 h-56 rounded-full blur-3xl pointer-events-none" style={{ backgroundColor: tema.hex, opacity: 0.12 }} />
+      {/* ── NAVBAR ─────────────────────────────── */}
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-gray-100">
+        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between gap-3">
+          <div className="relative shrink-0" ref={logoMenuRef}>
+            <button
+              onClick={() => setLogoMenuAberto((v) => !v)}
+              aria-expanded={logoMenuAberto}
+              aria-haspopup="menu"
+              className="font-serif text-lg font-bold text-rose-400 rounded-lg px-1 py-1 hover:text-rose-500 transition-colors"
+            >
+              BelleBook
+            </button>
 
-        <div className="max-w-2xl mx-auto px-4 pt-8">
-          {/* Top bar */}
-          <div className="flex items-center justify-between gap-2 flex-wrap mb-10">
-            <div className="relative shrink-0" ref={logoMenuRef}>
-              <button
-                onClick={() => setLogoMenuAberto((v) => !v)}
-                aria-expanded={logoMenuAberto}
-                aria-haspopup="menu"
-                className="font-serif text-xl font-bold text-rose-400 rounded-lg -mx-1 -my-1 px-1 py-1 hover:text-rose-500 transition-colors"
+            {logoMenuAberto && (
+              <div
+                role="menu"
+                className="animate-dropdown-in absolute left-0 mt-2 w-64 bg-white rounded-xl border border-gray-100 shadow-lg z-30 p-2"
               >
-                BelleBook
-              </button>
-
-              {logoMenuAberto && (
-                <div
-                  role="menu"
-                  className="animate-dropdown-in absolute left-0 mt-2 w-64 bg-white rounded-xl border border-gray-100 shadow-lg z-30 p-2"
+                <Link
+                  href="/"
+                  role="menuitem"
+                  onClick={() => setLogoMenuAberto(false)}
+                  className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                 >
-                  <Link
-                    href="/"
-                    role="menuitem"
-                    onClick={() => setLogoMenuAberto(false)}
-                    className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                  >
-                    <Home className="w-4 h-4 text-gray-400 shrink-0" />
-                    Conheça o BelleBook
-                  </Link>
-                  <Link
-                    href="/painel/demo"
-                    role="menuitem"
-                    onClick={() => setLogoMenuAberto(false)}
-                    className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                  >
-                    <Eye className="w-4 h-4 text-gray-400 shrink-0" />
-                    Ver demonstração
-                  </Link>
-                  <div className="my-1 border-t border-gray-100" />
-                  <Link
-                    href="/painel/cadastro"
-                    role="menuitem"
-                    onClick={() => setLogoMenuAberto(false)}
-                    className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-semibold text-white bg-rose-400 hover:bg-rose-500 transition-colors"
-                  >
-                    <Sparkles className="w-4 h-4 shrink-0" />
-                    Crie sua página grátis
-                  </Link>
-                </div>
-              )}
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              {clienteLogado && (
-                <Button variant="outline" size="sm" onClick={() => setMeusAgendamentosModal(true)}>
-                  <span className="hidden sm:inline">Meus agendamentos</span>
-                  <span className="sm:hidden">Agendamentos</span>
-                </Button>
-              )}
+                  <Home className="w-4 h-4 text-gray-400 shrink-0" />
+                  Conheça o BelleBook
+                </Link>
+                <Link
+                  href="/painel/demo"
+                  role="menuitem"
+                  onClick={() => setLogoMenuAberto(false)}
+                  className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  <Eye className="w-4 h-4 text-gray-400 shrink-0" />
+                  Ver demonstração
+                </Link>
+                <div className="my-1 border-t border-gray-100" />
+                <Link
+                  href="/painel/cadastro"
+                  role="menuitem"
+                  onClick={() => setLogoMenuAberto(false)}
+                  className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-semibold text-white bg-rose-400 hover:bg-rose-500 transition-colors"
+                >
+                  <Sparkles className="w-4 h-4 shrink-0" />
+                  Crie sua página grátis
+                </Link>
+              </div>
+            )}
+          </div>
 
-              {clienteLogado ? (
-                <div className="relative" ref={perfilRef}>
-                  <button
-                    onClick={() => { setPerfilAberto((v) => !v); setEditandoNome(false) }}
-                    className="px-3 py-1.5 min-h-11 text-sm font-semibold rounded-xl bg-white border-2 hover:brightness-95 transition-all shadow-sm"
-                    style={{ borderColor: tema.hex, color: tema.hexDark }}
-                  >
-                    {clienteLogado.nome.split(' ')[0]}
-                  </button>
+          <p className="hidden sm:block flex-1 text-center font-serif text-base font-semibold text-gray-900 truncate">
+            {prestadora.nome}
+          </p>
 
-                  {perfilAberto && (
-                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl border border-gray-100 shadow-lg z-30 p-2">
-                      {editandoNome ? (
-                        <div className="p-2 space-y-2">
-                          <Input
-                            placeholder="Seu nome"
-                            value={novoNome}
-                            onChange={(e) => setNovoNome(e.target.value)}
-                            autoFocus
-                          />
-                          <Button onClick={salvarNome} loading={salvandoNome} className="w-full" size="sm" style={{ backgroundColor: tema.hex }}>
-                            Salvar
-                          </Button>
-                        </div>
-                      ) : (
-                        <>
-                          <button
-                            onClick={() => { setNovoNome(clienteLogado.nome); setEditandoNome(true) }}
-                            className="w-full text-left px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                          >
-                            Alterar nome
-                          </button>
-                          <button
-                            onClick={sair}
-                            className="w-full text-left px-3 py-2 rounded-lg text-sm text-red-500 hover:bg-red-50 transition-colors"
-                          >
-                            Sair
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ) : (
+          <div className="flex items-center gap-2 shrink-0">
+            {clienteLogado && (
+              <Button variant="outline" size="sm" onClick={() => setMeusAgendamentosModal(true)} className="hidden sm:inline-flex">
+                Meus agendamentos
+              </Button>
+            )}
+
+            {clienteLogado ? (
+              <div className="relative" ref={perfilRef}>
                 <button
-                  onClick={() => { if (isDemo) { loginDemoInstantaneo() } else { setLoginModal(true) } }}
+                  onClick={() => { setPerfilAberto((v) => !v); setEditandoNome(false) }}
                   className="px-3 py-1.5 min-h-11 text-sm font-semibold rounded-xl bg-white border-2 hover:brightness-95 transition-all shadow-sm"
                   style={{ borderColor: tema.hex, color: tema.hexDark }}
                 >
-                  Entrar
+                  {clienteLogado.nome.split(' ')[0]}
                 </button>
+
+                {perfilAberto && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl border border-gray-100 shadow-lg z-30 p-2">
+                    {editandoNome ? (
+                      <div className="p-2 space-y-2">
+                        <Input
+                          placeholder="Seu nome"
+                          value={novoNome}
+                          onChange={(e) => setNovoNome(e.target.value)}
+                          autoFocus
+                        />
+                        <Button onClick={salvarNome} loading={salvandoNome} className="w-full" size="sm" style={{ backgroundColor: tema.hex }}>
+                          Salvar
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => setMeusAgendamentosModal(true)}
+                          className="sm:hidden w-full text-left px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          Meus agendamentos
+                        </button>
+                        <button
+                          onClick={() => { setNovoNome(clienteLogado.nome); setEditandoNome(true) }}
+                          className="w-full text-left px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                        >
+                          Alterar nome
+                        </button>
+                        <button
+                          onClick={sair}
+                          className="w-full text-left px-3 py-2 rounded-lg text-sm text-red-500 hover:bg-red-50 transition-colors"
+                        >
+                          Sair
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={() => { if (isDemo) { loginDemoInstantaneo() } else { setLoginModal(true) } }}
+                className="hidden sm:inline-flex px-3 py-1.5 min-h-11 text-sm font-semibold rounded-xl bg-white border-2 hover:brightness-95 transition-all shadow-sm"
+                style={{ borderColor: tema.hex, color: tema.hexDark }}
+              >
+                Entrar
+              </button>
+            )}
+
+            <Button size="sm" onClick={scrollParaAgendar} style={{ backgroundColor: tema.hex }} className="hover:brightness-95">
+              Agendar agora
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      {/* ── HERO ───────────────────────────────── */}
+      <section className="relative">
+        <div className="relative h-[38vh] min-h-[240px] max-h-[420px] w-full overflow-hidden">
+          {fotoBannerEfetiva ? (
+            <ImageWithSkeleton src={fotoBannerEfetiva.url} alt={`Espaço de ${prestadora.nome}`} fill className="object-cover" priority />
+          ) : (
+            <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${tema.hex}, ${tema.hexDark})` }} />
+          )}
+        </div>
+
+        <div className="max-w-2xl mx-auto px-4 -mt-14 relative z-10 flex flex-col items-center text-center gap-4 pb-10">
+          <div
+            className="w-28 h-28 rounded-full p-[3px] shadow-xl"
+            style={{ background: `linear-gradient(135deg, ${tema.hex}, ${tema.hexDark})` }}
+          >
+            <div className="w-full h-full rounded-full overflow-hidden border-2 border-white bg-rose-100">
+              {prestadora.foto_url ? (
+                <ImageWithSkeleton
+                  src={prestadora.foto_url}
+                  alt={prestadora.nome}
+                  width={112}
+                  height={112}
+                  className="object-cover w-full h-full"
+                  priority
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-white font-bold text-4xl font-serif">
+                  {prestadora.nome.charAt(0)}
+                </div>
               )}
             </div>
           </div>
 
-          {/* Profile info */}
-          <div className="flex flex-col items-center text-center gap-5">
-            {/* Photo with gradient ring */}
-            <div className="relative">
-              <div
-                className="w-28 h-28 rounded-full p-[3px] shadow-xl"
-                style={{ background: `linear-gradient(135deg, ${tema.hex}, ${tema.hexDark})` }}
-              >
-                <div className="w-full h-full rounded-full overflow-hidden border-2 border-white bg-rose-100">
-                  {prestadora.foto_url ? (
-                    <ImageWithSkeleton
-                      src={prestadora.foto_url}
-                      alt={prestadora.nome}
-                      width={112}
-                      height={112}
-                      className="object-cover w-full h-full"
-                      priority
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-white font-bold text-4xl font-serif">
-                      {prestadora.nome.charAt(0)}
-                    </div>
-                  )}
-                </div>
-              </div>
-              {/* Online indicator */}
-              <div className="absolute bottom-1 right-1 w-4 h-4 rounded-full bg-emerald-400 border-2 border-white shadow" />
-            </div>
+          <div className="space-y-3">
+            <h1 className="font-serif text-3xl sm:text-4xl font-bold text-gray-900 leading-tight">{prestadora.nome}</h1>
 
-            <div className="space-y-3">
-              <h1 className="font-serif text-4xl font-bold text-gray-900 leading-tight">{prestadora.nome}</h1>
-
-              {/* 24h + avaliações badges */}
-              <div className="flex items-center justify-center gap-2 flex-wrap">
-                {prestadora.pagina_mostrar_texto_agendamento && prestadora.pagina_texto_agendamento && (
-                  <span className="inline-flex items-center gap-1.5 bg-amber-50 border border-amber-100 text-amber-600 rounded-full px-4 py-1.5 text-xs font-semibold">
-                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                    {prestadora.pagina_texto_agendamento}
-                  </span>
-                )}
-                {prestadora.pagina_mostrar_estrelas && mediaAvaliacoes !== null && (
-                  <span className="inline-flex items-center gap-1.5 bg-amber-50 border border-amber-100 text-amber-600 rounded-full px-4 py-1.5 text-xs font-semibold">
-                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                    {mediaAvaliacoes.toFixed(1)} ({avaliacoes.length} avaliaç{avaliacoes.length > 1 ? 'ões' : 'ão'})
-                  </span>
-                )}
-              </div>
-
-              {prestadora.bio && (
-                <p className="text-gray-500 text-sm max-w-md leading-relaxed">{prestadora.bio}</p>
+            <div className="flex items-center justify-center gap-2 flex-wrap">
+              {prestadora.pagina_mostrar_texto_agendamento && prestadora.pagina_texto_agendamento && (
+                <span className="inline-flex items-center gap-1.5 bg-amber-50 border border-amber-100 text-amber-600 rounded-full px-4 py-1.5 text-xs font-semibold">
+                  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                  {prestadora.pagina_texto_agendamento}
+                </span>
               )}
-
-              {/* Opening hours */}
+              {prestadora.pagina_mostrar_estrelas && mediaAvaliacoes !== null && (
+                <span className="inline-flex items-center gap-1.5 bg-amber-50 border border-amber-100 text-amber-600 rounded-full px-4 py-1.5 text-xs font-semibold">
+                  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                  {mediaAvaliacoes.toFixed(1)} ({avaliacoes.length} avaliaç{avaliacoes.length > 1 ? 'ões' : 'ão'})
+                </span>
+              )}
               {abertoHoje && (
-                <div className="flex items-center justify-center gap-1.5 text-xs text-gray-500">
+                <span className="inline-flex items-center gap-1.5 text-xs text-gray-500">
                   <Clock className="w-3.5 h-3.5" style={{ color: tema.hex }} />
                   Hoje: {formatHora(aberturaHoje)} – {formatHora(fechamentoHoje)}
-                  {horarioHoje?.turno2_inicio && horarioHoje?.turno2_fim && (
-                    <>, {formatHora(horarioHoje.turno2_inicio)} – {formatHora(horarioHoje.turno2_fim)}</>
-                  )}
-                </div>
-              )}
-
-              {/* Professionals count */}
-              {profissionais.length > 0 && (
-                <div className="flex items-center justify-center gap-1 text-xs text-gray-400">
-                  <UserCircle2 className="w-3.5 h-3.5" />
-                  {profissionais.length} {profissionais.length === 1 ? 'profissional' : 'profissionais'}
-                </div>
+                </span>
               )}
             </div>
+
+            {prestadora.bio && (
+              <p className="text-gray-500 text-sm max-w-md mx-auto leading-relaxed">{prestadora.bio}</p>
+            )}
           </div>
 
-          {/* Team avatars */}
-          {temMultiplasProfissionais && (
-            <div className="flex justify-center gap-3 mt-8">
+          <Button onClick={scrollParaAgendar} size="lg" className="hover:brightness-95 gap-2" style={{ backgroundColor: tema.hex }}>
+            Agendar agora
+            <ArrowRight className="w-4 h-4" />
+          </Button>
+        </div>
+      </section>
+
+      <div className="max-w-6xl mx-auto px-4 space-y-16 pb-16">
+
+        {/* ── NOSSA EQUIPE ───────────────────────── */}
+        {profissionais.length > 0 && (
+          <section className="rounded-3xl p-6 sm:p-10" style={{ backgroundColor: tema.hexLight }}>
+            <h2 className="font-serif text-2xl font-semibold text-gray-900 mb-6 text-center">Nossa equipe</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {profissionais.map((p) => (
-                <div key={p.id} className="flex flex-col items-center gap-1">
-                  <div className="w-11 h-11 rounded-full overflow-hidden border-2 border-white shadow-md bg-rose-100">
+                <div key={p.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col items-center text-center gap-3">
+                  <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-white shadow bg-rose-100 shrink-0">
                     {p.foto_url ? (
-                      <Image src={p.foto_url} alt={p.nome} width={44} height={44} className="w-full h-full object-cover" />
+                      <Image src={p.foto_url} alt={p.nome} width={80} height={80} className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-sm font-bold font-serif" style={{ color: tema.hex }}>
+                      <div className="w-full h-full flex items-center justify-center text-2xl font-bold font-serif" style={{ color: tema.hex }}>
                         {p.nome.charAt(0)}
                       </div>
                     )}
                   </div>
-                  <span className="text-[10px] text-gray-500">{p.nome.split(' ')[0]}</span>
+                  <div>
+                    <p className="font-semibold text-gray-900">{p.nome}</p>
+                    {p.bio && <p className="text-xs text-gray-500 mt-1 leading-relaxed">{p.bio}</p>}
+                  </div>
                 </div>
               ))}
             </div>
-          )}
-        </div>
-      </div>
-
-      {/* ── MAIN CONTENT ───────────────────────── */}
-      <div className="max-w-2xl mx-auto px-4 py-8 space-y-10">
-
-        {/* Map card */}
-        {prestadora.endereco && (
-          <div data-animate className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: tema.hexLight }}>
-              <MapPin className="w-5 h-5" style={{ color: tema.hex }} />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-0.5">Localização</p>
-              <p className="text-sm text-gray-800 font-medium truncate">{prestadora.endereco}</p>
-            </div>
-            <a
-              href={`https://maps.google.com/?q=${encodeURIComponent(prestadora.endereco)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="shrink-0 flex items-center gap-1 text-xs font-semibold hover:brightness-90 transition-all whitespace-nowrap"
-              style={{ color: tema.hexDark }}
-            >
-              Como chegar
-              <ChevronRight className="w-3.5 h-3.5" />
-            </a>
-          </div>
+          </section>
         )}
 
-        {/* Gallery */}
+        {/* ── GALERIA DE TRABALHOS ───────────────── */}
         {galeriaVisivel.length > 0 && (
-          <section data-animate>
-            <h2 className="font-serif text-xl font-semibold text-gray-900 mb-4">Trabalhos</h2>
+          <section>
+            <h2 className="font-serif text-2xl font-semibold text-gray-900 mb-6 text-center">Nossos trabalhos</h2>
             <GaleriaGrid
-              itens={prestadora.pagina_galeria_modo === 'carrossel' ? galeriaVisivel : galeriaVisivel.slice(0, 9)}
+              itens={prestadora.pagina_galeria_modo === 'carrossel' ? galeriaVisivel : galeriaVisivel.slice(0, 12)}
               modo={prestadora.pagina_galeria_modo}
               altPrefixo="Trabalho"
               nomePrestadora={prestadora.nome}
@@ -1102,27 +964,52 @@ export default function PerfilPublicoClient({
           </section>
         )}
 
-        {/* Fotos do estabelecimento */}
-        {estabelecimentoFotos.length > 0 && (
-          <section data-animate>
-            <h2 className="font-serif text-xl font-semibold text-gray-900 mb-4">
+        {/* ── ESTABELECIMENTO + MAPA ─────────────── */}
+        {(estabelecimentoFotos.length > 0 || prestadora.endereco) && (
+          <section>
+            <h2 className="font-serif text-2xl font-semibold text-gray-900 mb-6 text-center">
               {prestadora.pagina_estabelecimento_titulo || 'Nosso espaço'}
             </h2>
-            <GaleriaGrid
-              itens={prestadora.pagina_estabelecimento_modo === 'carrossel' ? estabelecimentoFotos : estabelecimentoFotos.slice(0, 9)}
-              modo={prestadora.pagina_estabelecimento_modo}
-              altPrefixo="Foto do espaço"
-              nomePrestadora={prestadora.nome}
-              onItemClick={(i) => setLightbox({ lista: estabelecimentoFotos, index: i })}
-            />
+            {estabelecimentoFotos.length > 0 && (
+              <div className="mb-5">
+                <GaleriaGrid
+                  itens={prestadora.pagina_estabelecimento_modo === 'carrossel' ? estabelecimentoFotos : estabelecimentoFotos.slice(0, 9)}
+                  modo={prestadora.pagina_estabelecimento_modo}
+                  altPrefixo="Foto do espaço"
+                  nomePrestadora={prestadora.nome}
+                  onItemClick={(i) => setLightbox({ lista: estabelecimentoFotos, index: i })}
+                />
+              </div>
+            )}
+            {prestadora.endereco && (
+              <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex items-center gap-3 max-w-xl mx-auto">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: tema.hexLight }}>
+                  <MapPin className="w-5 h-5" style={{ color: tema.hex }} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-0.5">Localização</p>
+                  <p className="text-sm text-gray-800 font-medium truncate">{prestadora.endereco}</p>
+                </div>
+                <a
+                  href={`https://maps.google.com/?q=${encodeURIComponent(prestadora.endereco)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shrink-0 flex items-center gap-1 text-xs font-semibold hover:brightness-90 transition-all whitespace-nowrap"
+                  style={{ color: tema.hexDark }}
+                >
+                  Como chegar
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </a>
+              </div>
+            )}
           </section>
         )}
 
-        {/* Avaliações — só aparece com destaques marcados (Plano Pro) */}
+        {/* ── AVALIAÇÕES ─────────────────────────── */}
         {avaliacoesExibidas.length > 0 && (
-          <section data-animate>
-            <h2 className="font-serif text-xl font-semibold text-gray-900 mb-4">O que dizem sobre mim</h2>
-            <div className="space-y-3">
+          <section>
+            <h2 className="font-serif text-2xl font-semibold text-gray-900 mb-6 text-center">O que dizem nossas clientes</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {avaliacoesExibidas.map((av) => (
                 <div key={av.id} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
                   <div className="flex items-center justify-between mb-2">
@@ -1151,453 +1038,451 @@ export default function PerfilPublicoClient({
           </section>
         )}
 
-        {/* Booking flow */}
-        <section data-animate>
-          <h2 className="font-serif text-xl font-semibold text-gray-900 mb-4">Agendar</h2>
+        {/* ── AGENDAMENTO INLINE ─────────────────── */}
+        <section id="agendar" className="scroll-mt-20 -mx-4 sm:mx-0">
+          <div className="rounded-none sm:rounded-3xl p-6 sm:p-10" style={{ backgroundColor: tema.hexLight }}>
+            <h2 className="font-serif text-2xl font-semibold text-gray-900 mb-6 text-center">Agende seu horário</h2>
 
-          {step === 'confirmado' && agendamentoFeito ? (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center space-y-5">
-              <div
-                className="w-20 h-20 mx-auto rounded-full flex items-center justify-center animate-check-pop"
-                style={{ backgroundColor: tema.hexLight }}
-              >
-                <CheckCircle2 className="w-12 h-12" style={{ color: tema.hex }} />
-              </div>
-              <div>
-                <h3 className="font-serif text-2xl font-bold text-gray-900">Agendado!</h3>
-                <p className="text-sm text-gray-400 mt-1">Te esperamos, {agendamentoFeito.clientes?.nome?.split(' ')[0]}!</p>
-              </div>
-              <div className="rounded-xl p-4 text-sm text-left space-y-2" style={{ backgroundColor: tema.hexLight }}>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Serviço</span>
-                  <span className="font-medium">{agendamentoFeito.servicos?.nome}</span>
-                </div>
-                {agendamentoFeito.profissionais && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Profissional</span>
-                    <span className="font-medium">{agendamentoFeito.profissionais.nome}</span>
+            <div className="max-w-lg mx-auto">
+              {step === 'confirmado' && agendamentoFeito ? (
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center space-y-5">
+                  <div
+                    className="w-20 h-20 mx-auto rounded-full flex items-center justify-center animate-check-pop"
+                    style={{ backgroundColor: tema.hexLight }}
+                  >
+                    <CheckCircle2 className="w-12 h-12" style={{ color: tema.hex }} />
                   </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Data e hora</span>
-                  <span className="font-medium">{formatDateTime(agendamentoFeito.data_hora)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Valor</span>
-                  <span className="font-medium" style={{ color: tema.hexDark }}>{formatCurrency(agendamentoFeito.servicos?.preco ?? 0)}</span>
-                </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-2.5">
-                <a
-                  href={buildGoogleCalendarUrl(agendamentoFeito, prestadora.nome)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  <CalendarPlus className="w-4 h-4" />
-                  Adicionar ao Google Calendar
-                </a>
-                <button
-                  onClick={compartilharAgendamento}
-                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  <Share2 className="w-4 h-4" />
-                  Compartilhar
-                </button>
-              </div>
-
-              <Button variant="outline" onClick={resetarFluxo} className="w-full">
-                Fazer outro agendamento
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {/* Progress */}
-              <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-2 flex-wrap">
-                {progressSteps.map((label, i) => {
-                  const active = i <= currentStepIndex
-                  return (
-                    <div key={label} className="flex items-center gap-1.5">
-                      <span className={active ? 'font-medium' : ''} style={active ? { color: tema.hexDark } : undefined}>{label}</span>
-                      {i < progressSteps.length - 1 && (
-                        <div
-                          className="h-px w-3"
-                          style={{ backgroundColor: active && i < currentStepIndex ? tema.hex : '#e5e7eb' }}
-                        />
-                      )}
+                  <div>
+                    <h3 className="font-serif text-2xl font-bold text-gray-900">Agendado!</h3>
+                    <p className="text-sm text-gray-400 mt-1">Te esperamos, {agendamentoFeito.clientes?.nome?.split(' ')[0]}!</p>
+                  </div>
+                  <div className="rounded-xl p-4 text-sm text-left space-y-2" style={{ backgroundColor: tema.hexLight }}>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Serviço</span>
+                      <span className="font-medium">{agendamentoFeito.servicos?.nome}</span>
                     </div>
-                  )
-                })}
-              </div>
-
-              {/* Step 1: Service */}
-              {step === 'servico' && (
-                <div className="space-y-3">
-                  {servicos.length === 0 ? (
-                    <p className="text-center text-gray-400 py-8 text-sm">Nenhum serviço disponível</p>
-                  ) : (
-                    servicos.map((s) => {
-                      const IconeServico = getServicoIcone(s.icone)
-                      const fotoServico = s.foto_galeria_id
-                        ? galeria.find((g) => g.id === s.foto_galeria_id && g.tipo === 'imagem')
-                        : null
-                      return (
-                      <div
-                        key={s.id}
-                        onClick={() => selecionarServico(s)}
-                        className="bg-white border border-gray-100 rounded-2xl p-4 cursor-pointer hover:shadow-md transition-all duration-200 group"
-                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = tema.hex }}
-                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '' }}
-                      >
-                        <div className="flex items-center gap-4">
-                          <div className="relative w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-colors overflow-hidden" style={{ backgroundColor: tema.hexLight }}>
-                            {fotoServico ? (
-                              <ImageWithSkeleton src={fotoServico.url} alt={s.nome} fill className="object-cover" />
-                            ) : (
-                              <IconeServico className="w-5 h-5" style={{ color: tema.hex }} />
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-gray-900">{s.nome}</h4>
-                            {s.descricao && <p className="text-xs text-gray-500 mt-0.5 truncate">{s.descricao}</p>}
-                            <div className="flex items-center gap-1 mt-1 text-xs text-gray-400">
-                              <Clock className="w-3 h-3" />
-                              {s.duracao_minutos} min
-                            </div>
-                          </div>
-                          <span className="font-bold text-lg shrink-0" style={{ color: tema.hexDark }}>{formatCurrency(s.preco)}</span>
-                        </div>
+                    {agendamentoFeito.profissionais && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Profissional</span>
+                        <span className="font-medium">{agendamentoFeito.profissionais.nome}</span>
                       </div>
-                      )
-                    })
-                  )}
-                </div>
-              )}
-
-              {/* Step 2: Professional */}
-              {step === 'profissional' && servicoSelecionado && (
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-4">
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => setStep('servico')} className="text-gray-400 hover:text-gray-600">
-                      <ChevronLeft className="w-5 h-5" />
-                    </button>
-                    <h3 className="font-medium text-gray-900">Escolha a profissional</h3>
-                    <Badge className="ml-auto" style={{ backgroundColor: tema.hexLight, color: tema.hexDark }}>{servicoSelecionado.nome}</Badge>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Data e hora</span>
+                      <span className="font-medium">{formatDateTime(agendamentoFeito.data_hora)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Valor</span>
+                      <span className="font-medium" style={{ color: tema.hexDark }}>{formatCurrency(agendamentoFeito.servicos?.preco ?? 0)}</span>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    {profissionaisDoServico.map((p) => (
-                      <button
-                        key={p.id}
-                        onClick={() => selecionarProfissional(p)}
-                        className="flex flex-col items-center gap-3 p-4 rounded-2xl border border-gray-100 transition-all text-center group"
-                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = tema.hex; e.currentTarget.style.backgroundColor = tema.hexLight }}
-                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = ''; e.currentTarget.style.backgroundColor = '' }}
-                      >
-                        <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-white shadow bg-rose-100 transition-all">
-                          {p.foto_url ? (
-                            <Image src={p.foto_url} alt={p.nome} width={64} height={64} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-xl font-bold font-serif" style={{ color: tema.hex }}>
-                              {p.nome.charAt(0)}
-                            </div>
+                  <div className="flex flex-col sm:flex-row gap-2.5">
+                    <a
+                      href={buildGoogleCalendarUrl(agendamentoFeito, prestadora.nome)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      <CalendarPlus className="w-4 h-4" />
+                      Adicionar ao Google Calendar
+                    </a>
+                    <button
+                      onClick={compartilharAgendamento}
+                      className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      <Share2 className="w-4 h-4" />
+                      Compartilhar
+                    </button>
+                  </div>
+
+                  <Button variant="outline" onClick={resetarFluxo} className="w-full">
+                    Fazer outro agendamento
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-center gap-1.5 text-xs text-gray-400 mb-2 flex-wrap">
+                    {progressSteps.map((label, i) => {
+                      const active = i <= currentStepIndex
+                      return (
+                        <div key={label} className="flex items-center gap-1.5">
+                          <span className={active ? 'font-medium' : ''} style={active ? { color: tema.hexDark } : undefined}>{label}</span>
+                          {i < progressSteps.length - 1 && (
+                            <div
+                              className="h-px w-3"
+                              style={{ backgroundColor: active && i < currentStepIndex ? tema.hex : '#e5e7eb' }}
+                            />
                           )}
                         </div>
-                        <div>
-                          <p className="font-semibold text-gray-900 text-sm">{p.nome}</p>
-                          {p.bio && <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{p.bio}</p>}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Step 3: Date */}
-              {step === 'data' && servicoSelecionado && (
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-                  <div className="flex items-center gap-2 mb-4">
-                    <button
-                      onClick={() => setStep(temMultiplasProfissionais ? 'profissional' : 'servico')}
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      <ChevronLeft className="w-5 h-5" />
-                    </button>
-                    <div>
-                      <h3 className="font-medium text-gray-900">{servicoSelecionado.nome}</h3>
-                      {profissionalSelecionada && (
-                        <p className="text-xs" style={{ color: tema.hex }}>com {profissionalSelecionada.nome}</p>
-                      )}
-                    </div>
-                    <Badge className="ml-auto" style={{ backgroundColor: tema.hexLight, color: tema.hexDark }}>{formatCurrency(servicoSelecionado.preco)}</Badge>
-                  </div>
-
-                  <div className="flex items-center justify-between mb-3">
-                    <button
-                      onClick={() => setWeekOffset(Math.max(0, weekOffset - 1))}
-                      disabled={weekOffset === 0}
-                      className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 disabled:opacity-30"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </button>
-                    <span className="text-sm font-medium text-gray-700">
-                      {format(weekStart, "MMMM yyyy", { locale: ptBR })}
-                    </span>
-                    <button onClick={() => setWeekOffset(weekOffset + 1)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400">
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-7 gap-1">
-                    {weekDays.map((d) => {
-                      const desativado = isDiaDesativado(d)
-                      const selecionado = dataSelecionada && isSameDay(d, dataSelecionada)
-                      return (
-                        <button
-                          key={d.toISOString()}
-                          disabled={desativado}
-                          onClick={() => selecionarData(d)}
-                          className={`flex flex-col items-center py-2 rounded-xl transition-all text-xs font-medium
-                            ${desativado ? 'opacity-30 cursor-not-allowed' : ''}
-                            ${selecionado ? 'text-white' : 'text-gray-700'}
-                            ${isToday(d) && !selecionado ? 'border' : ''}
-                          `}
-                          style={{
-                            backgroundColor: selecionado ? tema.hex : !desativado ? undefined : undefined,
-                            borderColor: isToday(d) && !selecionado ? tema.hex : undefined,
-                          }}
-                          onMouseEnter={(e) => { if (!desativado && !selecionado) e.currentTarget.style.backgroundColor = tema.hexLight }}
-                          onMouseLeave={(e) => { if (!desativado && !selecionado) e.currentTarget.style.backgroundColor = '' }}
-                        >
-                          <span className="text-[10px] text-current opacity-70 mb-0.5">
-                            {format(d, 'EEE', { locale: ptBR }).slice(0, 3)}
-                          </span>
-                          {format(d, 'd')}
-                        </button>
                       )
                     })}
                   </div>
-                </div>
-              )}
 
-              {/* Step 4: Time */}
-              {step === 'horario' && servicoSelecionado && dataSelecionada && (
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-                  <div className="flex items-center gap-2 mb-4">
-                    <button onClick={() => setStep('data')} className="text-gray-400 hover:text-gray-600">
-                      <ChevronLeft className="w-5 h-5" />
-                    </button>
-                    <div>
-                      <h3 className="font-medium text-gray-900">{servicoSelecionado.nome}</h3>
-                      <p className="text-xs text-gray-400">
-                        {format(dataSelecionada, "EEEE, d 'de' MMMM", { locale: ptBR })}
-                        {profissionalSelecionada && <span style={{ color: tema.hex }}> · {profissionalSelecionada.nome}</span>}
-                      </p>
-                    </div>
-                  </div>
-
-                  {loadingHorarios ? (
-                    <div className="py-8 text-center text-gray-400 text-sm">Carregando horários...</div>
-                  ) : horariosDisponiveis.length === 0 ? (
-                    <div className="py-8 text-center text-gray-400 text-sm">
-                      <Calendar className="w-6 h-6 mx-auto mb-2 opacity-40" />
-                      Sem horários disponíveis neste dia
-                      {profissionalSelecionada && temMultiplasProfissionais && (
-                        <p className="text-xs mt-1">
-                          <button
-                            onClick={() => setStep('profissional')}
-                            className="text-rose-400 hover:underline"
+                  {step === 'servico' && (
+                    <div className="space-y-3">
+                      {servicos.length === 0 ? (
+                        <p className="text-center text-gray-400 py-8 text-sm">Nenhum serviço disponível</p>
+                      ) : (
+                        servicos.map((s) => {
+                          const IconeServico = getServicoIcone(s.icone)
+                          const fotoServico = s.foto_galeria_id
+                            ? galeria.find((g) => g.id === s.foto_galeria_id && g.tipo === 'imagem')
+                            : null
+                          return (
+                          <div
+                            key={s.id}
+                            onClick={() => selecionarServico(s)}
+                            className="bg-white border border-gray-100 rounded-2xl p-4 cursor-pointer hover:shadow-md transition-all duration-200 group"
+                            onMouseEnter={(e) => { e.currentTarget.style.borderColor = tema.hex }}
+                            onMouseLeave={(e) => { e.currentTarget.style.borderColor = '' }}
                           >
-                            Tentar outra profissional
-                          </button>
-                        </p>
+                            <div className="flex items-center gap-4">
+                              <div className="relative w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-colors overflow-hidden" style={{ backgroundColor: tema.hexLight }}>
+                                {fotoServico ? (
+                                  <ImageWithSkeleton src={fotoServico.url} alt={s.nome} fill className="object-cover" />
+                                ) : (
+                                  <IconeServico className="w-5 h-5" style={{ color: tema.hex }} />
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-semibold text-gray-900">{s.nome}</h4>
+                                {s.descricao && <p className="text-xs text-gray-500 mt-0.5 truncate">{s.descricao}</p>}
+                                <div className="flex items-center gap-1 mt-1 text-xs text-gray-400">
+                                  <Clock className="w-3 h-3" />
+                                  {s.duracao_minutos} min
+                                </div>
+                              </div>
+                              <span className="font-bold text-lg shrink-0" style={{ color: tema.hexDark }}>{formatCurrency(s.preco)}</span>
+                            </div>
+                          </div>
+                          )
+                        })
                       )}
                     </div>
-                  ) : (
-                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                      {horariosDisponiveis.map((h) => {
-                        const selecionadoSlot = horarioSelecionado === h
-                        return (
+                  )}
+
+                  {step === 'profissional' && servicoSelecionado && (
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-4">
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => setStep('servico')} className="text-gray-400 hover:text-gray-600">
+                          <ChevronLeft className="w-5 h-5" />
+                        </button>
+                        <h3 className="font-medium text-gray-900">Escolha a profissional</h3>
+                        <Badge className="ml-auto" style={{ backgroundColor: tema.hexLight, color: tema.hexDark }}>{servicoSelecionado.nome}</Badge>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        {profissionaisDoServico.map((p) => (
                           <button
-                            key={h}
-                            onClick={() => {
-                              setHorarioSelecionado(h)
-                              if (clienteLogado) { setStep('cliente'); return }
-                              if (isDemo) { loginDemoInstantaneo(); setStep('cliente'); return }
-                              setPendingBooking(true)
-                              setLoginModal(true)
-                            }}
-                            className={`py-2.5 rounded-xl text-sm font-medium transition-all border ${
-                              selecionadoSlot ? 'text-white' : 'bg-white border-gray-200 text-gray-700'
-                            }`}
-                            style={selecionadoSlot ? { backgroundColor: tema.hex, borderColor: tema.hex } : undefined}
-                            onMouseEnter={(e) => { if (!selecionadoSlot) { e.currentTarget.style.borderColor = tema.hex; e.currentTarget.style.backgroundColor = tema.hexLight } }}
-                            onMouseLeave={(e) => { if (!selecionadoSlot) { e.currentTarget.style.borderColor = ''; e.currentTarget.style.backgroundColor = '' } }}
+                            key={p.id}
+                            onClick={() => selecionarProfissional(p)}
+                            className="flex flex-col items-center gap-3 p-4 rounded-2xl border border-gray-100 transition-all text-center group"
+                            onMouseEnter={(e) => { e.currentTarget.style.borderColor = tema.hex; e.currentTarget.style.backgroundColor = tema.hexLight }}
+                            onMouseLeave={(e) => { e.currentTarget.style.borderColor = ''; e.currentTarget.style.backgroundColor = '' }}
                           >
-                            {h}
+                            <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-white shadow bg-rose-100 transition-all">
+                              {p.foto_url ? (
+                                <Image src={p.foto_url} alt={p.nome} width={64} height={64} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-xl font-bold font-serif" style={{ color: tema.hex }}>
+                                  {p.nome.charAt(0)}
+                                </div>
+                              )}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-gray-900 text-sm">{p.nome}</p>
+                              {p.bio && <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{p.bio}</p>}
+                            </div>
                           </button>
-                        )
-                      })}
+                        ))}
+                      </div>
                     </div>
                   )}
-                </div>
-              )}
 
-              {/* Step 5: Client data */}
-              {step === 'cliente' && servicoSelecionado && dataSelecionada && horarioSelecionado && (
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <button onClick={() => setStep('horario')} className="text-gray-400 hover:text-gray-600">
-                      <ChevronLeft className="w-5 h-5" />
-                    </button>
-                    <h3 className="font-medium text-gray-900">Seus dados</h3>
-                  </div>
-
-                  <div className="rounded-xl p-3 text-sm space-y-1" style={{ backgroundColor: tema.hexLight }}>
-                    <div className="flex justify-between text-gray-600">
-                      <span>{servicoSelecionado.nome}</span>
-                      <span className="font-medium">{formatCurrency(servicoSelecionado.preco)}</span>
-                    </div>
-                    {profissionalSelecionada && (
-                      <div className="flex items-center gap-1.5 text-xs" style={{ color: tema.hex }}>
-                        <UserCircle2 className="w-3 h-3" />
-                        {profissionalSelecionada.nome}
-                      </div>
-                    )}
-                    <div className="text-xs text-gray-400">
-                      {format(dataSelecionada, "d 'de' MMMM", { locale: ptBR })} às {horarioSelecionado}
-                    </div>
-                  </div>
-
-                  {clienteLogado ? (
-                    <>
-                      <div className="flex items-center justify-between rounded-xl border border-gray-100 px-3 py-2.5 text-sm">
-                        <span className="text-gray-600">
-                          Agendando como <span className="font-medium text-gray-900">{clienteLogado.nome}</span>
-                          {' · '}{maskTelefone(clienteLogado.telefone)}
-                        </span>
+                  {step === 'data' && servicoSelecionado && (
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                      <div className="flex items-center gap-2 mb-4">
                         <button
-                          onClick={() => setLoginModal(true)}
-                          className="text-xs font-medium hover:underline shrink-0 ml-2"
-                          style={{ color: tema.hexDark }}
+                          onClick={() => setStep(temMultiplasProfissionais ? 'profissional' : 'servico')}
+                          className="text-gray-400 hover:text-gray-600"
                         >
-                          Trocar
+                          <ChevronLeft className="w-5 h-5" />
+                        </button>
+                        <div>
+                          <h3 className="font-medium text-gray-900">{servicoSelecionado.nome}</h3>
+                          {profissionalSelecionada && (
+                            <p className="text-xs" style={{ color: tema.hex }}>com {profissionalSelecionada.nome}</p>
+                          )}
+                        </div>
+                        <Badge className="ml-auto" style={{ backgroundColor: tema.hexLight, color: tema.hexDark }}>{formatCurrency(servicoSelecionado.preco)}</Badge>
+                      </div>
+
+                      <div className="flex items-center justify-between mb-3">
+                        <button
+                          onClick={() => setWeekOffset(Math.max(0, weekOffset - 1))}
+                          disabled={weekOffset === 0}
+                          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 disabled:opacity-30"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        <span className="text-sm font-medium text-gray-700">
+                          {format(weekStart, "MMMM yyyy", { locale: ptBR })}
+                        </span>
+                        <button onClick={() => setWeekOffset(weekOffset + 1)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400">
+                          <ChevronRight className="w-4 h-4" />
                         </button>
                       </div>
 
-                      {servicoSelecionado.aceitar_pagamento_online ? (
-                        servicoSelecionado.sinal_obrigatorio ? (
-                          <div className="space-y-3">
-                            <div className="rounded-xl bg-amber-50 border border-amber-100 px-3 py-2.5">
-                              <p className="text-sm font-semibold text-amber-800">
-                                Sinal: {formatCurrency(calcularValorSinal(servicoSelecionado.preco, servicoSelecionado.sinal_tipo, servicoSelecionado.sinal_valor))}
-                              </p>
-                              <p className="text-xs text-amber-700 mt-1">
-                                Este pagamento é não reembolsável. Em caso de cancelamento, o valor não será devolvido.
-                              </p>
-                            </div>
-                            <label className="flex items-start gap-2 text-xs text-gray-600 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={concordaNaoReembolsavel}
-                                onChange={(e) => setConcordaNaoReembolsavel(e.target.checked)}
-                                className="w-4 h-4 mt-0.5 rounded border-gray-300 text-rose-400 focus:ring-rose-300 shrink-0"
-                              />
-                              Li e concordo que este pagamento não é reembolsável
-                            </label>
-                            <Button
-                              onClick={pagarEIrParaCheckout}
-                              disabled={!concordaNaoReembolsavel}
-                              loading={agendando}
-                              className="w-full hover:brightness-95"
-                              size="lg"
-                              style={{ backgroundColor: tema.hex }}
+                      <div className="grid grid-cols-7 gap-1">
+                        {weekDays.map((d) => {
+                          const desativado = isDiaDesativado(d)
+                          const selecionado = dataSelecionada && isSameDay(d, dataSelecionada)
+                          return (
+                            <button
+                              key={d.toISOString()}
+                              disabled={desativado}
+                              onClick={() => selecionarData(d)}
+                              className={`flex flex-col items-center py-2 rounded-xl transition-all text-xs font-medium
+                                ${desativado ? 'opacity-30 cursor-not-allowed' : ''}
+                                ${selecionado ? 'text-white' : 'text-gray-700'}
+                                ${isToday(d) && !selecionado ? 'border' : ''}
+                              `}
+                              style={{
+                                backgroundColor: selecionado ? tema.hex : undefined,
+                                borderColor: isToday(d) && !selecionado ? tema.hex : undefined,
+                              }}
+                              onMouseEnter={(e) => { if (!desativado && !selecionado) e.currentTarget.style.backgroundColor = tema.hexLight }}
+                              onMouseLeave={(e) => { if (!desativado && !selecionado) e.currentTarget.style.backgroundColor = '' }}
                             >
-                              Pagar sinal e confirmar agendamento
-                            </Button>
+                              <span className="text-[10px] text-current opacity-70 mb-0.5">
+                                {format(d, 'EEE', { locale: ptBR }).slice(0, 3)}
+                              </span>
+                              {format(d, 'd')}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {step === 'horario' && servicoSelecionado && dataSelecionada && (
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+                      <div className="flex items-center gap-2 mb-4">
+                        <button onClick={() => setStep('data')} className="text-gray-400 hover:text-gray-600">
+                          <ChevronLeft className="w-5 h-5" />
+                        </button>
+                        <div>
+                          <h3 className="font-medium text-gray-900">{servicoSelecionado.nome}</h3>
+                          <p className="text-xs text-gray-400">
+                            {format(dataSelecionada, "EEEE, d 'de' MMMM", { locale: ptBR })}
+                            {profissionalSelecionada && <span style={{ color: tema.hex }}> · {profissionalSelecionada.nome}</span>}
+                          </p>
+                        </div>
+                      </div>
+
+                      {loadingHorarios ? (
+                        <div className="py-8 text-center text-gray-400 text-sm">Carregando horários...</div>
+                      ) : horariosDisponiveis.length === 0 ? (
+                        <div className="py-8 text-center text-gray-400 text-sm">
+                          <Calendar className="w-6 h-6 mx-auto mb-2 opacity-40" />
+                          Sem horários disponíveis neste dia
+                          {profissionalSelecionada && temMultiplasProfissionais && (
+                            <p className="text-xs mt-1">
+                              <button
+                                onClick={() => setStep('profissional')}
+                                className="text-rose-400 hover:underline"
+                              >
+                                Tentar outra profissional
+                              </button>
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                          {horariosDisponiveis.map((h) => {
+                            const selecionadoSlot = horarioSelecionado === h
+                            return (
+                              <button
+                                key={h}
+                                onClick={() => {
+                                  setHorarioSelecionado(h)
+                                  if (clienteLogado) { setStep('cliente'); return }
+                                  if (isDemo) { loginDemoInstantaneo(); setStep('cliente'); return }
+                                  setPendingBooking(true)
+                                  setLoginModal(true)
+                                }}
+                                className={`py-2.5 rounded-xl text-sm font-medium transition-all border ${
+                                  selecionadoSlot ? 'text-white' : 'bg-white border-gray-200 text-gray-700'
+                                }`}
+                                style={selecionadoSlot ? { backgroundColor: tema.hex, borderColor: tema.hex } : undefined}
+                                onMouseEnter={(e) => { if (!selecionadoSlot) { e.currentTarget.style.borderColor = tema.hex; e.currentTarget.style.backgroundColor = tema.hexLight } }}
+                                onMouseLeave={(e) => { if (!selecionadoSlot) { e.currentTarget.style.borderColor = ''; e.currentTarget.style.backgroundColor = '' } }}
+                              >
+                                {h}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {step === 'cliente' && servicoSelecionado && dataSelecionada && horarioSelecionado && (
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 space-y-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <button onClick={() => setStep('horario')} className="text-gray-400 hover:text-gray-600">
+                          <ChevronLeft className="w-5 h-5" />
+                        </button>
+                        <h3 className="font-medium text-gray-900">Seus dados</h3>
+                      </div>
+
+                      <div className="rounded-xl p-3 text-sm space-y-1" style={{ backgroundColor: tema.hexLight }}>
+                        <div className="flex justify-between text-gray-600">
+                          <span>{servicoSelecionado.nome}</span>
+                          <span className="font-medium">{formatCurrency(servicoSelecionado.preco)}</span>
+                        </div>
+                        {profissionalSelecionada && (
+                          <div className="flex items-center gap-1.5 text-xs" style={{ color: tema.hex }}>
+                            <UserCircle2 className="w-3 h-3" />
+                            {profissionalSelecionada.nome}
                           </div>
-                        ) : !mostrarPagamentoOpcional ? (
-                          <div className="space-y-2.5">
-                            <Button
-                              onClick={() => setMostrarPagamentoOpcional(true)}
-                              className="w-full hover:brightness-95"
-                              size="lg"
-                              style={{ backgroundColor: tema.hex }}
+                        )}
+                        <div className="text-xs text-gray-400">
+                          {format(dataSelecionada, "d 'de' MMMM", { locale: ptBR })} às {horarioSelecionado}
+                        </div>
+                      </div>
+
+                      {clienteLogado ? (
+                        <>
+                          <div className="flex items-center justify-between rounded-xl border border-gray-100 px-3 py-2.5 text-sm">
+                            <span className="text-gray-600">
+                              Agendando como <span className="font-medium text-gray-900">{clienteLogado.nome}</span>
+                              {' · '}{maskTelefone(clienteLogado.telefone)}
+                            </span>
+                            <button
+                              onClick={() => setLoginModal(true)}
+                              className="text-xs font-medium hover:underline shrink-0 ml-2"
+                              style={{ color: tema.hexDark }}
                             >
-                              Pagar agora ({formatCurrency(servicoSelecionado.preco)})
-                            </Button>
+                              Trocar
+                            </button>
+                          </div>
+
+                          {servicoSelecionado.aceitar_pagamento_online ? (
+                            servicoSelecionado.sinal_obrigatorio ? (
+                              <div className="space-y-3">
+                                <div className="rounded-xl bg-amber-50 border border-amber-100 px-3 py-2.5">
+                                  <p className="text-sm font-semibold text-amber-800">
+                                    Sinal: {formatCurrency(calcularValorSinal(servicoSelecionado.preco, servicoSelecionado.sinal_tipo, servicoSelecionado.sinal_valor))}
+                                  </p>
+                                  <p className="text-xs text-amber-700 mt-1">
+                                    Este pagamento é não reembolsável. Em caso de cancelamento, o valor não será devolvido.
+                                  </p>
+                                </div>
+                                <label className="flex items-start gap-2 text-xs text-gray-600 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={concordaNaoReembolsavel}
+                                    onChange={(e) => setConcordaNaoReembolsavel(e.target.checked)}
+                                    className="w-4 h-4 mt-0.5 rounded border-gray-300 text-rose-400 focus:ring-rose-300 shrink-0"
+                                  />
+                                  Li e concordo que este pagamento não é reembolsável
+                                </label>
+                                <Button
+                                  onClick={pagarEIrParaCheckout}
+                                  disabled={!concordaNaoReembolsavel}
+                                  loading={agendando}
+                                  className="w-full hover:brightness-95"
+                                  size="lg"
+                                  style={{ backgroundColor: tema.hex }}
+                                >
+                                  Pagar sinal e confirmar agendamento
+                                </Button>
+                              </div>
+                            ) : !mostrarPagamentoOpcional ? (
+                              <div className="space-y-2.5">
+                                <Button
+                                  onClick={() => setMostrarPagamentoOpcional(true)}
+                                  className="w-full hover:brightness-95"
+                                  size="lg"
+                                  style={{ backgroundColor: tema.hex }}
+                                >
+                                  Pagar agora ({formatCurrency(servicoSelecionado.preco)})
+                                </Button>
+                                <Button
+                                  onClick={confirmarAgendamento}
+                                  loading={agendando}
+                                  variant="outline"
+                                  className="w-full"
+                                  size="lg"
+                                >
+                                  Pagar na hora do atendimento
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="space-y-3">
+                                <div className="rounded-xl bg-amber-50 border border-amber-100 px-3 py-2.5">
+                                  <p className="text-xs text-amber-700">
+                                    Este pagamento é não reembolsável. Em caso de cancelamento, o valor não será devolvido.
+                                  </p>
+                                </div>
+                                <label className="flex items-start gap-2 text-xs text-gray-600 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={concordaNaoReembolsavel}
+                                    onChange={(e) => setConcordaNaoReembolsavel(e.target.checked)}
+                                    className="w-4 h-4 mt-0.5 rounded border-gray-300 text-rose-400 focus:ring-rose-300 shrink-0"
+                                  />
+                                  Li e concordo que este pagamento não é reembolsável
+                                </label>
+                                <Button
+                                  onClick={pagarEIrParaCheckout}
+                                  disabled={!concordaNaoReembolsavel}
+                                  loading={agendando}
+                                  className="w-full hover:brightness-95"
+                                  size="lg"
+                                  style={{ backgroundColor: tema.hex }}
+                                >
+                                  Pagar e confirmar agendamento
+                                </Button>
+                                <button
+                                  type="button"
+                                  onClick={() => setMostrarPagamentoOpcional(false)}
+                                  className="text-xs text-gray-400 hover:underline w-full text-center"
+                                >
+                                  Voltar
+                                </button>
+                              </div>
+                            )
+                          ) : (
                             <Button
                               onClick={confirmarAgendamento}
                               loading={agendando}
-                              variant="outline"
-                              className="w-full"
-                              size="lg"
-                            >
-                              Pagar na hora do atendimento
-                            </Button>
-                          </div>
-                        ) : (
-                          <div className="space-y-3">
-                            <div className="rounded-xl bg-amber-50 border border-amber-100 px-3 py-2.5">
-                              <p className="text-xs text-amber-700">
-                                Este pagamento é não reembolsável. Em caso de cancelamento, o valor não será devolvido.
-                              </p>
-                            </div>
-                            <label className="flex items-start gap-2 text-xs text-gray-600 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={concordaNaoReembolsavel}
-                                onChange={(e) => setConcordaNaoReembolsavel(e.target.checked)}
-                                className="w-4 h-4 mt-0.5 rounded border-gray-300 text-rose-400 focus:ring-rose-300 shrink-0"
-                              />
-                              Li e concordo que este pagamento não é reembolsável
-                            </label>
-                            <Button
-                              onClick={pagarEIrParaCheckout}
-                              disabled={!concordaNaoReembolsavel}
-                              loading={agendando}
                               className="w-full hover:brightness-95"
                               size="lg"
                               style={{ backgroundColor: tema.hex }}
                             >
-                              Pagar e confirmar agendamento
+                              Confirmar agendamento
                             </Button>
-                            <button
-                              type="button"
-                              onClick={() => setMostrarPagamentoOpcional(false)}
-                              className="text-xs text-gray-400 hover:underline w-full text-center"
-                            >
-                              Voltar
-                            </button>
-                          </div>
-                        )
+                          )}
+                        </>
                       ) : (
                         <Button
-                          onClick={confirmarAgendamento}
-                          loading={agendando}
+                          onClick={() => { if (isDemo) { loginDemoInstantaneo() } else { setPendingBooking(true); setLoginModal(true) } }}
                           className="w-full hover:brightness-95"
                           size="lg"
                           style={{ backgroundColor: tema.hex }}
                         >
-                          Confirmar agendamento
+                          Entrar para confirmar
                         </Button>
                       )}
-                    </>
-                  ) : (
-                    <Button
-                      onClick={() => { if (isDemo) { loginDemoInstantaneo() } else { setPendingBooking(true); setLoginModal(true) } }}
-                      className="w-full hover:brightness-95"
-                      size="lg"
-                      style={{ backgroundColor: tema.hex }}
-                    >
-                      Entrar para confirmar
-                    </Button>
+                    </div>
                   )}
                 </div>
               )}
             </div>
-          )}
+          </div>
         </section>
       </div>
 
@@ -1641,7 +1526,6 @@ export default function PerfilPublicoClient({
             <>
               <p className="text-sm text-gray-500">Para agendar, entre na sua conta.</p>
 
-              {/* Google login */}
               <button
                 onClick={loginComGoogle}
                 className="w-full flex items-center justify-center gap-3 border border-gray-200 rounded-2xl py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-colors"
@@ -1937,7 +1821,6 @@ export default function PerfilPublicoClient({
           >
             <ChevronRight className="w-6 h-6" />
           </button>
-          {/* Counter */}
           <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/50 text-xs">
             {lightbox.index + 1} / {lightbox.lista.length}
           </div>

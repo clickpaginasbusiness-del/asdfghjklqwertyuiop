@@ -69,6 +69,8 @@ export const DEMO_PRESTADORA: Prestadora = {
   pagina_estabelecimento_modo: 'empilhada',
   pagina_estabelecimento_fotos_ids: [],
   pagina_estabelecimento_titulo: 'Nosso espaço',
+  pagina_preset: 'classico',
+  pagina_banner_foto_id: null,
   created_at: '2025-01-15T12:00:00Z',
 }
 

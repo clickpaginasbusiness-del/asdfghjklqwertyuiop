@@ -1,6 +1,7 @@
 import type { PlanoTier } from './planoLimites'
 
 export type Plano = PlanoTier
+export type PresetPagina = 'classico' | 'landing'
 
 export type Prestadora = {
   id: string
@@ -55,6 +56,8 @@ export type Prestadora = {
   pagina_estabelecimento_modo: 'empilhada' | 'carrossel'
   pagina_estabelecimento_fotos_ids: string[]
   pagina_estabelecimento_titulo: string | null
+  pagina_preset: PresetPagina
+  pagina_banner_foto_id: string | null
   created_at: string
 }
 
@@ -72,6 +75,7 @@ export type PrestadoraPublica = Pick<Prestadora,
   | 'pagina_galeria_modo' | 'pagina_galeria_fotos_ids'
   | 'pagina_mostrar_estabelecimento' | 'pagina_estabelecimento_modo'
   | 'pagina_estabelecimento_fotos_ids' | 'pagina_estabelecimento_titulo'
+  | 'pagina_preset' | 'pagina_banner_foto_id'
 >
 
 export type ParceiraComissao = {

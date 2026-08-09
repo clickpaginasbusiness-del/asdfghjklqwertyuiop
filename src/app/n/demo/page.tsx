@@ -56,6 +56,8 @@ const DEMO_PRESTADORA: Prestadora = {
   pagina_estabelecimento_modo: 'empilhada',
   pagina_estabelecimento_fotos_ids: ['g7', 'g8', 'g9'],
   pagina_estabelecimento_titulo: 'Nosso espaço',
+  pagina_preset: 'classico',
+  pagina_banner_foto_id: null,
   created_at: new Date().toISOString(),
 }
 
