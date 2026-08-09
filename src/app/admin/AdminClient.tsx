@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
 import { AdminNav } from '@/components/admin/AdminNav'
 import { cn } from '@/lib/utils'
+import { NOME_PLANO, PRECOS, type Plano } from '@/lib/mercadopago'
 import toast from 'react-hot-toast'
 
 type PrestadoraRow = {
@@ -32,8 +33,10 @@ function isOnline(lastSeenAt: string | null | undefined, now: number) {
 type Metrics = {
   total: number
   emTrialAtivo: number
-  pagasBasico: number
+  pagasStart: number
   pagasPro: number
+  pagasStudio: number
+  pagasStudioPro: number
   semPlanOuExpirado: number
   receitaEstimada: number
 }
@@ -55,7 +58,8 @@ function statusLabel(p: PrestadoraRow): { label: string; color: string } {
     return { label: 'Trial ativo', color: 'bg-blue-100 text-blue-700' }
   }
   if (!p.e_trial && p.assinatura_ativa) {
-    return { label: p.plano === 'pro' ? 'Pro ativo' : 'Básico ativo', color: 'bg-emerald-100 text-emerald-700' }
+    const nome = p.plano && p.plano in NOME_PLANO ? NOME_PLANO[p.plano as Plano] : 'Start'
+    return { label: `${nome} ativo`, color: 'bg-emerald-100 text-emerald-700' }
   }
   return { label: 'Sem plano / expirado', color: 'bg-gray-100 text-gray-500' }
 }
@@ -200,12 +204,12 @@ export default function AdminClient({
             <CardContent className="pt-6">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-sm text-gray-500">Pagas (básico + pro)</p>
+                  <p className="text-sm text-gray-500">Pagas (todos os planos)</p>
                   <p className="text-3xl font-bold text-emerald-600 mt-1">
-                    {metrics.pagasBasico + metrics.pagasPro}
+                    {metrics.pagasStart + metrics.pagasPro + metrics.pagasStudio + metrics.pagasStudioPro}
                   </p>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    {metrics.pagasBasico} básico · {metrics.pagasPro} pro
+                    {metrics.pagasStart} start · {metrics.pagasPro} pro · {metrics.pagasStudio} studio · {metrics.pagasStudioPro} studio pro
                   </p>
                 </div>
                 <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center">
@@ -443,10 +447,10 @@ export default function AdminClient({
                 </div>
                 <p className="text-xs text-gray-400 mt-1">
                   {selectedPrestadora.assinatura_ativa && !selectedPrestadora.e_trial && selectedPrestadora.mp_metodo_pagamento
-                    ? `Desconta R$${selectedPrestadora.plano === 'pro' ? '89' : '49'} da próxima cobrança (plano atual).`
+                    ? `Desconta R$${selectedPrestadora.plano && selectedPrestadora.plano in PRECOS ? PRECOS[selectedPrestadora.plano as Plano].mensal : 49} da próxima cobrança (plano atual).`
                     : selectedPrestadora.e_trial && selectedPrestadora.trial_fim
                     ? 'Estende o trial atual por 30 dias.'
-                    : 'Libera trial gratuito de 30 dias (Básico).'}
+                    : 'Libera trial gratuito de 30 dias (Start).'}
                 </p>
               </button>
 

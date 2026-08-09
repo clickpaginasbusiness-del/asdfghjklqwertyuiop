@@ -1,4 +1,6 @@
-export type Plano = 'basico' | 'pro'
+import type { PlanoTier } from './planoLimites'
+
+export type Plano = PlanoTier
 
 export type Prestadora = {
   id: string

@@ -19,8 +19,8 @@ export async function POST() {
   if (!prestadora) {
     return NextResponse.json({ error: 'Prestadora não encontrada' }, { status: 404 })
   }
-  if (prestadora.plano !== 'basico') {
-    return NextResponse.json({ error: 'O trial gratuito do Pro é exclusivo de quem está no Plano Básico.' }, { status: 400 })
+  if (prestadora.plano !== 'start') {
+    return NextResponse.json({ error: 'O trial gratuito do Pro é exclusivo de quem está no Plano Start.' }, { status: 400 })
   }
   if (prestadora.trial_pro_usado) {
     return NextResponse.json({ error: 'Você já usou seu trial gratuito do Pro.' }, { status: 400 })

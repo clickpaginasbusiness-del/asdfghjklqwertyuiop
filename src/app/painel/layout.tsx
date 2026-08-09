@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { differenceInCalendarDays } from 'date-fns'
 import { createClient } from '@/lib/supabase/server'
-import { aplicarDowngradeParaBasico } from '@/lib/downgrade'
+import { aplicarRestricoesDoPlano } from '@/lib/downgrade'
 import PainelLayoutClient from './PainelLayoutClient'
 
 const PUBLIC_PATHS = ['/painel/login', '/painel/cadastro', '/painel/recuperar-senha', '/painel/nova-senha', '/painel/completar-cadastro-google']
@@ -52,14 +52,14 @@ export default async function PainelLayout({ children }: { children: React.React
     prestadora.trial_pro_fim &&
     new Date(prestadora.trial_pro_fim) < new Date()
   ) {
-    await aplicarDowngradeParaBasico(supabase, prestadora.id)
+    await aplicarRestricoesDoPlano(supabase, prestadora.id, 'start')
 
     await supabase
       .from('prestadoras')
-      .update({ plano: 'basico', trial_pro_fim: null })
+      .update({ plano: 'start', trial_pro_fim: null })
       .eq('id', prestadora.id)
 
-    prestadora.plano = 'basico'
+    prestadora.plano = 'start'
     prestadora.trial_pro_fim = null
     prestadora.cor_tema = 'rosa'
     trialProAcabouDeExpirar = true

@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAdmin } from '@/lib/admin'
+import { PRECOS } from '@/lib/mercadopago'
 import AdminClient from './AdminClient'
 
 export default async function AdminPage() {
@@ -27,16 +28,25 @@ export default async function AdminPage() {
     p.e_trial && p.assinatura_ativa && p.trial_fim && new Date(p.trial_fim) > now
   ).length
 
-  const pagasBasico = all.filter(p =>
-    !p.e_trial && p.assinatura_ativa && p.plano === 'basico'
+  const pagasStart = all.filter(p =>
+    !p.e_trial && p.assinatura_ativa && p.plano === 'start'
   ).length
 
   const pagasPro = all.filter(p =>
     !p.e_trial && p.assinatura_ativa && p.plano === 'pro'
   ).length
 
-  const semPlanOuExpirado = all.length - emTrialAtivo - pagasBasico - pagasPro
-  const receitaEstimada = pagasBasico * 49 + pagasPro * 89
+  const pagasStudio = all.filter(p =>
+    !p.e_trial && p.assinatura_ativa && p.plano === 'studio'
+  ).length
+
+  const pagasStudioPro = all.filter(p =>
+    !p.e_trial && p.assinatura_ativa && p.plano === 'studio_pro'
+  ).length
+
+  const semPlanOuExpirado = all.length - emTrialAtivo - pagasStart - pagasPro - pagasStudio - pagasStudioPro
+  const receitaEstimada = pagasStart * PRECOS.start.mensal + pagasPro * PRECOS.pro.mensal
+    + pagasStudio * PRECOS.studio.mensal + pagasStudioPro * PRECOS.studio_pro.mensal
 
   // Gráfico: últimos 30 dias
   const last30 = Array.from({ length: 30 }, (_, i) => {
@@ -55,7 +65,7 @@ export default async function AdminPage() {
   return (
     <AdminClient
       prestadoras={all}
-      metrics={{ total: all.length, emTrialAtivo, pagasBasico, pagasPro, semPlanOuExpirado, receitaEstimada }}
+      metrics={{ total: all.length, emTrialAtivo, pagasStart, pagasPro, pagasStudio, pagasStudioPro, semPlanOuExpirado, receitaEstimada }}
       chartData={chartData}
       feedbacks={feedbacks ?? []}
     />

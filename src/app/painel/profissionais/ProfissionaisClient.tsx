@@ -13,6 +13,9 @@ import { Plus, Pencil, Trash2, Upload, UserCircle2, ToggleLeft, ToggleRight, Cal
 import type { Profissional } from '@/lib/types'
 import Link from 'next/link'
 import { validarArquivo } from '@/lib/uploadValidation'
+import { limitesPlano } from '@/lib/planoLimites'
+import { NOME_PLANO } from '@/lib/mercadopago'
+import type { Plano } from '@/lib/plano'
 import toast from 'react-hot-toast'
 
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
@@ -39,8 +42,9 @@ export default function ProfissionaisClient({
 }: {
   profissionais: Profissional[]
   prestadoraId: string
-  plano: 'basico' | 'pro' | null
+  plano: Plano | null
 }) {
+  const limite = limitesPlano(plano).profissionais
   const [profissionais, setProfissionais] = useState(initial)
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState<ProfForm>(emptyForm)
@@ -132,8 +136,8 @@ export default function ProfissionaisClient({
   }
 
   async function toggleAtiva(p: Profissional) {
-    if (!p.ativa && plano === 'basico' && profissionais.some((x) => x.ativa)) {
-      toast.error('Seu plano permite apenas 1 profissional ativa. Faça upgrade para o Pro para ter profissionais ilimitadas.')
+    if (!p.ativa && limite !== Infinity && profissionais.filter((x) => x.ativa).length >= limite) {
+      toast.error(`Seu plano permite no máximo ${limite} ${limite > 1 ? 'profissionais ativas' : 'profissional ativa'}. Faça upgrade para ter mais.`)
       return
     }
     const supabase = createClient()
@@ -182,7 +186,7 @@ export default function ProfissionaisClient({
   }
 
   const dispProfNome = profissionais.find((p) => p.id === dispProfId)?.nome ?? ''
-  const limiteAtingido = plano === 'basico' && profissionais.length >= 1
+  const limiteAtingido = limite !== Infinity && profissionais.length >= limite
 
   return (
     <div className="space-y-6">
@@ -197,7 +201,7 @@ export default function ProfissionaisClient({
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-xs font-medium hover:bg-amber-100 transition-colors"
           >
             <Lock className="w-3.5 h-3.5" />
-            Limite do Básico · Fazer upgrade
+            Limite do plano · Fazer upgrade
           </Link>
         ) : (
           <Button onClick={openCreate} size="sm">
@@ -207,15 +211,15 @@ export default function ProfissionaisClient({
         )}
       </div>
 
-      {plano === 'basico' && (
+      {limite !== Infinity && (
         <div className="flex items-center gap-3 bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 text-sm">
           <Lock className="w-4 h-4 text-amber-500 shrink-0" />
           <span className="text-amber-700">
-            Plano Básico · máximo de 1 profissional.{' '}
+            Plano {plano ? NOME_PLANO[plano] : ''} · máximo de {limite} {limite > 1 ? 'profissionais' : 'profissional'}.{' '}
             <Link href="/planos" className="font-semibold underline underline-offset-2">
-              Upgrade para Pro
+              Fazer upgrade
             </Link>
-            {' '}para profissionais ilimitadas.
+            {' '}para mais profissionais.
           </span>
         </div>
       )}
@@ -239,7 +243,7 @@ export default function ProfissionaisClient({
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {profissionais.map((p) => {
-            const bloqueadaPeloPlano = !p.ativa && plano === 'basico' && profissionais.some((x) => x.ativa)
+            const bloqueadaPeloPlano = !p.ativa && limite !== Infinity && profissionais.filter((x) => x.ativa).length >= limite
             return (
             <Card key={p.id} className={`transition-all ${!p.ativa ? 'opacity-60' : 'hover:shadow-md'}`}>
               <CardContent className="p-5">
@@ -270,7 +274,7 @@ export default function ProfissionaisClient({
                       {bloqueadaPeloPlano ? (
                         <Badge variant="warning" className="shrink-0 flex items-center gap-1">
                           <Lock className="w-2.5 h-2.5" />
-                          Pro necessário
+                          Upgrade necessário
                         </Badge>
                       ) : (
                         <Badge variant={p.ativa ? 'success' : 'default'} className="shrink-0">
@@ -486,14 +490,14 @@ export default function ProfissionaisClient({
         </div>
       </Modal>
 
-      {/* Modal upgrade — tentativa de reativar além do limite do Básico */}
-      <Modal open={upgradeModalOpen} onClose={() => setUpgradeModalOpen(false)} title="Exclusivo do Plano Pro">
+      {/* Modal upgrade — tentativa de reativar além do limite do plano */}
+      <Modal open={upgradeModalOpen} onClose={() => setUpgradeModalOpen(false)} title="Limite do plano atingido">
         <div className="p-6 space-y-4 text-center">
           <div className="w-14 h-14 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto">
             <Lock className="w-6 h-6 text-amber-400" />
           </div>
           <p className="text-sm text-gray-600">
-            Seu plano permite apenas 1 profissional ativa. Faça upgrade para o Pro para ter profissionais ilimitadas.
+            Seu plano permite no máximo {limite} {limite > 1 ? 'profissionais ativas' : 'profissional ativa'}. Faça upgrade para ter mais.
           </p>
           <div className="flex gap-3 pt-2">
             <Button variant="outline" onClick={() => setUpgradeModalOpen(false)} className="flex-1">

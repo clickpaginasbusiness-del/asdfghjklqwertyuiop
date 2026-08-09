@@ -200,7 +200,10 @@ export default function CadastroPage() {
 
       toast.success('Conta criada! Bem-vinda ao BelleBook 🎉')
       const planIntent = new URLSearchParams(window.location.search).get('plano')
-      window.location.href = planIntent === 'pro' ? '/planos?auto=pro' : '/painel'
+      const planosComCheckoutImediato = ['pro', 'studio', 'studio_pro']
+      window.location.href = planIntent && planosComCheckoutImediato.includes(planIntent)
+        ? `/planos?auto=${planIntent}`
+        : '/painel'
     } finally {
       setLoadingCreate(false)
     }
@@ -476,7 +479,7 @@ export default function CadastroPage() {
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-4">
-          30 dias grátis no Plano Básico · Sem cartão · Cancele quando quiser
+          30 dias grátis no Plano Start · Sem cartão · Cancele quando quiser
         </p>
       </div>
     </div>

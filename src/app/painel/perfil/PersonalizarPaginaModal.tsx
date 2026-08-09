@@ -13,9 +13,9 @@ import { cn } from '@/lib/utils'
 import { Palette, Type, Star, Images, Home, Eye, Check, Lock, Pencil } from 'lucide-react'
 import type { Prestadora, GaleriaItem } from '@/lib/types'
 import type { AvaliacaoComCliente } from './PerfilPainelClient'
+import { ehPro as calcEhPro, type Plano } from '@/lib/plano'
+import { limitesPlano } from '@/lib/planoLimites'
 import toast from 'react-hot-toast'
-
-const MAX_FOTOS = 10
 
 type ModoExibicao = 'empilhada' | 'carrossel'
 
@@ -63,7 +63,7 @@ interface PersonalizarPaginaModalProps {
   prestadora: Prestadora
   galeria: GaleriaItem[]
   avaliacoes: AvaliacaoComCliente[]
-  ehPro: boolean
+  plano: Plano | null
   onSaved: (patch: Partial<Prestadora>) => void
 }
 
@@ -77,9 +77,11 @@ function PersonalizarPaginaModalInner({
   prestadora,
   galeria,
   avaliacoes,
-  ehPro,
+  plano,
   onSaved,
 }: Omit<PersonalizarPaginaModalProps, 'open'>) {
+  const ehPro = calcEhPro(plano)
+  const limites = limitesPlano(plano)
   const [corTema, setCorTema] = useState<string>(prestadora.cor_tema || TEMA_DEFAULT)
   const [hexDraft, setHexDraft] = useState(getTema(prestadora.cor_tema || TEMA_DEFAULT).hex.replace('#', ''))
   const colorInputRef = useRef<HTMLInputElement>(null)
@@ -230,7 +232,7 @@ function PersonalizarPaginaModalInner({
             {!ehPro && (
               <div className="absolute inset-0 -m-2 rounded-xl bg-white/70 backdrop-blur-[2px] flex flex-col items-center justify-center gap-2 text-center p-4">
                 <Lock className="w-6 h-6 text-gray-400" />
-                <p className="text-sm font-semibold text-gray-700">Exclusivo do Plano Pro</p>
+                <p className="text-sm font-semibold text-gray-700">Disponível a partir do Plano Pro</p>
                 <Link href="/painel/assinatura" className="text-xs font-semibold text-rose-500 hover:text-rose-600 underline underline-offset-2">
                   Fazer upgrade
                 </Link>
@@ -279,35 +281,26 @@ function PersonalizarPaginaModalInner({
         {/* Galeria de trabalhos */}
         <section className="pt-6 border-t border-gray-100">
           <SectionHeader icon={<Images className="w-5 h-5 text-rose-400" />} title="Galeria de trabalhos" />
-          <div className="relative">
-            <div className={cn('space-y-4', !ehPro && 'pointer-events-none opacity-60')}>
-              <ToggleRow label="Mostrar galeria na página pública" checked={mostrarGaleria} onChange={setMostrarGaleria} disabled={!ehPro} />
-              {mostrarGaleria && (
-                <>
-                  <ModoSelector value={galeriaModo} onChange={setGaleriaModo} />
-                  <p className="text-xs text-gray-400">Selecione até {MAX_FOTOS} fotos ({galeriaFotosIds.length}/{MAX_FOTOS} selecionadas)</p>
-                  <SeletorFotos galeria={galeria} selecionadas={galeriaFotosIds} onChange={setGaleriaFotosIds} max={MAX_FOTOS} />
-                </>
-              )}
+          <ToggleRow label="Mostrar galeria na página pública" checked={mostrarGaleria} onChange={setMostrarGaleria} />
+          {mostrarGaleria && (
+            <div className="space-y-4 mt-4">
+              <ModoSelector value={galeriaModo} onChange={setGaleriaModo} />
+              <p className="text-xs text-gray-400">
+                {limites.fotos_trabalhos === Infinity
+                  ? `Fotos ilimitadas (${galeriaFotosIds.length} selecionadas)`
+                  : `Selecione até ${limites.fotos_trabalhos} fotos (${galeriaFotosIds.length}/${limites.fotos_trabalhos} selecionadas)`}
+              </p>
+              <SeletorFotos galeria={galeria} selecionadas={galeriaFotosIds} onChange={setGaleriaFotosIds} max={limites.fotos_trabalhos} />
             </div>
-            {!ehPro && (
-              <div className="absolute inset-0 -m-2 rounded-xl bg-white/70 backdrop-blur-[2px] flex flex-col items-center justify-center gap-2 text-center p-4">
-                <Lock className="w-6 h-6 text-gray-400" />
-                <p className="text-sm font-semibold text-gray-700">Exclusivo do Plano Pro</p>
-                <Link href="/painel/assinatura" className="text-xs font-semibold text-rose-500 hover:text-rose-600 underline underline-offset-2">
-                  Fazer upgrade
-                </Link>
-              </div>
-            )}
-          </div>
+          )}
         </section>
 
         {/* Fotos do estabelecimento */}
         <section className="pt-6 border-t border-gray-100">
           <SectionHeader icon={<Home className="w-5 h-5 text-rose-400" />} title="Fotos do estabelecimento" />
           <div className="relative">
-            <div className={cn('space-y-4', !ehPro && 'pointer-events-none opacity-60')}>
-              <ToggleRow label="Mostrar seção de fotos do espaço" checked={mostrarEstabelecimento} onChange={setMostrarEstabelecimento} disabled={!ehPro} />
+            <div className={cn('space-y-4', limites.fotos_estabelecimento === 0 && 'pointer-events-none opacity-60')}>
+              <ToggleRow label="Mostrar seção de fotos do espaço" checked={mostrarEstabelecimento} onChange={setMostrarEstabelecimento} disabled={limites.fotos_estabelecimento === 0} />
               {mostrarEstabelecimento && (
                 <>
                   <input
@@ -318,15 +311,19 @@ function PersonalizarPaginaModalInner({
                     className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-300 transition-all"
                   />
                   <ModoSelector value={estabelecimentoModo} onChange={setEstabelecimentoModo} />
-                  <p className="text-xs text-gray-400">Selecione até {MAX_FOTOS} fotos ({estabelecimentoFotosIds.length}/{MAX_FOTOS} selecionadas)</p>
-                  <SeletorFotos galeria={galeria} selecionadas={estabelecimentoFotosIds} onChange={setEstabelecimentoFotosIds} max={MAX_FOTOS} />
+                  <p className="text-xs text-gray-400">
+                    {limites.fotos_estabelecimento === Infinity
+                      ? `Fotos ilimitadas (${estabelecimentoFotosIds.length} selecionadas)`
+                      : `Selecione até ${limites.fotos_estabelecimento} fotos (${estabelecimentoFotosIds.length}/${limites.fotos_estabelecimento} selecionadas)`}
+                  </p>
+                  <SeletorFotos galeria={galeria} selecionadas={estabelecimentoFotosIds} onChange={setEstabelecimentoFotosIds} max={limites.fotos_estabelecimento} />
                 </>
               )}
             </div>
-            {!ehPro && (
+            {limites.fotos_estabelecimento === 0 && (
               <div className="absolute inset-0 -m-2 rounded-xl bg-white/70 backdrop-blur-[2px] flex flex-col items-center justify-center gap-2 text-center p-4">
                 <Lock className="w-6 h-6 text-gray-400" />
-                <p className="text-sm font-semibold text-gray-700">Exclusivo do Plano Pro</p>
+                <p className="text-sm font-semibold text-gray-700">Disponível a partir do Plano Pro</p>
                 <Link href="/painel/assinatura" className="text-xs font-semibold text-rose-500 hover:text-rose-600 underline underline-offset-2">
                   Fazer upgrade
                 </Link>

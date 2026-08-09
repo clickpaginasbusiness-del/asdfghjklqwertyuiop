@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { limitesDoMesSP, mesAnoAtualSP, formatDateKey, dateKeyToDate } from '@/lib/utils'
 import type { Missao, MissaoProgresso, MissaoDesconto } from '@/lib/types'
+import { ehPro, type Plano } from '@/lib/plano'
 
 /**
  * Motor do sistema de Missões/Objetivos mensais.
@@ -421,7 +422,7 @@ function sortearAleatorias<T>(lista: T[], quantidade: number): T[] {
   return copia.slice(0, Math.min(quantidade, copia.length))
 }
 
-async function sortearMissoesDoMes(admin: Admin, prestadoraId: string, plano: 'basico' | 'pro', mes: number, ano: number): Promise<void> {
+async function sortearMissoesDoMes(admin: Admin, prestadoraId: string, plano: Plano, mes: number, ano: number): Promise<void> {
   const { data: existentes } = await admin
     .from('missoes_progresso')
     .select('id')
@@ -432,7 +433,7 @@ async function sortearMissoesDoMes(admin: Admin, prestadoraId: string, plano: 'b
 
   if (existentes && existentes.length > 0) return // já sorteado esse mês
 
-  const colunaDisponivel = plano === 'pro' ? 'disponivel_pro' : 'disponivel_basico'
+  const colunaDisponivel = ehPro(plano) ? 'disponivel_pro' : 'disponivel_basico'
   const { data: catalogo } = await admin
     .from('missoes')
     .select('*')
@@ -453,7 +454,7 @@ async function sortearMissoesDoMes(admin: Admin, prestadoraId: string, plano: 'b
   const idsExcluidos = new Set((concluidasOnboarding ?? []).map((r) => r.missao_id as string))
   const pool = ((catalogo ?? []) as Missao[]).filter((m) => !idsExcluidos.has(m.id))
 
-  const quantidade = plano === 'pro' ? 3 : 2
+  const quantidade = ehPro(plano) ? 3 : 2
   const sorteadas = sortearAleatorias(pool, quantidade)
 
   const linhas = await Promise.all(
@@ -589,7 +590,7 @@ export interface MissaoComProgresso extends MissaoProgresso {
   missoes: Missao
 }
 
-export async function getMissoesDoMes(admin: Admin, prestadoraId: string, plano: 'basico' | 'pro'): Promise<{
+export async function getMissoesDoMes(admin: Admin, prestadoraId: string, plano: Plano): Promise<{
   missoes: MissaoComProgresso[]
   descontosPendentes: MissaoDesconto[]
 }> {

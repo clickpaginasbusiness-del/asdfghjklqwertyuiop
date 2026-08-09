@@ -1,6 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { planoEfetivo } from '@/lib/plano'
 import GaleriaClient from './GaleriaClient'
 
 export default async function GaleriaPage() {
@@ -10,7 +9,7 @@ export default async function GaleriaPage() {
 
   const { data: prestadora } = await supabase
     .from('prestadoras')
-    .select('id, plano, e_parceira')
+    .select('id')
     .eq('user_id', user.id)
     .single()
 
@@ -26,7 +25,6 @@ export default async function GaleriaPage() {
     <GaleriaClient
       galeria={galeria ?? []}
       prestadoraId={prestadora.id}
-      plano={planoEfetivo({ plano: (prestadora.plano as 'basico' | 'pro' | null) ?? null, e_parceira: prestadora.e_parceira })}
     />
   )
 }

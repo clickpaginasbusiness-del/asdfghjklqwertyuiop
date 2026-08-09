@@ -19,6 +19,7 @@ import { TEMPLATE_VARS, MSG_CONFIRMACAO_DEFAULT, MSG_CANCELAMENTO_DEFAULT, MSG_L
 import { PersonalizarPaginaModal } from './PersonalizarPaginaModal'
 import { CodigoIndicacaoCard } from '@/components/painel/CodigoIndicacaoCard'
 import { ADMIN_EMAIL } from '@/lib/admin'
+import { planoEfetivo } from '@/lib/plano'
 import { validarArquivo } from '@/lib/uploadValidation'
 import toast from 'react-hot-toast'
 
@@ -61,7 +62,7 @@ export default function PerfilPainelClient({
   const [slugStatus, setSlugStatus] = useState<SlugStatus>('idle')
   const [savingSlug, setSavingSlug] = useState(false)
 
-  const ehPro = prestadora.plano === 'pro' || prestadora.e_parceira
+  const planoAtual = planoEfetivo({ plano: prestadora.plano, e_parceira: prestadora.e_parceira })
   const [personalizarOpen, setPersonalizarOpen] = useState(false)
 
   const [msgConfirmacao, setMsgConfirmacao] = useState(initial.mensagem_confirmacao ?? MSG_CONFIRMACAO_DEFAULT)
@@ -526,7 +527,7 @@ export default function PerfilPainelClient({
         prestadora={prestadora}
         galeria={galeria}
         avaliacoes={avaliacoes}
-        ehPro={ehPro}
+        plano={planoAtual}
         onSaved={(patch) => setPrestadora((p) => ({ ...p, ...patch }))}
       />
     </div>

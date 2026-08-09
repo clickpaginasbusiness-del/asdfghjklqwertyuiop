@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { ADMIN_EMAIL } from '@/lib/admin'
+import type { Plano } from '@/lib/mercadopago'
 import AssinaturaClient from './AssinaturaClient'
 
 export const metadata = { title: 'Assinatura — BelleBook' }
@@ -20,7 +21,7 @@ export default async function AssinaturaPage() {
 
   return (
     <AssinaturaClient
-      plano={(prestadora.plano as 'basico' | 'pro' | null) ?? null}
+      plano={(prestadora.plano as Plano | null) ?? null}
       assinaturaAtiva={prestadora.assinatura_ativa}
       trialFim={prestadora.trial_fim}
       periodoFim={prestadora.mp_periodo_fim}

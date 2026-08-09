@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { getResumoParceira } from '@/lib/parceiras'
-import { planoEfetivo } from '@/lib/plano'
+import { planoEfetivo, ehPro } from '@/lib/plano'
 import RelatoriosClient, { type Ag, type AvaliacaoRel, type LancamentoFinanceiro } from './RelatoriosClient'
 
 export default async function RelatoriosPage() {
@@ -18,7 +18,7 @@ export default async function RelatoriosPage() {
 
   if (!prestadora) redirect('/painel/login')
 
-  const plano = planoEfetivo({ plano: (prestadora.plano as 'basico' | 'pro' | null) ?? null, e_parceira: prestadora.e_parceira })
+  const plano = planoEfetivo({ plano: prestadora.plano, e_parceira: prestadora.e_parceira })
 
   // Resumo de parceira usa o cliente admin (não o autenticado por RLS)
   // porque liberar comissões vencidas exige um UPDATE, e a policy de
@@ -27,10 +27,10 @@ export default async function RelatoriosPage() {
     ? await getResumoParceira(createAdminClient(), prestadora.id)
     : null
 
-  if (plano === 'basico') {
+  if (!ehPro(plano)) {
     return (
       <RelatoriosClient
-        plano="basico"
+        plano={plano}
         prestadoraId={prestadora.id}
         agendamentos={[]}
         profissionais={[]}
@@ -80,7 +80,7 @@ export default async function RelatoriosPage() {
 
   return (
     <RelatoriosClient
-      plano="pro"
+      plano={plano}
       prestadoraId={prestadora.id}
       agendamentos={(agendamentos ?? []) as unknown as Ag[]}
       profissionais={profissionais ?? []}

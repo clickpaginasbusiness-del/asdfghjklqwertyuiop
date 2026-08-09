@@ -4,7 +4,7 @@ import { preApprovalPlan, preference, getOrCreatePlanoMensal, registrarUsoCupomI
 import { NextRequest, NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 
-const PLANOS_VALIDOS = new Set<Plano>(['basico', 'pro'])
+const PLANOS_VALIDOS = new Set<Plano>(['start', 'pro', 'studio', 'studio_pro'])
 const CICLOS_VALIDOS = new Set<Ciclo>(['mensal', 'anual'])
 const METODOS_VALIDOS = new Set<MetodoPagamento>(['cartao', 'pix', 'debito'])
 
@@ -127,11 +127,11 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Mensal + Cartão — assinatura recorrente via preapproval. Trial de 30
-    // dias é exclusivo do Básico pra quem nunca usou; cupom e/ou trial exigem
+    // dias é exclusivo do Start pra quem nunca usou; cupom e/ou trial exigem
     // um preapproval_plan próprio (não o compartilhado) porque o preço/trial
     // fica embutido no plano — usar o plano compartilhado aplicaria pra
     // qualquer outra assinante que passasse por ele depois.
-    const incluirTrial = plano === 'basico' && !prestadora.e_trial
+    const incluirTrial = plano === 'start' && !prestadora.e_trial
     let planId: string
     let planoCustomizado = false
     if (cupomRow || incluirTrial) {

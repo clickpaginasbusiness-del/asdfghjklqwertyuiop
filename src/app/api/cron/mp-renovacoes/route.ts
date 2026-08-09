@@ -1,4 +1,4 @@
-import { preApproval, preference, NOME_PLANO, PRECOS, calcularProximaCobranca, incrementarUsoCupom } from '@/lib/mercadopago'
+import { preApproval, preference, NOME_PLANO, PRECOS, calcularProximaCobranca, incrementarUsoCupom, type Plano } from '@/lib/mercadopago'
 import { liberarCaixaVencido } from '@/lib/caixa'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextRequest, NextResponse } from 'next/server'
@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
     if (p.mp_pagamento_pendente_id) continue // já gerou a cobrança desse ciclo, só aguardando pagamento
 
     try {
-      const plano = p.plano as 'basico' | 'pro'
+      const plano = p.plano as Plano
       const { valor, missaoDescontoIds, cupomUsoId } = await calcularProximaCobranca(admin, p.id, PRECOS[plano].mensal)
       const referencia = randomUUID()
 
@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
     if (diasAteVencimento < 0 || diasAteVencimento > 1) continue // só ajusta na véspera
 
     try {
-      const plano = p.plano as 'basico' | 'pro'
+      const plano = p.plano as Plano
       const { valor, missaoDescontoIds, cupomUsoId } = await calcularProximaCobranca(admin, p.id, PRECOS[plano].mensal)
 
       // Sempre define o valor certo (cheio ou descontado) — é a única forma

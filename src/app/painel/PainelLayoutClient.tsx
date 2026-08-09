@@ -42,9 +42,9 @@ function DowngradeBanner({ prestadoraId }: { prestadoraId: string }) {
       <div className="flex items-start gap-2 min-w-0">
         <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
         <p className="text-sm text-amber-800">
-          Você mudou para o Plano Básico. Algumas funcionalidades foram limitadas.{' '}
+          Seu plano foi ajustado. Algumas funcionalidades foram limitadas.{' '}
           <Link href="/planos" className="font-semibold underline underline-offset-2 hover:no-underline">
-            Faça upgrade para o Pro
+            Veja os planos disponíveis
           </Link>{' '}
           para reativá-las.
         </p>
@@ -445,8 +445,8 @@ export default function PainelLayoutClient({
         {/* Trial Pro em andamento — dias restantes até encerrar */}
         {trialProDiasRestantes !== null && <TrialProAtivoBanner dias={trialProDiasRestantes} />}
 
-        {/* Oferta de trial Pro grátis — só quem está no Básico e nunca usou (parceira já tem Pro vitalício, oferta seria redundante) */}
-        {!prestadora.e_parceira && prestadora.plano === 'basico' && !prestadora.trial_pro_usado && <TrialProBanner />}
+        {/* Oferta de trial Pro grátis — só quem está no Start e nunca usou (parceira já tem Pro vitalício, oferta seria redundante) */}
+        {!prestadora.e_parceira && prestadora.plano === 'start' && !prestadora.trial_pro_usado && <TrialProBanner />}
 
         {/* Ativar notificações push */}
         <PushNotificationPrompt prestadoraId={prestadora.id} />

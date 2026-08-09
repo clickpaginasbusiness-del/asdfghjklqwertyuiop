@@ -352,7 +352,7 @@ export default function CompletarCadastroGoogleClient({
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-4">
-          30 dias grátis no Plano Básico · Sem cartão · Cancele quando quiser
+          30 dias grátis no Plano Start · Sem cartão · Cancele quando quiser
         </p>
       </div>
     </div>

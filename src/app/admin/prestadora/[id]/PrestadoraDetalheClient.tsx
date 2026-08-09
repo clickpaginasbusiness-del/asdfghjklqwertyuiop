@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { AdminNav } from '@/components/admin/AdminNav'
+import { NOME_PLANO, PRECOS, type Plano } from '@/lib/mercadopago'
 import toast from 'react-hot-toast'
 
 type PrestadoraDetalhe = {
@@ -34,7 +35,8 @@ function statusInfo(p: PrestadoraDetalhe): { label: string; variant: 'success' |
     return { label: 'Trial ativo', variant: 'warning' }
   }
   if (!p.e_trial && p.assinatura_ativa) {
-    return { label: p.plano === 'pro' ? 'Pro ativo' : 'Básico ativo', variant: 'success' }
+    const nome = p.plano && p.plano in NOME_PLANO ? NOME_PLANO[p.plano as Plano] : 'Start'
+    return { label: `${nome} ativo`, variant: 'success' }
   }
   return { label: 'Sem plano / expirado', variant: 'default' }
 }
@@ -295,7 +297,7 @@ export default function PrestadoraDetalheClient({
               </h3>
               <p className="text-sm text-gray-500 mt-1">
                 {prestadora.e_parceira
-                  ? `${prestadora.nome} volta pro Plano Básico e perde acesso ao relatório de parceira. Comissões já geradas continuam valendo.`
+                  ? `${prestadora.nome} volta pro Plano Start e perde acesso ao relatório de parceira. Comissões já geradas continuam valendo.`
                   : `${prestadora.nome} ganha Plano Pro grátis (assinatura paga ativa, se houver, será cancelada) e passa a receber comissão sobre as indicadas dela.`}
               </p>
             </div>

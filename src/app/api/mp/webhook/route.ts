@@ -1,5 +1,5 @@
-import { preApproval, mpPayment, darDiasGratis } from '@/lib/mercadopago'
-import { aplicarDowngradeParaBasico } from '@/lib/downgrade'
+import { preApproval, mpPayment, darDiasGratis, type Plano } from '@/lib/mercadopago'
+import { aplicarRestricoesDoPlano } from '@/lib/downgrade'
 import { concluirMissaoIndicacaoBonus } from '@/lib/missoes'
 import { criarComissaoSeAplicavel, cancelarComissaoPendente } from '@/lib/parceiras'
 import { criarEntradaCaixa, reembolsarEntradaCaixa } from '@/lib/caixa'
@@ -18,8 +18,12 @@ const MS_DIA = 24 * 60 * 60 * 1000
 const MS_30_DIAS = 30 * MS_DIA
 const MS_365_DIAS = 365 * MS_DIA
 
+// Ordem dos planos, do mais pro menos restrito — decide se uma troca de plano
+// é upgrade (reativa profissionais) ou downgrade (aplica restrições).
+const RANK_PLANO: Record<Plano, number> = { start: 0, pro: 1, studio: 2, studio_pro: 3 }
+
 type PrestadoraIndicacao = {
-  plano: 'basico' | 'pro' | null
+  plano: Plano | null
   indicado_por: string | null
   indicacao_recompensa_processada: boolean
 } | null | undefined
@@ -318,7 +322,7 @@ async function processarPreapproval(preapprovalId: string) {
     // mp_checkouts (plano criado sob medida, com cupom/trial) ou via
     // payer_email + id do plano compartilhado (caminho padrão).
     let prestadoraId: string | null = null
-    let plano: 'basico' | 'pro' | null = null
+    let plano: Plano | null = null
 
     const { data: checkout } = await supabaseAdmin
       .from('mp_checkouts')
@@ -329,15 +333,22 @@ async function processarPreapproval(preapprovalId: string) {
 
     if (checkout) {
       prestadoraId = checkout.prestadora_id
-      plano = checkout.plano as 'basico' | 'pro'
+      plano = checkout.plano as Plano
       await supabaseAdmin.from('mp_checkouts').update({ consumido: true }).eq('id', checkout.id)
     } else if (sub.payer_email) {
-      const [{ data: basicoCfg }, { data: proCfg }] = await Promise.all([
-        supabaseAdmin.from('app_config').select('valor').eq('chave', 'mp_plano_basico_mensal').maybeSingle(),
-        supabaseAdmin.from('app_config').select('valor').eq('chave', 'mp_plano_pro_mensal').maybeSingle(),
-      ])
-      if (preapprovalPlanId === basicoCfg?.valor) plano = 'basico'
-      else if (preapprovalPlanId === proCfg?.valor) plano = 'pro'
+      const { data: configs } = await supabaseAdmin
+        .from('app_config')
+        .select('chave, valor')
+        .in('chave', ['mp_plan_start_mensal', 'mp_plan_pro_mensal', 'mp_plan_studio_mensal', 'mp_plan_studio_pro_mensal'])
+
+      const planoPorChave: Record<string, Plano> = {
+        mp_plan_start_mensal: 'start',
+        mp_plan_pro_mensal: 'pro',
+        mp_plan_studio_mensal: 'studio',
+        mp_plan_studio_pro_mensal: 'studio_pro',
+      }
+      const config = (configs ?? []).find((c) => c.valor === preapprovalPlanId)
+      if (config) plano = planoPorChave[config.chave]
 
       const { data: prestadora } = await supabaseAdmin
         .from('prestadoras')
@@ -422,11 +433,14 @@ async function processarPreapproval(preapprovalId: string) {
   }
 }
 
-async function aplicarMudancaDePlano(prestadoraId: string, planoAnterior: 'basico' | 'pro' | null, planoNovo: 'basico' | 'pro') {
-  if (planoAnterior === 'pro' && planoNovo === 'basico') {
-    await aplicarDowngradeParaBasico(supabaseAdmin, prestadoraId)
+async function aplicarMudancaDePlano(prestadoraId: string, planoAnterior: Plano | null, planoNovo: Plano) {
+  const rankAnterior = planoAnterior ? RANK_PLANO[planoAnterior] : -1
+  const rankNovo = RANK_PLANO[planoNovo]
+
+  if (rankNovo < rankAnterior) {
+    await aplicarRestricoesDoPlano(supabaseAdmin, prestadoraId, planoNovo)
     await supabaseAdmin.from('prestadoras').update({ downgrade_aviso: true }).eq('id', prestadoraId)
-  } else if (planoAnterior === 'basico' && planoNovo === 'pro') {
+  } else if (rankNovo > rankAnterior) {
     await supabaseAdmin.from('profissionais').update({ ativa: true }).eq('prestadora_id', prestadoraId)
     await supabaseAdmin.from('prestadoras').update({ downgrade_aviso: false }).eq('id', prestadoraId)
   }

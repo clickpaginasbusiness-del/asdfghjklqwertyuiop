@@ -5,9 +5,8 @@ import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
-import { ImageIcon, Lock, Trash2, Upload, X } from 'lucide-react'
+import { ImageIcon, Trash2, Upload, X } from 'lucide-react'
 import type { GaleriaItem } from '@/lib/types'
-import Link from 'next/link'
 import toast from 'react-hot-toast'
 import Image from 'next/image'
 import { ImageWithSkeleton } from '@/components/ui/image-with-skeleton'
@@ -16,11 +15,9 @@ import { validarArquivo } from '@/lib/uploadValidation'
 export default function GaleriaClient({
   galeria: initial,
   prestadoraId,
-  plano,
 }: {
   galeria: GaleriaItem[]
   prestadoraId: string
-  plano: 'basico' | 'pro' | null
 }) {
   const [galeria, setGaleria] = useState(initial)
   const [uploading, setUploading] = useState(false)
@@ -119,19 +116,6 @@ export default function GaleriaClient({
           onChange={handleUpload}
         />
       </div>
-
-      {plano === 'basico' && (
-        <div className="flex items-center gap-3 bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3 text-sm">
-          <Lock className="w-4 h-4 text-amber-500 shrink-0" />
-          <span className="text-amber-700">
-            Sua galeria está oculta na sua página pública.{' '}
-            <Link href="/planos" className="font-semibold underline underline-offset-2">
-              Faça upgrade para o Pro
-            </Link>
-            {' '}para exibi-la.
-          </span>
-        </div>
-      )}
 
       {galeria.length === 0 ? (
         <Card>

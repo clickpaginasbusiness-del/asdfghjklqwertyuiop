@@ -23,6 +23,8 @@ import { getServicoIcone } from '@/lib/servicoIcones'
 import { calcularValorSinal } from '@/lib/sinal'
 import type { PrestadoraPublica, Servico, GaleriaItem, Agendamento, Profissional, HorarioFuncionamento, Avaliacao } from '@/lib/types'
 import { getTema } from '@/lib/theme'
+import { planoEfetivo, ehPro } from '@/lib/plano'
+import { limitesPlano } from '@/lib/planoLimites'
 import toast from 'react-hot-toast'
 import { format, addDays, startOfDay, isSameDay, isToday, isBefore, getDay, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -791,32 +793,38 @@ export default function PerfilPublicoClient({
     ? avaliacoes.reduce((acc, a) => acc + a.nota, 0) / avaliacoes.length
     : null
 
-  // Destaque é recurso exclusivo do Plano Pro — se a prestadora não é mais Pro
-  // (ex.: downgrade após ter marcado destaques), ignora marcações antigas.
+  const planoAtual = planoEfetivo({ plano: prestadora.plano, e_parceira: prestadora.e_parceira })
+  const limitesAtuais = limitesPlano(planoAtual)
+
+  // Destaque é recurso exclusivo do Plano Pro+ — se a prestadora não é mais
+  // Pro+ (ex.: downgrade após ter marcado destaques), ignora marcações antigas.
   // Sem nenhuma marcada, a seção de avaliações simplesmente não aparece —
   // sem fallback para "mais recentes".
-  const avaliacoesDestaque = prestadora.pagina_mostrar_avaliacoes && (prestadora.plano === 'pro' || prestadora.e_parceira)
+  const avaliacoesDestaque = prestadora.pagina_mostrar_avaliacoes && ehPro(planoAtual)
     ? avaliacoes.filter((a) => a.destaque)
     : []
   const avaliacoesExibidas = avaliacoesDestaque.slice(0, 3)
 
-  // Galeria é recurso exclusivo do Plano Pro — as fotos continuam salvas no
-  // banco num downgrade, só ficam ocultas aqui na página pública. Exibe só as
-  // fotos selecionadas no modal "Personalizar Página", na ordem escolhida lá.
-  const galeriaCompleta = prestadora.pagina_mostrar_galeria && (prestadora.plano === 'pro' || prestadora.e_parceira) ? galeria : []
-  const galeriaVisivel = prestadora.pagina_galeria_fotos_ids.length > 0
-    ? prestadora.pagina_galeria_fotos_ids
-        .map((id) => galeriaCompleta.find((g) => g.id === id))
-        .filter((g): g is GaleriaItem => !!g)
-    : galeriaCompleta
+  // Galeria de trabalhos: disponível em todos os planos, respeitando o limite
+  // de fotos de cada um — o slice extra cobre contas com mais ids salvos do
+  // que o plano atual permite (ex.: downgrade depois de ter selecionado mais).
+  const galeriaCompleta = prestadora.pagina_mostrar_galeria ? galeria : []
+  const galeriaVisivel = (
+    prestadora.pagina_galeria_fotos_ids.length > 0
+      ? prestadora.pagina_galeria_fotos_ids
+          .map((id) => galeriaCompleta.find((g) => g.id === id))
+          .filter((g): g is GaleriaItem => !!g)
+      : galeriaCompleta
+  ).slice(0, limitesAtuais.fotos_trabalhos)
 
-  // Assim como a galeria de trabalhos, fotos do estabelecimento são
-  // exclusivas do Plano Pro — reforça aqui também, não só no modal, pra um
-  // downgrade esconder a seção mesmo que os dados continuem salvos.
-  const estabelecimentoFotos = prestadora.pagina_mostrar_estabelecimento && (prestadora.plano === 'pro' || prestadora.e_parceira)
+  // Fotos do estabelecimento: bloqueadas no Start (limite 0) — reforça aqui
+  // também, não só no modal, pra um downgrade esconder a seção mesmo que os
+  // dados continuem salvos. Nos demais planos, respeita o limite de fotos.
+  const estabelecimentoFotos = prestadora.pagina_mostrar_estabelecimento && limitesAtuais.fotos_estabelecimento > 0
     ? prestadora.pagina_estabelecimento_fotos_ids
         .map((id) => galeria.find((g) => g.id === id))
         .filter((g): g is GaleriaItem => !!g)
+        .slice(0, limitesAtuais.fotos_estabelecimento)
     : []
 
   async function compartilharAgendamento() {

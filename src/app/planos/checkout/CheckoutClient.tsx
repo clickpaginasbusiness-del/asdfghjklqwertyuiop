@@ -7,9 +7,9 @@ import { ArrowLeft, Check, X, CreditCard, QrCode, Landmark, ChevronRight, Loader
 import { Button } from '@/components/ui/button'
 import { useCupom } from '@/hooks/use-cupom'
 import { formatCurrency, cn } from '@/lib/utils'
+import type { Plano } from '@/lib/mercadopago'
 import toast from 'react-hot-toast'
 
-type Plano = 'basico' | 'pro'
 type Ciclo = 'mensal' | 'anual'
 type Metodo = 'cartao' | 'pix' | 'debito'
 
@@ -17,11 +17,13 @@ type Metodo = 'cartao' | 'pix' | 'debito'
 // src/lib/mercadopago.ts) porque aquele módulo inicializa o client do MP com
 // a access token e não pode ser importado em código de cliente.
 const PRECOS: Record<Plano, Record<Ciclo, number>> = {
-  basico: { mensal: 49, anual: 470 },
+  start: { mensal: 49, anual: 470 },
   pro: { mensal: 89, anual: 855 },
+  studio: { mensal: 199, anual: 1910 },
+  studio_pro: { mensal: 299, anual: 2870 },
 }
 
-const NOME_PLANO: Record<Plano, string> = { basico: 'Básico', pro: 'Pro' }
+const NOME_PLANO: Record<Plano, string> = { start: 'Start', pro: 'Pro', studio: 'Studio', studio_pro: 'Studio Pro' }
 
 const METODOS: {
   valor: Metodo

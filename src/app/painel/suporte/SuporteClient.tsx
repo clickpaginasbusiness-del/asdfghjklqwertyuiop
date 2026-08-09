@@ -20,7 +20,7 @@ const FAQ = [
   },
   {
     pergunta: 'Como adicionar profissionais à minha equipe?',
-    resposta: 'Acesse o menu "Profissionais" e clique em adicionar. No Plano Básico você pode cadastrar 1 profissional; no Plano Pro o número é ilimitado.',
+    resposta: 'Acesse o menu "Profissionais" e clique em adicionar. O limite depende do seu plano: 1 no Start, 3 no Pro, e ilimitado no Studio e Studio Pro.',
     link: { href: '/painel/profissionais', label: 'Ir para Profissionais' },
   },
   {

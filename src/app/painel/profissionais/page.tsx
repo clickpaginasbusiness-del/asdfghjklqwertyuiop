@@ -26,7 +26,7 @@ export default async function ProfissionaisPage() {
     <ProfissionaisClient
       profissionais={profissionais ?? []}
       prestadoraId={prestadora.id}
-      plano={planoEfetivo({ plano: (prestadora.plano as 'basico' | 'pro' | null) ?? null, e_parceira: prestadora.e_parceira })}
+      plano={planoEfetivo({ plano: prestadora.plano, e_parceira: prestadora.e_parceira })}
     />
   )
 }

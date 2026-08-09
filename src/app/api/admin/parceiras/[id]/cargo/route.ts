@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAdmin } from '@/lib/admin'
-import { aplicarDowngradeParaBasico } from '@/lib/downgrade'
+import { aplicarRestricoesDoPlano } from '@/lib/downgrade'
 import { preApproval } from '@/lib/mercadopago'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -72,11 +72,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   // Remover
-  await aplicarDowngradeParaBasico(admin, id)
+  await aplicarRestricoesDoPlano(admin, id, 'start')
 
   const { error } = await admin.from('prestadoras').update({
     e_parceira: false,
-    plano: 'basico',
+    plano: 'start',
     parceira_desde: null,
     parceira_periodo_30_inicio: null,
     parceira_comissao_percentual: 20,

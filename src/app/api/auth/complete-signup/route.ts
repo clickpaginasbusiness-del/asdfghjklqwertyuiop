@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
       email: emailLimpo,
       slug: slugLimpo,
       telefone: telefoneLimpo,
-      plano: 'basico',
+      plano: 'start',
       assinatura_ativa: !semTrial,
       trial_fim: semTrial ? null : trialFim,
       e_trial: !semTrial,

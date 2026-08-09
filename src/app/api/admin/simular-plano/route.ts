@@ -1,15 +1,17 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireAdmin } from '@/lib/admin'
-import { aplicarDowngradeParaBasico } from '@/lib/downgrade'
+import { aplicarRestricoesDoPlano } from '@/lib/downgrade'
 import { preApproval } from '@/lib/mercadopago'
+import { ehPro } from '@/lib/plano'
+import type { PlanoTier } from '@/lib/planoLimites'
 import { NextRequest, NextResponse } from 'next/server'
 
-type Estado = 'trial' | 'basico' | 'pro' | 'real'
-const ESTADOS_VALIDOS: Estado[] = ['trial', 'basico', 'pro', 'real']
+type Estado = 'trial' | 'start' | 'pro' | 'studio' | 'studio_pro' | 'real'
+const ESTADOS_VALIDOS: Estado[] = ['trial', 'start', 'pro', 'studio', 'studio_pro', 'real']
 
 /**
- * Ferramenta de QA exclusiva da conta admin — simula os 3 estados de plano
+ * Ferramenta de QA exclusiva da conta admin — simula os estados de plano
  * direto no banco (sem tocar no Mercado Pago de verdade) pra conseguir ver a
  * página de assinatura, os gates de feature, etc. em cada estado sem
  * precisar de contas de teste separadas nem esperar trial/cobrança de verdade.
@@ -25,7 +27,7 @@ export async function POST(request: NextRequest) {
 
   const estado = body.estado as Estado
   if (!ESTADOS_VALIDOS.includes(estado)) {
-    return NextResponse.json({ error: 'estado inválido — use trial, basico, pro ou real' }, { status: 400 })
+    return NextResponse.json({ error: 'estado inválido — use trial, start, pro, studio, studio_pro ou real' }, { status: 400 })
   }
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -67,11 +69,11 @@ export async function POST(request: NextRequest) {
       update = { ...update, assinatura_ativa: false, plano: null, mp_periodo_fim: null, e_trial: false }
     }
 
-    // Se o status real não é Pro, reaplica as mesmas restrições do downgrade
+    // Se o status real não é Pro+, reaplica as mesmas restrições do downgrade
     // (profissionais extras, avaliações em destaque, cor do tema) — senão o
     // reset só troca o rótulo do plano e deixa as features Pro liberadas.
-    if (update.plano !== 'pro') {
-      await aplicarDowngradeParaBasico(admin, prestadora.id)
+    if (!ehPro(update.plano as PlanoTier | null ?? null)) {
+      await aplicarRestricoesDoPlano(admin, prestadora.id, 'start')
     }
 
     const { error } = await admin.from('prestadoras').update(update).eq('id', prestadora.id)
@@ -83,13 +85,13 @@ export async function POST(request: NextRequest) {
     trial: {
       e_trial: true,
       trial_fim: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      plano: 'basico',
+      plano: 'start',
       assinatura_ativa: true,
       trial_pro_fim: null,
     },
-    basico: {
+    start: {
       e_trial: false,
-      plano: 'basico',
+      plano: 'start',
       assinatura_ativa: true,
       trial_pro_usado: false,
       trial_pro_fim: null,
@@ -100,14 +102,26 @@ export async function POST(request: NextRequest) {
       assinatura_ativa: true,
       trial_pro_fim: null,
     },
+    studio: {
+      e_trial: false,
+      plano: 'studio',
+      assinatura_ativa: true,
+      trial_pro_fim: null,
+    },
+    studio_pro: {
+      e_trial: false,
+      plano: 'studio_pro',
+      assinatura_ativa: true,
+      trial_pro_fim: null,
+    },
   }
 
-  // Trial e Básico não têm acesso às features Pro — reaplica as mesmas
+  // Trial e Start não têm acesso às features Pro+ — reaplica as mesmas
   // restrições do downgrade real (profissionais extras, destaques, cor do
   // tema). Sem isso a simulação só troca o rótulo do plano na tela, mas as
-  // features Pro continuam liberadas por baixo.
-  if (estado === 'trial' || estado === 'basico') {
-    await aplicarDowngradeParaBasico(admin, prestadora.id)
+  // features Pro+ continuam liberadas por baixo.
+  if (estado === 'trial' || estado === 'start') {
+    await aplicarRestricoesDoPlano(admin, prestadora.id, 'start')
   }
 
   const { error } = await admin

@@ -18,6 +18,7 @@ import {
 import { RelatorioParceiraClient } from '@/components/parceiras/RelatorioParceiraClient'
 import { FinanceiroTabClient } from '@/components/relatorios/FinanceiroTabClient'
 import type { ResumoParceira } from '@/lib/parceiras'
+import { ehPro, type Plano } from '@/lib/plano'
 
 const ROSE = '#fb7185'
 const ROSE_LIGHT = '#fecdd3'
@@ -54,7 +55,7 @@ export type LancamentoFinanceiro = {
 }
 
 interface Props {
-  plano: 'basico' | 'pro'
+  plano: Plano | null
   prestadoraId: string
   agendamentos: Ag[]
   profissionais: ProfissionalLite[]
@@ -276,7 +277,7 @@ export default function RelatoriosClient({
     return dist.map((d) => ({ ...d, pct: (d.qtd / max) * 100 }))
   }, [avaliacoesNoPeriodo])
 
-  if (plano === 'basico') {
+  if (!ehPro(plano)) {
     return (
       <div className="space-y-6">
         <h1 className="font-serif text-2xl font-semibold text-gray-900">Relatórios</h1>
@@ -285,7 +286,7 @@ export default function RelatoriosClient({
             <Lock className="w-7 h-7 text-amber-400" />
           </div>
           <h2 className="font-serif text-xl font-semibold text-gray-900 mb-2">
-            Relatórios disponíveis no Plano Pro
+            Relatórios disponíveis a partir do Plano Pro
           </h2>
           <p className="text-gray-500 text-sm max-w-xs mx-auto mb-6">
             Acompanhe receita, serviços mais vendidos, taxa de cancelamento e muito mais com relatórios completos do seu negócio.

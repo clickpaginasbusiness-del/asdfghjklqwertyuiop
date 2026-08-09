@@ -3,6 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import PlanosClient from './PlanosClient'
 import { SITE_URL } from '@/lib/seo'
+import type { Plano } from '@/lib/mercadopago'
+
+const PLANOS_VALIDOS: Plano[] = ['start', 'pro', 'studio', 'studio_pro']
 
 const TITLE = 'Planos — BelleBook'
 const DESCRIPTION = 'Escolha o plano ideal para o seu negócio de beleza'
@@ -60,12 +63,12 @@ export default async function PlanosPage({
   const trialExpirado = Boolean(
     eTrial && prestadora?.trial_fim && new Date(prestadora.trial_fim) < new Date()
   )
-  const auto = params.auto === 'pro' || params.auto === 'basico' ? params.auto : undefined
+  const auto = PLANOS_VALIDOS.includes(params.auto as Plano) ? (params.auto as Plano) : undefined
 
   return (
     <PlanosClient
       isLoggedIn={!!user}
-      planoAtual={(prestadora?.plano as 'basico' | 'pro' | null) ?? null}
+      planoAtual={(prestadora?.plano as Plano | null) ?? null}
       cicloInicial={cicloInicial}
       eTrial={eTrial}
       trialExpirado={trialExpirado}

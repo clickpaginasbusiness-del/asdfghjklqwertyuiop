@@ -155,7 +155,7 @@ export default function ParceirasAdminClient({ parceiras }: { parceiras: Parceir
             <div>
               <h3 className="font-semibold text-gray-900">Remover cargo de parceira?</h3>
               <p className="text-sm text-gray-500 mt-1">
-                <span className="font-medium text-gray-800">{alvo.nome}</span> volta pro Plano Básico e perde o acesso ao relatório de parceira.
+                <span className="font-medium text-gray-800">{alvo.nome}</span> volta pro Plano Start e perde o acesso ao relatório de parceira.
                 Comissões já geradas continuam valendo.
               </p>
             </div>

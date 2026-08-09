@@ -1,10 +1,11 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import type { Plano } from '@/lib/mercadopago'
 import CheckoutClient from './CheckoutClient'
 
 export const metadata = { title: 'Confirmar assinatura — BelleBook' }
 
-type Plano = 'basico' | 'pro'
+const PLANOS_VALIDOS: Plano[] = ['start', 'pro', 'studio', 'studio_pro']
 type Ciclo = 'mensal' | 'anual'
 
 export default async function PlanosCheckoutPage({
@@ -14,7 +15,7 @@ export default async function PlanosCheckoutPage({
 }) {
   const { plano, ciclo } = await searchParams
 
-  if (plano !== 'basico' && plano !== 'pro') redirect('/planos')
+  if (!PLANOS_VALIDOS.includes(plano as Plano)) redirect('/planos')
   const cicloValido: Ciclo = ciclo === 'anual' ? 'anual' : 'mensal'
 
   const supabase = await createClient()

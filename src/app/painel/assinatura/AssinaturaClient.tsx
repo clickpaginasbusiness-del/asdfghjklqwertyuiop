@@ -3,12 +3,13 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { CreditCard, Check, X, Zap, Sparkles, AlertCircle, RefreshCw, ArrowUpRight, Tag, FlaskConical, QrCode, Landmark } from 'lucide-react'
+import { CreditCard, Check, Zap, Sparkles, AlertCircle, ArrowUpRight, FlaskConical, QrCode, Landmark } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { useCupom, precoComDesconto } from '@/hooks/use-cupom'
 import { cn } from '@/lib/utils'
+import type { Plano } from '@/lib/mercadopago'
+import { ehStudioPro } from '@/lib/plano'
 import toast from 'react-hot-toast'
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -16,9 +17,9 @@ import { ptBR } from 'date-fns/locale'
 type Ciclo = 'mensal' | 'anual'
 type Metodo = 'cartao' | 'pix' | 'debito'
 
-const PLANO_INFO = {
-  basico: {
-    nome: 'Plano Básico',
+const PLANO_INFO: Record<Plano, { nome: string; precos: Record<Ciclo, string>; icon: typeof Zap; features: string[] }> = {
+  start: {
+    nome: 'Plano Start',
     precos: { mensal: 'R$49/mês', anual: 'R$470/ano · R$39/mês' },
     icon: Zap,
     features: [
@@ -27,6 +28,7 @@ const PLANO_INFO = {
       'Gestão de clientes',
       'Notificações por WhatsApp',
       '1 profissional cadastrada',
+      'Galeria de trabalhos (4 fotos)',
     ],
   },
   pro: {
@@ -34,17 +36,33 @@ const PLANO_INFO = {
     precos: { mensal: 'R$89/mês', anual: 'R$855/ano · R$71/mês' },
     icon: Sparkles,
     features: [
-      'Tudo do Plano Básico',
-      'Profissionais ilimitadas',
-      'Galeria de fotos e vídeos',
+      'Tudo do Plano Start',
+      'Até 3 profissionais',
+      'Galeria de trabalhos e do estabelecimento (8 fotos cada)',
+      'Relatórios completos',
       'Suporte prioritário',
     ],
   },
-} as const
-
-const UPGRADE_PRO = {
-  mensal: { valor: 'R$89', sufixo: '/mês', equivalente: null, label: 'Profissionais ilimitadas + Galeria de fotos e vídeos' },
-  anual:  { valor: 'R$855', sufixo: '/ano', equivalente: 'R$71/mês', label: 'Profissionais ilimitadas + Galeria — no ciclo anual' },
+  studio: {
+    nome: 'Plano Studio',
+    precos: { mensal: 'R$199/mês', anual: 'R$1.910/ano · R$159/mês' },
+    icon: Sparkles,
+    features: [
+      'Tudo do Plano Pro',
+      'Profissionais ilimitadas',
+      'Fotos ilimitadas',
+      'Presets de página',
+    ],
+  },
+  studio_pro: {
+    nome: 'Plano Studio Pro',
+    precos: { mensal: 'R$299/mês', anual: 'R$2.870/ano · R$239/mês' },
+    icon: Sparkles,
+    features: [
+      'Tudo do Plano Studio',
+      'Maior limite de WhatsApp automático (em breve)',
+    ],
+  },
 }
 
 const METODO_LABEL: Record<Metodo, string> = {
@@ -71,18 +89,21 @@ function StatusBadge({ assinaturaAtiva, eTrial, cancelamentoAgendado }: { assina
   return <Badge variant="success">Ativo</Badge>
 }
 
-type EstadoSimulado = 'trial' | 'basico' | 'pro'
+type EstadoSimulado = 'trial' | Plano
 
 const ESTADO_LABEL: Record<EstadoSimulado, string> = {
   trial: 'Trial',
-  basico: 'Básico',
+  start: 'Start',
   pro: 'Pro',
+  studio: 'Studio',
+  studio_pro: 'Studio Pro',
 }
 
-function estadoSimuladoAtual(plano: 'basico' | 'pro' | null, eTrial: boolean): EstadoSimulado | null {
-  if (eTrial && plano === 'basico') return 'trial'
-  if (!eTrial && plano === 'basico') return 'basico'
-  if (!eTrial && plano === 'pro') return 'pro'
+const ESTADOS_SIMULADOS: EstadoSimulado[] = ['trial', 'start', 'pro', 'studio', 'studio_pro']
+
+function estadoSimuladoAtual(plano: Plano | null, eTrial: boolean): EstadoSimulado | null {
+  if (eTrial && plano === 'start') return 'trial'
+  if (!eTrial && plano) return plano
   return null
 }
 
@@ -91,7 +112,7 @@ function estadoSimuladoAtual(plano: 'basico' | 'pro' | null, eTrial: boolean): E
  * banco (sem mexer no Mercado Pago de verdade) pra testar os estados da
  * página e os gates de feature sem precisar de contas de teste separadas.
  */
-function SimuladorPlanoAdmin({ plano, eTrial }: { plano: 'basico' | 'pro' | null; eTrial: boolean }) {
+function SimuladorPlanoAdmin({ plano, eTrial }: { plano: Plano | null; eTrial: boolean }) {
   const router = useRouter()
   const [loading, setLoading] = useState<EstadoSimulado | 'real' | null>(null)
   const atual = estadoSimuladoAtual(plano, eTrial)
@@ -131,7 +152,7 @@ function SimuladorPlanoAdmin({ plano, eTrial }: { plano: 'basico' | 'pro' | null
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Estado de plano simulado">
-          {(['trial', 'basico', 'pro'] as const).map((estado) => (
+          {ESTADOS_SIMULADOS.map((estado) => (
             <button
               key={estado}
               type="button"
@@ -152,7 +173,7 @@ function SimuladorPlanoAdmin({ plano, eTrial }: { plano: 'basico' | 'pro' | null
         </div>
 
         <p className="text-xs text-gray-500">
-          Simulando agora: <strong className="text-gray-700">{atual ? ESTADO_LABEL[atual] : 'nenhum dos 3 estados (estado real ou personalizado)'}</strong>
+          Simulando agora: <strong className="text-gray-700">{atual ? ESTADO_LABEL[atual] : 'nenhum dos estados (estado real ou personalizado)'}</strong>
         </p>
 
         <button
@@ -181,7 +202,7 @@ export default function AssinaturaClient({
   eParceira,
   isAdmin,
 }: {
-  plano: 'basico' | 'pro' | null
+  plano: Plano | null
   assinaturaAtiva: boolean
   trialFim: string | null
   periodoFim: string | null
@@ -194,14 +215,6 @@ export default function AssinaturaClient({
   isAdmin: boolean
 }) {
   const [loadingCancelar, setLoadingCancelar] = useState(false)
-  const [loadingUpgrade, setLoadingUpgrade] = useState(false)
-
-  const {
-    cupomAberto, setCupomAberto,
-    cupomInput, onCupomInputChange,
-    cupomStatus, cupomAplicado, desconto,
-    aplicarCupom, marcarCupomInvalido,
-  } = useCupom()
 
   const info = plano ? PLANO_INFO[plano] : null
   const PlanIcon = info?.icon ?? CreditCard
@@ -220,33 +233,6 @@ export default function AssinaturaClient({
       toast.error('Erro de conexão')
     } finally {
       setLoadingCancelar(false)
-    }
-  }
-
-  async function fazerUpgrade() {
-    setLoadingUpgrade(true)
-    try {
-      const res = await fetch('/api/mp/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          plano: 'pro',
-          ciclo: cicloAtual,
-          metodo: metodoPagamento ?? 'cartao',
-          ...(cupomAplicado ? { cupom: cupomAplicado } : {}),
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        if (data.tipo === 'cupom') { marcarCupomInvalido(); toast.error('Cupom inválido ou expirado') }
-        else { toast.error(data.error ?? 'Erro ao iniciar pagamento') }
-        setLoadingUpgrade(false)
-        return
-      }
-      window.location.href = data.url
-    } catch {
-      toast.error('Erro de conexão')
-      setLoadingUpgrade(false)
     }
   }
 
@@ -420,8 +406,8 @@ export default function AssinaturaClient({
       </Card>
       )}
 
-      {/* Card de upgrade — só no Básico */}
-      {!eParceira && plano === 'basico' && assinaturaAtiva && !eTrial && !cancelamentoAgendado && (
+      {/* Card de upgrade — qualquer plano abaixo do topo de linha */}
+      {!eParceira && plano && !ehStudioPro(plano) && assinaturaAtiva && !eTrial && !cancelamentoAgendado && (
         <Card className="border-rose-100 bg-rose-50/30">
           <CardContent className="p-6">
             <div className="flex items-start gap-4">
@@ -430,91 +416,17 @@ export default function AssinaturaClient({
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold text-gray-900 mb-1">
-                  Faça upgrade para o Plano Pro{cicloAtual === 'anual' ? ' Anual' : ''}
+                  Quer mais recursos?
                 </h3>
-                <p className="text-sm text-gray-500 mb-1 flex items-baseline gap-1.5">
-                  {cupomStatus === 'ok' ? (
-                    <>
-                      <span className="line-through text-gray-400">{UPGRADE_PRO[cicloAtual].valor}</span>
-                      <span className="font-semibold text-emerald-600">{precoComDesconto(UPGRADE_PRO[cicloAtual].valor, desconto)}</span>
-                    </>
-                  ) : (
-                    <span>{UPGRADE_PRO[cicloAtual].valor}</span>
-                  )}
-                  <span>{UPGRADE_PRO[cicloAtual].sufixo}</span>
-                  {UPGRADE_PRO[cicloAtual].equivalente && cupomStatus !== 'ok' && (
-                    <span>· {UPGRADE_PRO[cicloAtual].equivalente}</span>
-                  )}
-                  <span>· {UPGRADE_PRO[cicloAtual].label}</span>
+                <p className="text-sm text-gray-500 mb-4">
+                  Mais profissionais, mais fotos na página pública e relatórios completos nos planos Pro, Studio e Studio Pro.
                 </p>
-                <ul className="space-y-1.5 mb-4">
-                  {['Profissionais ilimitadas', 'Galeria de fotos e vídeos', 'Suporte prioritário'].map((f) => (
-                    <li key={f} className="flex items-center gap-2 text-sm text-gray-600">
-                      <Check className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-
-                {/* Cupom de desconto */}
-                <div className="mb-4">
-                  {!cupomAberto ? (
-                    <button
-                      onClick={() => setCupomAberto(true)}
-                      className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors"
-                    >
-                      <Tag className="w-3.5 h-3.5" />
-                      Tem um cupom?
-                    </button>
-                  ) : (
-                    <div className="flex flex-col gap-2">
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={cupomInput}
-                          onChange={(e) => onCupomInputChange(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && aplicarCupom()}
-                          placeholder="CÓDIGO DO CUPOM"
-                          className="border border-gray-200 rounded-xl px-3 py-2 text-sm text-center uppercase tracking-widest w-48 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-300 transition-all"
-                          autoFocus
-                        />
-                        <button
-                          onClick={aplicarCupom}
-                          disabled={cupomStatus === 'loading' || !cupomInput.trim()}
-                          className="px-4 py-2 rounded-xl text-sm font-semibold bg-gray-900 text-white hover:bg-gray-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                          {cupomStatus === 'loading' ? '...' : 'Aplicar'}
-                        </button>
-                      </div>
-
-                      {cupomStatus === 'ok' && (
-                        <p className="flex items-center gap-1.5 text-sm text-emerald-600 font-medium">
-                          <Check className="w-4 h-4" strokeWidth={2.5} />
-                          Cupom aplicado!
-                        </p>
-                      )}
-                      {cupomStatus === 'erro' && (
-                        <p className="flex items-center gap-1.5 text-sm text-red-500">
-                          <X className="w-4 h-4" strokeWidth={2.5} />
-                          Cupom inválido ou expirado
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <Button
-                  onClick={fazerUpgrade}
-                  loading={loadingUpgrade}
-                  size="sm"
-                  className="gap-2"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  Fazer upgrade agora
-                </Button>
-                <p className="text-xs text-gray-400 mt-2">
-                  Cobrança integral do Pro a partir de agora, sem aproveitamento do período restante do Básico.
-                </p>
+                <Link href="/planos">
+                  <Button size="sm" className="gap-2">
+                    <ArrowUpRight className="w-3.5 h-3.5" />
+                    Ver planos
+                  </Button>
+                </Link>
               </div>
             </div>
           </CardContent>

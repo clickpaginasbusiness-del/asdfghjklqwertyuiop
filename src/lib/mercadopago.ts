@@ -8,32 +8,37 @@ export const preApprovalPlan = new PreApprovalPlan(mpConfig)
 export const mpPayment = new Payment(mpConfig)
 export const preference = new Preference(mpConfig)
 
-export type Plano = 'basico' | 'pro'
+export type Plano = 'start' | 'pro' | 'studio' | 'studio_pro'
 export type Ciclo = 'mensal' | 'anual'
 export type MetodoPagamento = 'cartao' | 'pix' | 'debito'
 
-/** Preços em reais — únicos "price IDs" que existem são os 2 preapproval_plan
+/** Preços em reais — únicos "price IDs" que existem são os 4 preapproval_plan
  * de cartão+mensal (ver getOrCreatePlanoMensal); anual é sempre pagamento
  * avulso via Preference, com o preço fixo lido daqui direto. */
 export const PRECOS: Record<Plano, Record<Ciclo, number>> = {
-  basico: { mensal: 49, anual: 470 },
+  start: { mensal: 49, anual: 470 },
   pro: { mensal: 89, anual: 855 },
+  studio: { mensal: 199, anual: 1910 },
+  studio_pro: { mensal: 299, anual: 2870 },
 }
 
 export const NOME_PLANO: Record<Plano, string> = {
-  basico: 'Básico',
+  start: 'Start',
   pro: 'Pro',
+  studio: 'Studio',
+  studio_pro: 'Studio Pro',
 }
 
 /**
  * Busca (ou cria, na primeira vez) o preapproval_plan do MP pro plano+mensal
  * via cartão de crédito — o único caso que usa um plano do MP de verdade,
- * já que anual e pix/débito mensal são pagamento avulso (ver checkout).
- * O id criado fica em app_config porque uma rota serverless não tem como
- * persistir variável de ambiente em runtime.
+ * já que anual e pix/débito mensal são pagamento avulso (ver checkout). Chave
+ * em app_config é `mp_plan_{plano}_mensal` (mesmo nome pedido pro time de
+ * produto acompanhar) — o id criado fica lá porque uma rota serverless não
+ * tem como persistir variável de ambiente em runtime.
  */
 export async function getOrCreatePlanoMensal(admin: SupabaseClient, plano: Plano): Promise<string> {
-  const chave = `mp_plano_${plano}_mensal`
+  const chave = `mp_plan_${plano}_mensal`
   const { data } = await admin.from('app_config').select('valor').eq('chave', chave).maybeSingle()
   if (data?.valor) return data.valor
 
@@ -225,7 +230,7 @@ export async function darDiasGratis(
   const novoFim = new Date(Date.now() + dias * MS_DIA)
   await admin.from('prestadoras').update({
     assinatura_ativa: true,
-    plano: 'basico',
+    plano: 'start',
     e_trial: true,
     trial_fim: novoFim.toISOString(),
   }).eq('id', prestadoraId)

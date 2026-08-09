@@ -1,9 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
-import { aplicarDowngradeParaBasico } from '@/lib/downgrade'
+import { aplicarRestricoesDoPlano } from '@/lib/downgrade'
 import { NextResponse } from 'next/server'
 
 /**
- * Aplica de uma vez só as restrições do Plano Básico na conta autenticada
+ * Aplica de uma vez só as restrições do Plano Start na conta autenticada
  * (desativa profissionais extras, limpa avaliações em destaque, reseta cor do
  * tema). Não mexe em cobrança/Mercado Pago — isso é feito por quem chama.
  * Usado pelo webhook do Mercado Pago e pela expiração do trial Pro; existe
@@ -26,15 +26,15 @@ export async function POST() {
     return NextResponse.json({ error: 'Prestadora não encontrada' }, { status: 404 })
   }
 
-  await aplicarDowngradeParaBasico(supabase, prestadora.id)
+  await aplicarRestricoesDoPlano(supabase, prestadora.id, 'start')
 
   const { error } = await supabase
     .from('prestadoras')
-    .update({ plano: 'basico', downgrade_aviso: true })
+    .update({ plano: 'start', downgrade_aviso: true })
     .eq('id', prestadora.id)
 
   if (error) {
-    console.error('[downgrade-to-basico] erro ao aplicar downgrade', error)
+    console.error('[downgrade-to-start] erro ao aplicar downgrade', error)
     return NextResponse.json({ error: 'Erro ao aplicar downgrade' }, { status: 500 })
   }
 
