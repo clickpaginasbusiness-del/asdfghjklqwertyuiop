@@ -355,6 +355,9 @@ function PersonalizarPaginaModalInner({
                     Usada como imagem de fundo no topo da página landing. Se não escolher, usa a primeira foto da galeria de trabalhos.
                   </p>
                   <SeletorFotoUnica galeria={galeria} selecionada={bannerFotoId} onChange={setBannerFotoId} />
+                  <p className="text-xs text-gray-400 mt-2">
+                    Para melhor resultado, use uma foto horizontal com resolução mínima de 1200×400px
+                  </p>
                 </div>
               )}
             </div>

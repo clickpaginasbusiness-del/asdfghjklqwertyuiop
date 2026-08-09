@@ -44,6 +44,59 @@ interface Props {
   isDemo?: boolean
 }
 
+/**
+ * Mesma grade de fotos do GaleriaGrid compartilhado, mas em modo "empilhada"
+ * usa flex-wrap + justify-center em vez de CSS grid de colunas fixas — com
+ * poucas fotos (1-2), um grid de 3 colunas deixa células vazias à direita e
+ * o conteúdo parece alinhado à esquerda; flex-wrap centraliza de verdade
+ * nesse caso. Carrossel delega pro componente original (nada a centralizar
+ * num carrossel).
+ */
+function GaleriaGridCentralizada({
+  itens, modo, altPrefixo, nomePrestadora, onItemClick,
+}: {
+  itens: GaleriaItem[]
+  modo: 'empilhada' | 'carrossel'
+  altPrefixo: string
+  nomePrestadora: string
+  onItemClick: (index: number) => void
+}) {
+  if (modo === 'carrossel') {
+    return <GaleriaGrid itens={itens} modo={modo} altPrefixo={altPrefixo} nomePrestadora={nomePrestadora} onItemClick={onItemClick} />
+  }
+
+  return (
+    <div className="flex flex-wrap justify-center gap-2">
+      {itens.map((item, i) => (
+        <div
+          key={item.id}
+          className="w-[calc(50%-4px)] sm:w-[calc(33.333%-6px)] max-w-[220px] aspect-square rounded-2xl overflow-hidden bg-gray-100 cursor-pointer relative group"
+          onClick={() => onItemClick(i)}
+        >
+          {item.tipo === 'video' ? (
+            <video
+              src={item.url}
+              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+              muted
+            />
+          ) : (
+            <div className="absolute inset-0 transition-transform duration-300 group-hover:scale-110">
+              <ImageWithSkeleton
+                src={item.url}
+                alt={`${altPrefixo} ${i + 1} de ${nomePrestadora}`}
+                fill
+                className="object-cover"
+                sizes="33vw"
+              />
+            </div>
+          )}
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" aria-hidden />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function PerfilPublicoLandingClient({
   prestadora, servicos, galeria, diasBloqueados, profissionais, horariosFuncionamento, avaliacoes, isDemo = false,
 }: Props) {
@@ -928,9 +981,9 @@ export default function PerfilPublicoLandingClient({
         {profissionais.length > 0 && (
           <section className="rounded-3xl p-6 sm:p-10" style={{ backgroundColor: tema.hexLight }}>
             <h2 className="font-serif text-2xl font-semibold text-gray-900 mb-6 text-center">Nossa equipe</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className="flex flex-wrap justify-center gap-5">
               {profissionais.map((p) => (
-                <div key={p.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col items-center text-center gap-3">
+                <div key={p.id} className="w-full sm:w-[calc(50%-10px)] lg:w-[calc(33.333%-14px)] max-w-sm bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col items-center text-center gap-3">
                   <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-white shadow bg-rose-100 shrink-0">
                     {p.foto_url ? (
                       <Image src={p.foto_url} alt={p.nome} width={80} height={80} className="w-full h-full object-cover" />
@@ -954,7 +1007,7 @@ export default function PerfilPublicoLandingClient({
         {galeriaVisivel.length > 0 && (
           <section>
             <h2 className="font-serif text-2xl font-semibold text-gray-900 mb-6 text-center">Nossos trabalhos</h2>
-            <GaleriaGrid
+            <GaleriaGridCentralizada
               itens={prestadora.pagina_galeria_modo === 'carrossel' ? galeriaVisivel : galeriaVisivel.slice(0, 12)}
               modo={prestadora.pagina_galeria_modo}
               altPrefixo="Trabalho"
@@ -972,7 +1025,7 @@ export default function PerfilPublicoLandingClient({
             </h2>
             {estabelecimentoFotos.length > 0 && (
               <div className="mb-5">
-                <GaleriaGrid
+                <GaleriaGridCentralizada
                   itens={prestadora.pagina_estabelecimento_modo === 'carrossel' ? estabelecimentoFotos : estabelecimentoFotos.slice(0, 9)}
                   modo={prestadora.pagina_estabelecimento_modo}
                   altPrefixo="Foto do espaço"
@@ -1009,9 +1062,9 @@ export default function PerfilPublicoLandingClient({
         {avaliacoesExibidas.length > 0 && (
           <section>
             <h2 className="font-serif text-2xl font-semibold text-gray-900 mb-6 text-center">O que dizem nossas clientes</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="flex flex-wrap justify-center gap-4">
               {avaliacoesExibidas.map((av) => (
-                <div key={av.id} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+                <div key={av.id} className="w-full sm:w-[calc(33.333%-11px)] max-w-sm bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-0.5">
                       {Array.from({ length: 5 }, (_, i) => (
