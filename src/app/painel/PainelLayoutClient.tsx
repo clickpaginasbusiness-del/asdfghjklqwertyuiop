@@ -65,14 +65,14 @@ function TrialBanner({ dias }: { dias: number }) {
 
   return (
     <div className={cn(
-      'px-4 lg:px-8 py-2.5 flex items-center justify-between gap-4',
+      'px-4 lg:px-8 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4',
       urgente
         ? 'bg-amber-50 border-b border-amber-200'
         : 'bg-rose-50 border-b border-rose-100'
     )}>
       <div className="flex items-center gap-2 min-w-0">
         <AlertCircle className={cn('w-4 h-4 shrink-0', urgente ? 'text-amber-500' : 'text-rose-400')} />
-        <p className={cn('text-sm truncate', urgente ? 'text-amber-800' : 'text-rose-700')}>
+        <p className={cn('text-sm', urgente ? 'text-amber-800' : 'text-rose-700')}>
           {dias === 0
             ? 'Seu trial gratuito encerra hoje! Assine para manter o acesso.'
             : `Seu trial gratuito encerra em ${dias} dia${dias > 1 ? 's' : ''}. Assine para continuar.`}
@@ -81,7 +81,7 @@ function TrialBanner({ dias }: { dias: number }) {
       <Link
         href="/planos"
         className={cn(
-          'shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
+          'shrink-0 self-start sm:self-auto px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors',
           urgente
             ? 'bg-amber-500 hover:bg-amber-600 text-white'
             : 'bg-rose-400 hover:bg-rose-500 text-white'
@@ -145,12 +145,12 @@ function TrialProBanner() {
   if (!visivel) return null
 
   return (
-    <div className="px-4 lg:px-8 py-3 flex items-center justify-between gap-4 bg-gradient-to-r from-purple-500 via-fuchsia-500 to-rose-400 text-white">
+    <div className="px-4 lg:px-8 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 bg-gradient-to-r from-purple-500 via-fuchsia-500 to-rose-400 text-white">
       <div className="flex items-center gap-2 min-w-0">
         <Sparkles className="w-4 h-4 shrink-0" />
-        <p className="text-sm font-medium truncate">✨ Experimente o Pro grátis por 7 dias!</p>
+        <p className="text-sm font-medium">✨ Experimente o Pro grátis por 7 dias!</p>
       </div>
-      <div className="flex items-center gap-3 shrink-0">
+      <div className="flex items-center gap-3 shrink-0 self-start sm:self-auto">
         <button
           onClick={ativar}
           disabled={ativando}
@@ -200,14 +200,14 @@ function TrialProAtivoBanner({ dias }: { dias: number }) {
   const prazo = dias === 0 ? 'hoje' : dias === 1 ? 'amanhã' : `em ${dias} dias`
 
   return (
-    <div className="px-4 lg:px-8 py-3 flex items-center justify-between gap-4 bg-gradient-to-r from-purple-500 via-fuchsia-500 to-rose-400 text-white">
+    <div className="px-4 lg:px-8 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 bg-gradient-to-r from-purple-500 via-fuchsia-500 to-rose-400 text-white">
       <div className="flex items-center gap-2 min-w-0">
         <Sparkles className="w-4 h-4 shrink-0" />
-        <p className="text-sm font-medium truncate">
+        <p className="text-sm font-medium">
           ✨ Seu trial Pro gratuito encerra {prazo} — Assine o Pro para continuar com todas as funcionalidades
         </p>
       </div>
-      <div className="flex items-center gap-3 shrink-0">
+      <div className="flex items-center gap-3 shrink-0 self-start sm:self-auto">
         <Link
           href="/planos"
           className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-fuchsia-600 hover:bg-white/90 transition-colors"

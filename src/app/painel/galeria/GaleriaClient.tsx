@@ -77,6 +77,26 @@ export default function GaleriaClient({
     const path = item.url.split('/galeria/')[1]
     await supabase.storage.from('galeria').remove([path])
     await supabase.from('galeria').delete().eq('id', item.id)
+
+    // A foto pode estar selecionada na personalização da página pública
+    // (galeria de trabalhos e/ou fotos do estabelecimento) — sem remover o id
+    // dessas listas aqui, ele fica órfão e infla o contador "X/10" mesmo após
+    // a foto deixar de existir.
+    const { data: prestadoraAtual } = await supabase
+      .from('prestadoras')
+      .select('pagina_galeria_fotos_ids, pagina_estabelecimento_fotos_ids')
+      .eq('id', prestadoraId)
+      .single()
+    if (prestadoraAtual) {
+      await supabase
+        .from('prestadoras')
+        .update({
+          pagina_galeria_fotos_ids: (prestadoraAtual.pagina_galeria_fotos_ids ?? []).filter((id: string) => id !== item.id),
+          pagina_estabelecimento_fotos_ids: (prestadoraAtual.pagina_estabelecimento_fotos_ids ?? []).filter((id: string) => id !== item.id),
+        })
+        .eq('id', prestadoraId)
+    }
+
     setGaleria((prev) => prev.filter((g) => g.id !== item.id))
     toast.success('Removido da galeria')
     setDeleteId(null)
