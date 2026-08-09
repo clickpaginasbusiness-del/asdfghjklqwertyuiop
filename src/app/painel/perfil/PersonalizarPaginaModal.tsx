@@ -19,7 +19,7 @@ import { ehPro as calcEhPro, type Plano } from '@/lib/plano'
 import { limitesPlano } from '@/lib/planoLimites'
 import toast from 'react-hot-toast'
 
-const NOME_PRESET: Record<PresetPagina, string> = { classico: 'Clássico', landing: 'Landing Page' }
+const NOME_PRESET: Record<PresetPagina, string> = { classico: 'Clássico', landing: 'Landing Page', premium: 'Premium' }
 
 function SeletorFotoUnica({ galeria, selecionada, onChange }: { galeria: GaleriaItem[]; selecionada: string | null; onChange: (id: string | null) => void }) {
   if (galeria.length === 0) {

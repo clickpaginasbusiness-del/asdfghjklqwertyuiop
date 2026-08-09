@@ -64,9 +64,34 @@ function PreviewLanding() {
   )
 }
 
+function PreviewPremium() {
+  return (
+    <svg viewBox="0 0 200 150" className="w-full h-auto" aria-hidden>
+      <rect width="200" height="150" rx="10" fill="#1a1a1a" />
+      {/* header centralizado */}
+      <rect x="70" y="10" width="60" height="5" rx="2.5" fill="#fcd34d" opacity="0.6" />
+      {/* foto de perfil grande centralizada */}
+      <circle cx="100" cy="38" r="16" fill="none" stroke="#fcd34d" strokeWidth="2" />
+      <circle cx="100" cy="38" r="13" fill="#3f3f46" />
+      <rect x="78" y="60" width="44" height="5" rx="2.5" fill="white" opacity="0.85" />
+      {/* cards de serviço com borda dourada */}
+      {[74, 90].map((y) => (
+        <rect key={y} x="16" y={y} width="168" height="12" rx="4" fill="#1a1a1a" stroke="#fcd34d" strokeOpacity="0.4" strokeWidth="1" />
+      ))}
+      {/* grid de fotos estilo editorial */}
+      {[16, 84, 152].map((x) => (
+        <rect key={x} x={x} y="108" width="64" height="20" fill="#3f3f46" />
+      ))}
+      {/* botão claro sobre fundo escuro */}
+      <rect x="60" y="134" width="80" height="10" rx="5" fill="#fafafa" />
+    </svg>
+  )
+}
+
 const PRESETS: { id: PresetPagina; label: string; subtexto: string; Preview: () => React.JSX.Element }[] = [
   { id: 'classico', label: 'Clássico', subtexto: 'Simples e direto ao ponto', Preview: PreviewClassico },
   { id: 'landing', label: 'Landing Page', subtexto: 'Página completa e profissional', Preview: PreviewLanding },
+  { id: 'premium', label: 'Premium', subtexto: 'Sofisticado e exclusivo', Preview: PreviewPremium },
 ]
 
 export function PresetPaginaModal({
@@ -90,9 +115,9 @@ export function PresetPaginaModal({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Escolha o estilo da sua página" className="max-w-2xl">
+    <Modal open={open} onClose={onClose} title="Escolha o estilo da sua página" className="max-w-3xl">
       <div className="p-6 space-y-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {PRESETS.map(({ id, label, subtexto, Preview }) => {
             const bloqueado = !podeUsarPresets && id !== presetAtual
             const selecionadoAtivo = selecionado === id

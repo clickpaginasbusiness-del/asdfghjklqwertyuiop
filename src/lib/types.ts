@@ -1,7 +1,7 @@
 import type { PlanoTier } from './planoLimites'
 
 export type Plano = PlanoTier
-export type PresetPagina = 'classico' | 'landing'
+export type PresetPagina = 'classico' | 'landing' | 'premium'
 
 export type Prestadora = {
   id: string

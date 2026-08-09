@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
 import PerfilPublicoClient from './PerfilPublicoClient'
 import PerfilPublicoLandingClient from './PerfilPublicoLandingClient'
+import PerfilPublicoLandingPremiumClient from './PerfilPublicoLandingPremiumClient'
 import { SITE_URL } from '@/lib/seo'
 import { planoEfetivo } from '@/lib/plano'
 import { limitesPlano } from '@/lib/planoLimites'
@@ -35,13 +36,14 @@ export default async function PerfilPage({ params }: { params: Promise<{ slug: s
 
   if (!prestadora) notFound()
 
-  // Preset "landing" é exclusivo do Studio/Studio Pro — se a prestadora
-  // escolheu esse preset e depois caiu pra um plano sem acesso a ele (ex.:
+  // Presets "landing" e "premium" são exclusivos do Studio/Studio Pro — se a
+  // prestadora escolheu um deles e depois caiu pra um plano sem acesso (ex.:
   // downgrade), volta pro clássico automaticamente. A escolha continua salva
   // no banco (pagina_preset), só a renderização é que respeita o plano atual.
   const planoAtual = planoEfetivo({ plano: prestadora.plano, e_parceira: prestadora.e_parceira })
-  const presetEfetivo = prestadora.pagina_preset === 'landing' && limitesPlano(planoAtual).presets
-    ? 'landing'
+  const temAcessoAPresets = limitesPlano(planoAtual).presets
+  const presetEfetivo = temAcessoAPresets && (prestadora.pagina_preset === 'landing' || prestadora.pagina_preset === 'premium')
+    ? prestadora.pagina_preset
     : 'classico'
 
   const [
@@ -70,9 +72,9 @@ export default async function PerfilPage({ params }: { params: Promise<{ slug: s
     avaliacoes: avaliacoes ?? [],
   }
 
-  return presetEfetivo === 'landing'
-    ? <PerfilPublicoLandingClient {...props} />
-    : <PerfilPublicoClient {...props} />
+  if (presetEfetivo === 'premium') return <PerfilPublicoLandingPremiumClient {...props} />
+  if (presetEfetivo === 'landing') return <PerfilPublicoLandingClient {...props} />
+  return <PerfilPublicoClient {...props} />
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
