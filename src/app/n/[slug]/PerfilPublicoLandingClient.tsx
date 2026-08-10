@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import {
   formatCurrency, formatDateTime, formatDateShort, generateTimeSlots,
   maskTelefone, cleanTelefone, buildWhatsappUrl, diaAtivoPadrao,
-  computeHorasDoDia, diaIndisponivelParaAgendar,
+  computeHorasDoDia, diaIndisponivelParaAgendar, cn,
 } from '@/lib/utils'
 import {
   Clock, CheckCircle2, Calendar, ChevronLeft, ChevronRight, X,
@@ -26,7 +26,7 @@ import { getTema } from '@/lib/theme'
 import { planoEfetivo, ehPro } from '@/lib/plano'
 import { limitesPlano } from '@/lib/planoLimites'
 import {
-  buildGoogleCalendarUrl, formatHora, GaleriaGrid,
+  buildGoogleCalendarUrl, formatHora,
   type Step, type ServicoComProfissionais,
 } from './PerfilPublicoClient'
 import toast from 'react-hot-toast'
@@ -45,12 +45,19 @@ interface Props {
 }
 
 /**
- * Mesma grade de fotos do GaleriaGrid compartilhado, mas em modo "empilhada"
- * usa flex-wrap + justify-center em vez de CSS grid de colunas fixas — com
- * poucas fotos (1-2), um grid de 3 colunas deixa células vazias à direita e
- * o conteúdo parece alinhado à esquerda; flex-wrap centraliza de verdade
- * nesse caso. Carrossel delega pro componente original (nada a centralizar
- * num carrossel).
+ * Mesma grade de fotos do GaleriaGrid compartilhado, mas centralizada de
+ * verdade quando há poucas fotos — nos dois modos:
+ * - "empilhada": flex-wrap + justify-center em vez de CSS grid de colunas
+ *   fixas (um grid de 3 colunas com poucos itens deixa células vazias à
+ *   direita, então o conteúdo parece alinhado à esquerda).
+ * - "carrossel": mesmo scroll horizontal do GaleriaGrid original, mas com
+ *   justify-center quando há menos de 4 fotos (cabem todas sem precisar
+ *   rolar, então faz sentido centralizar) — com 4+ fotos mantém o
+ *   comportamento padrão (empacotado à esquerda, rolável), porque
+ *   justify-center num container com overflow pode esconder o início do
+ *   conteúdo atrás da borda esquerda quando ele não cabe todo.
+ * Não reaproveita o GaleriaGrid compartilhado pra não arriscar mudar o
+ * comportamento da página clássica (PerfilPublicoClient.tsx).
  */
 function GaleriaGridCentralizada({
   itens, modo, altPrefixo, nomePrestadora, onItemClick,
@@ -61,37 +68,51 @@ function GaleriaGridCentralizada({
   nomePrestadora: string
   onItemClick: (index: number) => void
 }) {
+  function tile(item: GaleriaItem, i: number, className: string) {
+    return (
+      <div key={item.id} className={className} onClick={() => onItemClick(i)}>
+        {item.tipo === 'video' ? (
+          <video
+            src={item.url}
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+            muted
+          />
+        ) : (
+          <div className="absolute inset-0 transition-transform duration-300 group-hover:scale-110">
+            <ImageWithSkeleton
+              src={item.url}
+              alt={`${altPrefixo} ${i + 1} de ${nomePrestadora}`}
+              fill
+              className="object-cover"
+              sizes="33vw"
+            />
+          </div>
+        )}
+        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" aria-hidden />
+      </div>
+    )
+  }
+
   if (modo === 'carrossel') {
-    return <GaleriaGrid itens={itens} modo={modo} altPrefixo={altPrefixo} nomePrestadora={nomePrestadora} onItemClick={onItemClick} />
+    return (
+      <div className={cn(
+        'flex gap-2 overflow-x-auto snap-x snap-mandatory pb-1 -mx-4 px-4',
+        itens.length < 4 && 'justify-center'
+      )}>
+        {itens.map((item, i) => (
+          <div key={item.id} className="w-32 sm:w-40 shrink-0 snap-center">
+            {tile(item, i, 'group relative aspect-square rounded-2xl overflow-hidden bg-gray-100 cursor-pointer')}
+          </div>
+        ))}
+      </div>
+    )
   }
 
   return (
     <div className="flex flex-wrap justify-center gap-2">
-      {itens.map((item, i) => (
-        <div
-          key={item.id}
-          className="w-[calc(50%_-_4px)] sm:w-[calc(33.333%_-_6px)] max-w-[220px] aspect-square rounded-2xl overflow-hidden bg-gray-100 cursor-pointer relative group"
-          onClick={() => onItemClick(i)}
-        >
-          {item.tipo === 'video' ? (
-            <video
-              src={item.url}
-              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-              muted
-            />
-          ) : (
-            <div className="absolute inset-0 transition-transform duration-300 group-hover:scale-110">
-              <ImageWithSkeleton
-                src={item.url}
-                alt={`${altPrefixo} ${i + 1} de ${nomePrestadora}`}
-                fill
-                className="object-cover"
-                sizes="33vw"
-              />
-            </div>
-          )}
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300" aria-hidden />
-        </div>
+      {itens.map((item, i) => tile(
+        item, i,
+        'w-[calc(50%_-_4px)] sm:w-[calc(33.333%_-_6px)] max-w-[220px] aspect-square rounded-2xl overflow-hidden bg-gray-100 cursor-pointer relative group'
       ))}
     </div>
   )
