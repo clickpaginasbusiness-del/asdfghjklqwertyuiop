@@ -83,13 +83,27 @@ export function AgendaDoDiaSection({
   const ativo = horarioDoDia ? horarioDoDia.ativo : true
   const abertura = horarioDoDia?.hora_abertura ?? prestadora.hora_abertura
   const fechamento = horarioDoDia?.hora_fechamento ?? prestadora.hora_fechamento
+  // horarios_funcionamento guarda DOIS turnos possíveis — hora_abertura/
+  // hora_fechamento é o turno1 (ex.: manhã) e turno2_inicio/turno2_fim é um
+  // turno2 opcional (ex.: tarde, depois do almoço). "fechamento" sozinho só
+  // cobre o turno1 — se ignorado aqui, a grade nem gera linha pros horários
+  // do turno2 (é exatamente o bug: sumia 12h-16h porque isso nunca gerava
+  // slot nenhum, só apareciam os horários que por acaso tinham agendamento).
+  const turno2FimDoDia = horarioDoDia?.turno2_fim ?? null
+  const fechamentoGrade = turno2FimDoDia && turno2FimDoDia.slice(0, 5) > fechamento.slice(0, 5)
+    ? turno2FimDoDia
+    : fechamento
 
   const agendamentosDoDia = useMemo(
     () => agendamentos.filter((a) => formatDateKey(a.data_hora) === selectedDate),
     [agendamentos, selectedDate]
   )
 
-  // Slots padrão de 30 em 30 min (mostram os horários livres) + horários
+  // Slots padrão de 30 em 30 min, cobrindo o envelope INTEIRO do
+  // estabelecimento (abertura do turno1 até o fim do turno2, se houver) —
+  // de propósito NÃO pula o intervalo entre os turnos: mesmo o horário de
+  // almoço do estabelecimento deve aparecer como linha na grade (acinzentada
+  // pra todo mundo via colunaIndisponivel), só não deve sumir. + horários
   // exatos de agendamentos que não caem nessa grade (ex.: 09:45) — sem isso
   // um agendamento fora do padrão de 30 min simplesmente não apareceria.
   // Sempre baseado no horário do ESTABELECIMENTO (nunca no de uma
@@ -97,10 +111,10 @@ export function AgendaDoDiaSection({
   // colunaIndisponivel, não a grade inteira.
   const slots = useMemo(() => {
     if (!ativo) return []
-    const padrao = gerarSlots(abertura, fechamento)
+    const padrao = gerarSlots(abertura, fechamentoGrade)
     const horariosAgendados = agendamentosDoDia.map((a) => formatTime(a.data_hora))
     return Array.from(new Set([...padrao, ...horariosAgendados])).sort()
-  }, [ativo, abertura, fechamento, agendamentosDoDia])
+  }, [ativo, abertura, fechamentoGrade, agendamentosDoDia])
 
   const colunas: ProfissionalLite[] = profissionais.length > 0
     ? profissionais
@@ -115,15 +129,19 @@ export function AgendaDoDiaSection({
     })
   }
 
-  /** Slot fora do horário de trabalho (ou dentro do intervalo de almoço)
-   * dessa profissional especificamente — a grade em si nunca encolhe, só a
-   * coluna dela fica bloqueada/acinzentada nesses horários. */
+  /** Slot fora do horário de trabalho dessa profissional especificamente —
+   * a grade em si nunca encolhe, só a coluna dela fica bloqueada/acinzentada
+   * nesses horários. computeHorasDoDia devolve dois turnos possíveis
+   * (abertura/fechamento = turno1, turno2Inicio/turno2Fim = turno2 opcional
+   * DEPOIS do intervalo) — são duas janelas váLIDAS somadas, não uma janela
+   * com um buraco no meio. Disponível = dentro do turno1 OU dentro do
+   * turno2; bloqueado é tudo que sobra (incluindo o intervalo entre eles). */
   function colunaIndisponivel(prof: ProfissionalLite, slot: string): boolean {
     if (prof.dias_semana && !prof.dias_semana.includes(diaSemana)) return true
     const horas = computeHorasDoDia(diaSemana, horariosFuncionamento, prof, prestadora.hora_abertura, prestadora.hora_fechamento)
-    if (slot < horas.abertura.slice(0, 5) || slot >= horas.fechamento.slice(0, 5)) return true
-    if (horas.turno2Inicio && horas.turno2Fim && slot >= horas.turno2Inicio.slice(0, 5) && slot < horas.turno2Fim.slice(0, 5)) return true
-    return false
+    const dentroTurno1 = slot >= horas.abertura.slice(0, 5) && slot < horas.fechamento.slice(0, 5)
+    const dentroTurno2 = !!(horas.turno2Inicio && horas.turno2Fim && slot >= horas.turno2Inicio.slice(0, 5) && slot < horas.turno2Fim.slice(0, 5))
+    return !dentroTurno1 && !dentroTurno2
   }
 
   function formatFaixaHorario(ag: AgendaSlotAg): string {
