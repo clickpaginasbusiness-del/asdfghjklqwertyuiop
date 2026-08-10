@@ -17,7 +17,7 @@ export default function RelatoriosDemoPage() {
     <RelatoriosClient
       prestadoraId={DEMO_PRESTADORA.id}
       agendamentos={agendamentos}
-      profissionais={DEMO_PROFISSIONAIS.map((p) => ({ id: p.id, nome: p.nome }))}
+      profissionais={DEMO_PROFISSIONAIS.map((p) => ({ id: p.id, nome: p.nome, comissao_percentual: p.comissao_percentual }))}
       visitas={DEMO_VISITAS_PAGINA}
       avaliacoes={DEMO_AVALIACOES}
       lancamentos={getDemoLancamentos(agora)}

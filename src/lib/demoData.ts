@@ -87,6 +87,7 @@ export const DEMO_PROFISSIONAIS: Profissional[] = [
     hora_fechamento: null,
     intervalo_inicio: null,
     intervalo_fim: null,
+    comissao_percentual: 40,
     created_at: '2025-01-15T12:00:00Z',
   },
   {
@@ -101,16 +102,17 @@ export const DEMO_PROFISSIONAIS: Profissional[] = [
     hora_fechamento: null,
     intervalo_inicio: null,
     intervalo_fim: null,
+    comissao_percentual: 35,
     created_at: '2025-02-01T12:00:00Z',
   },
 ]
 
 export const DEMO_CLIENTES: Cliente[] = [
-  { id: 'demo-cli-maria', nome: 'Maria Silva', telefone: '31999991111', cliente_manual: false, verificado_em: '2025-03-01T12:00:00Z', created_at: '2025-03-01T12:00:00Z' },
-  { id: 'demo-cli-julia', nome: 'Júlia Santos', telefone: '31999992222', cliente_manual: false, verificado_em: '2025-03-10T12:00:00Z', created_at: '2025-03-10T12:00:00Z' },
-  { id: 'demo-cli-fernanda', nome: 'Fernanda Costa', telefone: '31999993333', cliente_manual: false, verificado_em: '2025-04-02T12:00:00Z', created_at: '2025-04-02T12:00:00Z' },
-  { id: 'demo-cli-camila', nome: 'Camila Oliveira', telefone: '31999994444', cliente_manual: false, verificado_em: '2025-04-20T12:00:00Z', created_at: '2025-04-20T12:00:00Z' },
-  { id: 'demo-cli-beatriz', nome: 'Beatriz Lima', telefone: '31999995555', cliente_manual: false, verificado_em: '2025-05-05T12:00:00Z', created_at: '2025-05-05T12:00:00Z' },
+  { id: 'demo-cli-maria', nome: 'Maria Silva', telefone: '31999991111', cliente_manual: false, verificado_em: '2025-03-01T12:00:00Z', data_nascimento: '1995-08-15', notas: 'Prefere esmalte fosco. Alérgica a acetona.', created_at: '2025-03-01T12:00:00Z' },
+  { id: 'demo-cli-julia', nome: 'Júlia Santos', telefone: '31999992222', cliente_manual: false, verificado_em: '2025-03-10T12:00:00Z', data_nascimento: '1998-11-02', notas: null, created_at: '2025-03-10T12:00:00Z' },
+  { id: 'demo-cli-fernanda', nome: 'Fernanda Costa', telefone: '31999993333', cliente_manual: false, verificado_em: '2025-04-02T12:00:00Z', data_nascimento: null, notas: 'Gosta de conversar sobre viagens durante o atendimento.', created_at: '2025-04-02T12:00:00Z' },
+  { id: 'demo-cli-camila', nome: 'Camila Oliveira', telefone: '31999994444', cliente_manual: false, verificado_em: '2025-04-20T12:00:00Z', data_nascimento: '1990-01-22', notas: null, created_at: '2025-04-20T12:00:00Z' },
+  { id: 'demo-cli-beatriz', nome: 'Beatriz Lima', telefone: '31999995555', cliente_manual: false, verificado_em: '2025-05-05T12:00:00Z', data_nascimento: null, notas: null, created_at: '2025-05-05T12:00:00Z' },
 ]
 
 const SEM_PAGAMENTO_ONLINE = { aceitar_pagamento_online: false, sinal_tipo: null, sinal_valor: null, sinal_obrigatorio: false } as const

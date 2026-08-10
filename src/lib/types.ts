@@ -115,6 +115,7 @@ export type Profissional = {
   hora_fechamento: string | null
   intervalo_inicio: string | null
   intervalo_fim: string | null
+  comissao_percentual: number
   created_at: string
 }
 
@@ -226,6 +227,8 @@ export type Cliente = {
   telefone: string | null
   cliente_manual: boolean
   verificado_em: string | null
+  data_nascimento: string | null
+  notas: string | null
   created_at: string
 }
 

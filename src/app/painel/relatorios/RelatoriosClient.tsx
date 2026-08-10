@@ -34,7 +34,7 @@ export type Ag = {
   profissionais: { nome: string } | null
 }
 
-type ProfissionalLite = { id: string; nome: string }
+type ProfissionalLite = { id: string; nome: string; comissao_percentual: number }
 type VisitaLite = { id: string; created_at: string }
 
 export type AvaliacaoRel = {

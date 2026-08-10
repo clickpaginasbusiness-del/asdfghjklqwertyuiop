@@ -314,6 +314,12 @@ export function AgendaDoDiaSection({
                 <CalendarDays className="w-4 h-4 text-gray-400 shrink-0" />
                 {formatDateTime(modalAg.data_hora)}
               </p>
+              {modalAg.clientes?.notas && (
+                <p className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
+                  <span className="shrink-0">📝</span>
+                  {modalAg.clientes.notas}
+                </p>
+              )}
             </div>
 
             {modalAg.status === 'confirmado' && (

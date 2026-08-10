@@ -69,6 +69,7 @@ export function AgendarManualModal({ onClose, prestadoraId, onCriado }: Props) {
 
   const [novoNome, setNovoNome] = useState('')
   const [novoTelefone, setNovoTelefone] = useState('')
+  const [novoNascimento, setNovoNascimento] = useState('')
   const [criandoCliente, setCriandoCliente] = useState(false)
 
   const [servicoSelecionado, setServicoSelecionado] = useState<ServicoOption | null>(null)
@@ -152,7 +153,7 @@ export function AgendarManualModal({ onClose, prestadoraId, onCriado }: Props) {
       const res = await fetch('/api/clientes/manual', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nome, telefone: novoTelefone }),
+        body: JSON.stringify({ nome, telefone: novoTelefone, data_nascimento: novoNascimento || null }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -361,6 +362,12 @@ export function AgendarManualModal({ onClose, prestadoraId, onCriado }: Props) {
                 placeholder="(11) 99999-9999"
                 value={novoTelefone}
                 onChange={(e) => setNovoTelefone(e.target.value)}
+              />
+              <Input
+                label="Data de nascimento (opcional)"
+                type="date"
+                value={novoNascimento}
+                onChange={(e) => setNovoNascimento(e.target.value)}
               />
               <Button type="submit" loading={criandoCliente} className="w-full">
                 Salvar e continuar

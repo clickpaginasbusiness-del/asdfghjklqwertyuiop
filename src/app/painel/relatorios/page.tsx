@@ -43,7 +43,7 @@ export default async function RelatoriosPage() {
       .order('data_hora'),
     supabase
       .from('profissionais')
-      .select('id, nome')
+      .select('id, nome, comissao_percentual')
       .eq('prestadora_id', prestadora.id),
     supabase
       .from('visitas_pagina')

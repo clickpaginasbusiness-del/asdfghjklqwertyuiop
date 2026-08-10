@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Modal } from '@/components/ui/modal'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Pencil, Trash2, Upload, UserCircle2, ToggleLeft, ToggleRight, CalendarDays, Lock } from 'lucide-react'
+import { Plus, Pencil, Trash2, Upload, UserCircle2, ToggleLeft, ToggleRight, CalendarDays, Lock, Info, Percent } from 'lucide-react'
 import type { Profissional } from '@/lib/types'
 import Link from 'next/link'
 import { validarArquivo } from '@/lib/uploadValidation'
@@ -23,6 +23,7 @@ const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 interface ProfForm {
   nome: string
   bio: string
+  comissaoPercentual: string
 }
 
 interface DispForm {
@@ -36,7 +37,7 @@ interface DispForm {
   intervalo_fim: string
 }
 
-const emptyForm: ProfForm = { nome: '', bio: '' }
+const emptyForm: ProfForm = { nome: '', bio: '', comissaoPercentual: '0' }
 
 export default function ProfissionaisClient({
   profissionais: initial,
@@ -81,7 +82,7 @@ export default function ProfissionaisClient({
   }
 
   function openEdit(p: Profissional) {
-    setForm({ nome: p.nome, bio: p.bio ?? '' })
+    setForm({ nome: p.nome, bio: p.bio ?? '', comissaoPercentual: String(p.comissao_percentual ?? 0) })
     setEditId(p.id)
     setModalOpen(true)
   }
@@ -103,16 +104,18 @@ export default function ProfissionaisClient({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    const comissao = Math.min(100, Math.max(0, parseFloat(form.comissaoPercentual) || 0))
     setLoading(true)
     const supabase = createClient()
     const data = {
       prestadora_id: prestadoraId,
       nome: form.nome,
       bio: form.bio || null,
+      comissao_percentual: comissao,
     }
 
     if (editId) {
-      const { error } = await supabase.from('profissionais').update({ nome: form.nome, bio: form.bio || null }).eq('id', editId)
+      const { error } = await supabase.from('profissionais').update({ nome: form.nome, bio: form.bio || null, comissao_percentual: comissao }).eq('id', editId)
       if (error) { toast.error('Erro ao atualizar'); setLoading(false); return }
       setProfissionais((prev) => prev.map((p) => p.id === editId ? { ...p, ...data } : p))
       toast.success('Profissional atualizada')
@@ -309,6 +312,12 @@ export default function ProfissionaisClient({
                         )}
                       </div>
                     )}
+                    {p.comissao_percentual > 0 && (
+                      <div className="mt-1 text-xs text-emerald-600 flex items-center gap-1">
+                        <Percent className="w-3 h-3" />
+                        {p.comissao_percentual}% de comissão
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -380,6 +389,23 @@ export default function ProfissionaisClient({
             value={form.bio}
             onChange={(e) => setForm({ ...form, bio: e.target.value })}
           />
+          <div>
+            <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5 mb-1.5">
+              Comissão (%)
+              <span title="Percentual sobre o valor do serviço que vai para esta profissional" className="shrink-0">
+                <Info className="w-3.5 h-3.5 text-gray-400" />
+              </span>
+            </label>
+            <Input
+              icon={<Percent className="w-4 h-4" />}
+              type="number"
+              min="0"
+              max="100"
+              step="0.1"
+              value={form.comissaoPercentual}
+              onChange={(e) => setForm({ ...form, comissaoPercentual: e.target.value })}
+            />
+          </div>
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="outline" onClick={() => setModalOpen(false)} className="flex-1">
               Cancelar

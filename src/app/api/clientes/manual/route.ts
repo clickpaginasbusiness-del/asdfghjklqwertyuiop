@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     .single()
   if (!prestadora) return NextResponse.json({ error: 'Prestadora não encontrada' }, { status: 404 })
 
-  let body: { nome?: string; telefone?: string }
+  let body: { nome?: string; telefone?: string; data_nascimento?: string | null }
   try {
     body = await request.json()
   } catch {
@@ -29,6 +29,7 @@ export async function POST(request: NextRequest) {
 
   const telefoneLimpo = body.telefone ? cleanTelefone(body.telefone) : ''
   const telefone = telefoneLimpo.length > 0 ? telefoneLimpo : null
+  const dataNascimento = body.data_nascimento || null
 
   const admin = createAdminClient()
 
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
   if (telefone) {
     const { data: existente } = await admin
       .from('clientes')
-      .select('id, nome, telefone, cliente_manual, verificado_em, created_at')
+      .select('id, nome, telefone, cliente_manual, verificado_em, data_nascimento, notas, created_at')
       .eq('telefone', telefone)
       .maybeSingle()
     if (existente) {
@@ -49,8 +50,8 @@ export async function POST(request: NextRequest) {
 
   const { data: cliente, error } = await admin
     .from('clientes')
-    .insert({ nome, telefone, cliente_manual: true })
-    .select('id, nome, telefone, cliente_manual, verificado_em, created_at')
+    .insert({ nome, telefone, cliente_manual: true, data_nascimento: dataNascimento })
+    .select('id, nome, telefone, cliente_manual, verificado_em, data_nascimento, notas, created_at')
     .single()
 
   if (error || !cliente) {

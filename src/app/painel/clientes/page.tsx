@@ -19,7 +19,7 @@ export default async function ClientesPage() {
   const [{ data: agendamentos }, { data: assinaturasAtivas }] = await Promise.all([
     supabase
       .from('agendamentos')
-      .select('id, data_hora, status, cliente_e_prestadora, servicos(nome, preco), clientes(id, nome, telefone, cliente_manual)')
+      .select('id, data_hora, status, cliente_e_prestadora, servicos(nome, preco), clientes(id, nome, telefone, cliente_manual, data_nascimento, notas)')
       .eq('prestadora_id', prestadora.id)
       .order('data_hora', { ascending: false }),
     supabase
@@ -39,7 +39,7 @@ export default async function ClientesPage() {
     servicos: { nome: string; preco: number } | null
   }
   type ClienteEntry = {
-    cliente: { id: string; nome: string; telefone: string | null; cliente_manual: boolean }
+    cliente: { id: string; nome: string; telefone: string | null; cliente_manual: boolean; data_nascimento: string | null; notas: string | null }
     total: number               // confirmado + concluido
     gasto: number
     ultimaVisita: string        // qualquer agendamento (para exibição)
@@ -51,7 +51,7 @@ export default async function ClientesPage() {
   const clienteMap = new Map<string, ClienteEntry>()
 
   agendamentos?.forEach((a) => {
-    const c = a.clientes as unknown as { id: string; nome: string; telefone: string | null; cliente_manual: boolean } | null
+    const c = a.clientes as unknown as { id: string; nome: string; telefone: string | null; cliente_manual: boolean; data_nascimento: string | null; notas: string | null } | null
     if (!c) return
     const isAtivo = a.status === 'confirmado' || a.status === 'concluido'
     const agItem: AgItem = {

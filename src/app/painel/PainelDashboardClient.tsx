@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { formatCurrency, formatDateShort, buildWhatsappUrl } from '@/lib/utils'
-import { Calendar, DollarSign, Clock, MessageCircle, CheckCheck } from 'lucide-react'
+import { Calendar, DollarSign, Clock, MessageCircle, CheckCheck, Cake } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { VoceBadge } from '@/components/painel/VoceBadge'
 import { ManualBadge } from '@/components/painel/ManualBadge'
@@ -36,6 +36,13 @@ type Ag = {
   planos_assinaturas: { planos_prestadora: { nome: string } | null } | null
 }
 
+type Aniversariante = {
+  id: string
+  nome: string
+  telefone: string | null
+  dataAniversario: string
+}
+
 interface Props {
   agendamentosAno: Ag[]
   horarioAbertura: string
@@ -45,6 +52,7 @@ interface Props {
   msgConfirmacao: string | null
   msgCancelamento: string | null
   msgLembrete: string | null
+  aniversariantes: Aniversariante[]
 }
 
 /* ── Constants ── */
@@ -159,6 +167,7 @@ export default function PainelDashboardClient({
   msgConfirmacao,
   msgCancelamento,
   msgLembrete,
+  aniversariantes,
 }: Props) {
   const todayStr = format(new Date(), 'yyyy-MM-dd')
 
@@ -500,6 +509,51 @@ export default function PainelDashboardClient({
           )}
         </CardContent>
       </Card>
+
+      {/* ── Aniversariantes da semana ── */}
+      {aniversariantes.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Cake className="w-5 h-5 text-rose-400" />
+              <CardTitle>Aniversariantes da semana</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="divide-y divide-gray-50">
+              {aniversariantes.map((c) => {
+                const data = new Date(c.dataAniversario)
+                const ehHoje = isToday(data)
+                const msg = `Feliz aniversário, ${c.nome}! 🎉 Como presente especial, temos uma oferta exclusiva para você. Entre em contato!`
+                return (
+                  <div key={c.id} className="flex items-center justify-between gap-3 px-5 py-3.5">
+                    <div className="min-w-0">
+                      <p className="font-medium text-gray-900 text-sm flex items-center gap-2">
+                        {c.nome}
+                        {ehHoje && <Badge variant="pink" className="text-[10px] px-2 py-0.5">Hoje! 🎂</Badge>}
+                      </p>
+                      <p className="text-xs text-gray-400 capitalize">
+                        {format(data, "EEEE, d 'de' MMMM", { locale: ptBR })}
+                      </p>
+                    </div>
+                    {c.telefone && (
+                      <a
+                        href={buildWhatsappUrl(c.telefone, msg)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 bg-green-50 hover:bg-green-100 border border-green-100 text-green-600 rounded-full px-2.5 min-h-11 text-xs font-medium transition-colors shrink-0"
+                      >
+                        <MessageCircle className="w-3 h-3" />
+                        WhatsApp
+                      </a>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* ── Agenda do período (excluindo hoje) ── */}
       {!isHojeExato && (

@@ -14,7 +14,7 @@ export default function CalendarioDemoPage() {
       cliente_e_prestadora: a.cliente_e_prestadora,
       agendamento_manual: a.agendamento_manual,
       servicos: a.servicos ? { nome: a.servicos.nome, preco: a.servicos.preco, duracao_minutos: a.servicos.duracao_minutos } : null,
-      clientes: a.clientes ? { nome: a.clientes.nome, telefone: a.clientes.telefone } : null,
+      clientes: a.clientes ? { nome: a.clientes.nome, telefone: a.clientes.telefone, notas: a.clientes.notas } : null,
       profissionais: a.profissionais ? { nome: a.profissionais.nome } : null,
       planos_assinaturas: null,
     }))

@@ -6,8 +6,9 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Modal } from '@/components/ui/modal'
+import { Textarea } from '@/components/ui/textarea'
 import { formatDateTime, formatCurrency, maskTelefone, buildWhatsappUrl } from '@/lib/utils'
-import { Users, MessageCircle, ChevronDown, Phone, Bell, Star, Pencil, Trash2 } from 'lucide-react'
+import { Users, MessageCircle, ChevronDown, Phone, Bell, Star, Pencil, Trash2, StickyNote } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { VoceBadge } from '@/components/painel/VoceBadge'
 import { ManualBadge } from '@/components/painel/ManualBadge'
@@ -22,7 +23,7 @@ type AgItem = {
 }
 
 type ClienteEntry = {
-  cliente: { id: string; nome: string; telefone: string | null; cliente_manual: boolean }
+  cliente: { id: string; nome: string; telefone: string | null; cliente_manual: boolean; data_nascimento: string | null; notas: string | null }
   total: number
   gasto: number
   ultimaVisita: string
@@ -77,15 +78,19 @@ function ClienteCard({
   onEdited, onDeleted,
 }: ClienteEntry & {
   prestadoraNome: string
-  onEdited: (id: string, novo: { nome: string; telefone: string | null }) => void
+  onEdited: (id: string, novo: Partial<ClienteEntry['cliente']>) => void
   onDeleted: (id: string) => void
 }) {
   const [expanded, setExpanded] = useState(false)
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [notasModalOpen, setNotasModalOpen] = useState(false)
   const [nomeEdit, setNomeEdit] = useState(cliente.nome)
   const [telefoneEdit, setTelefoneEdit] = useState(cliente.telefone ?? '')
+  const [nascimentoEdit, setNascimentoEdit] = useState(cliente.data_nascimento ?? '')
+  const [notasEdit, setNotasEdit] = useState(cliente.notas ?? '')
   const [salvando, setSalvando] = useState(false)
+  const [salvandoNotas, setSalvandoNotas] = useState(false)
   const [excluindo, setExcluindo] = useState(false)
   const isFrequente = total >= 3
   const ausente = isAusente(ultimaVisitaAtiva)
@@ -114,20 +119,43 @@ function ClienteCard({
       const res = await fetch(`/api/clientes/${cliente.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nome, telefone: telefoneEdit }),
+        body: JSON.stringify({ nome, telefone: telefoneEdit, data_nascimento: nascimentoEdit || null }),
       })
       const data = await res.json()
       if (!res.ok) {
         toast.error(data.error ?? 'Erro ao editar cliente.')
         return
       }
-      onEdited(cliente.id, { nome: data.cliente.nome, telefone: data.cliente.telefone })
+      onEdited(cliente.id, { nome: data.cliente.nome, telefone: data.cliente.telefone, data_nascimento: data.cliente.data_nascimento })
       toast.success('Cliente atualizada!')
       setEditModalOpen(false)
     } catch {
       toast.error('Erro de conexão.')
     } finally {
       setSalvando(false)
+    }
+  }
+
+  async function salvarNotas() {
+    setSalvandoNotas(true)
+    try {
+      const res = await fetch(`/api/clientes/${cliente.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notas: notasEdit }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error ?? 'Erro ao salvar notas.')
+        return
+      }
+      onEdited(cliente.id, { notas: data.cliente.notas })
+      toast.success('Notas salvas!')
+      setNotasModalOpen(false)
+    } catch {
+      toast.error('Erro de conexão.')
+    } finally {
+      setSalvandoNotas(false)
     }
   }
 
@@ -171,6 +199,17 @@ function ClienteCard({
               {ehPrestadora && <VoceBadge />}
               {cliente.cliente_manual && <ManualBadge />}
             </p>
+            <button
+              type="button"
+              onClick={() => { setNotasEdit(cliente.notas ?? ''); setNotasModalOpen(true) }}
+              title={cliente.notas ? 'Ver/editar notas e preferências' : 'Adicionar notas e preferências'}
+              className={cn(
+                'shrink-0 transition-colors',
+                cliente.notas ? 'text-amber-500 hover:text-amber-600' : 'text-gray-300 hover:text-gray-400'
+              )}
+            >
+              <StickyNote className="w-3.5 h-3.5" />
+            </button>
             {planoAtivo && <Badge variant="success" className="text-[10px] px-2 py-0.5">Plano ativo</Badge>}
             {ausente ? (
               <Badge variant="warning" className="text-[10px] px-2 py-0.5">Ausente</Badge>
@@ -236,7 +275,7 @@ function ClienteCard({
               <>
                 <button
                   type="button"
-                  onClick={() => { setNomeEdit(cliente.nome); setTelefoneEdit(cliente.telefone ?? ''); setEditModalOpen(true) }}
+                  onClick={() => { setNomeEdit(cliente.nome); setTelefoneEdit(cliente.telefone ?? ''); setNascimentoEdit(cliente.data_nascimento ?? ''); setEditModalOpen(true) }}
                   className="flex items-center gap-1 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-500 rounded-full px-2.5 py-1 text-xs font-medium transition-colors"
                 >
                   <Pencil className="w-3 h-3" />
@@ -253,6 +292,13 @@ function ClienteCard({
               </>
             )}
           </div>
+
+          {cliente.notas && (
+            <p className="text-xs text-amber-700 mt-1.5 flex items-start gap-1">
+              <span className="shrink-0">📝</span>
+              <span className="line-clamp-1">{cliente.notas}</span>
+            </p>
+          )}
         </div>
 
         {/* Stats */}
@@ -315,6 +361,12 @@ function ClienteCard({
             value={telefoneEdit}
             onChange={(e) => setTelefoneEdit(e.target.value)}
           />
+          <Input
+            label="Data de nascimento (opcional)"
+            type="date"
+            value={nascimentoEdit}
+            onChange={(e) => setNascimentoEdit(e.target.value)}
+          />
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="outline" onClick={() => setEditModalOpen(false)} className="flex-1">
               Cancelar
@@ -324,6 +376,27 @@ function ClienteCard({
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Notas e preferências */}
+      <Modal open={notasModalOpen} onClose={() => setNotasModalOpen(false)} title="Notas e preferências">
+        <div className="p-6 space-y-4">
+          <Textarea
+            label={`Notas sobre ${cliente.nome}`}
+            placeholder="Ex: Prefere esmalte fosco, alérgica a acetona, gosta de conversar sobre viagens..."
+            rows={5}
+            value={notasEdit}
+            onChange={(e) => setNotasEdit(e.target.value)}
+          />
+          <div className="flex gap-3 pt-2">
+            <Button type="button" variant="outline" onClick={() => setNotasModalOpen(false)} className="flex-1">
+              Cancelar
+            </Button>
+            <Button type="button" onClick={salvarNotas} loading={salvandoNotas} className="flex-1">
+              Salvar notas
+            </Button>
+          </div>
+        </div>
       </Modal>
 
       {/* Excluir cliente manual */}
@@ -357,7 +430,7 @@ export default function ClientesClient({ clientes: initialClientes, prestadoraNo
   const [clientes, setClientes] = useState(initialClientes)
   const [filtro, setFiltro] = useState<FiltroCliente>('todos')
 
-  function handleEdited(id: string, novo: { nome: string; telefone: string | null }) {
+  function handleEdited(id: string, novo: Partial<ClienteEntry['cliente']>) {
     setClientes((prev) => prev.map((c) => c.cliente.id === id ? { ...c, cliente: { ...c.cliente, ...novo } } : c))
   }
 

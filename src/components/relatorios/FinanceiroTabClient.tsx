@@ -9,7 +9,7 @@ import { formatCurrency, cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import {
   Wallet, TrendingDown, TrendingUp, PieChart as PieChartIcon, Plus, Pencil, Trash2,
-  ArrowUpCircle, ArrowDownCircle, Receipt,
+  ArrowUpCircle, ArrowDownCircle, Receipt, Percent,
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -33,7 +33,7 @@ interface Props {
   prestadoraId: string
   agendamentos: Ag[]
   lancamentos: LancamentoFinanceiro[]
-  profissionais: { id: string; nome: string }[]
+  profissionais: { id: string; nome: string; comissao_percentual: number }[]
   dataInicio: string
   dataFim: string
   periodoLabel: string
@@ -128,6 +128,28 @@ export function FinanceiroTabClient({
     }
     return Array.from(map.values()).sort((a, b) => b.receita - a.receita)
   }, [concluidosNoPeriodo])
+
+  /* Comissões por profissional — só profissionais com comissao_percentual > 0.
+   * Agrupa por nome (mesma chave que receitaPorProfissional já usa) porque o
+   * agendamento só traz o nome da profissional via join, não o id. */
+  const comissoesPorProfissional = useMemo(() => {
+    return profissionais
+      .filter((p) => p.comissao_percentual > 0)
+      .map((p) => {
+        const agsDaProf = concluidosNoPeriodo.filter((a) => a.profissionais?.nome === p.nome)
+        const faturamento = agsDaProf.reduce((acc, a) => acc + (a.servicos?.preco ?? 0), 0)
+        return {
+          nome: p.nome,
+          totalServicos: agsDaProf.length,
+          faturamento,
+          comissao: faturamento * (p.comissao_percentual / 100),
+        }
+      })
+      .filter((p) => p.totalServicos > 0)
+      .sort((a, b) => b.comissao - a.comissao)
+  }, [profissionais, concluidosNoPeriodo])
+
+  const totalComissoes = comissoesPorProfissional.reduce((acc, p) => acc + p.comissao, 0)
 
   /* Receita por dia da semana */
   const receitaPorDiaSemana = useMemo(() => {
@@ -386,6 +408,40 @@ export function FinanceiroTabClient({
           </Card>
         )}
       </div>
+
+      {/* Comissões por profissional */}
+      {comissoesPorProfissional.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Percent className="w-4 h-4 text-rose-400" />
+              <CardTitle>Comissões por profissional</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="divide-y divide-gray-50">
+              {comissoesPorProfissional.map((p) => (
+                <div key={p.nome} className="flex items-center justify-between gap-3 px-5 py-3.5">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{p.nome}</p>
+                    <p className="text-xs text-gray-400">
+                      {p.totalServicos} serviço{p.totalServicos !== 1 ? 's' : ''} · faturou {formatCurrency(p.faturamento)}
+                    </p>
+                  </div>
+                  <span className="text-sm font-semibold text-rose-500 shrink-0">{formatCurrency(p.comissao)}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+          <div className="flex items-center justify-between px-5 py-4 border-t border-gray-100">
+            <p className="text-sm font-medium text-gray-700">Total de comissões a pagar</p>
+            <p className="text-base font-bold text-gray-900">{formatCurrency(totalComissoes)}</p>
+          </div>
+          <p className="text-xs text-gray-400 px-5 pb-4">
+            Valores calculados com base nos agendamentos concluídos no período selecionado.
+          </p>
+        </Card>
+      )}
 
       {/* Lançamentos */}
       <Card>

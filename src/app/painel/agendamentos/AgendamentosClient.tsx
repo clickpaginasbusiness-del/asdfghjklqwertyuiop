@@ -433,6 +433,9 @@ export default function AgendamentosClient({
                         )}
                         <span className="text-gray-400" suppressHydrationWarning> · {formatDateTime(a.data_hora)}</span>
                       </p>
+                      {a.clientes?.notas && (
+                        <p className="text-xs text-amber-700 truncate mt-0.5">📝 {a.clientes.notas}</p>
+                      )}
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
                         {/* Telefone (oculto no mobile, WhatsApp pill já cobre o contato) */}
                         <div className="hidden sm:flex items-center gap-1 text-xs text-gray-400">

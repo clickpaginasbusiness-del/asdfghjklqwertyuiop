@@ -620,7 +620,7 @@ export default function PerfilPublicoLandingClient({
           agendamento_manual: false,
           created_at: new Date().toISOString(),
           servicos: servico,
-          clientes: { id: 'demo-cliente', nome: clienteLogado.nome, telefone: clienteLogado.telefone, cliente_manual: false, verificado_em: null, created_at: '' },
+          clientes: { id: 'demo-cliente', nome: clienteLogado.nome, telefone: clienteLogado.telefone, cliente_manual: false, verificado_em: null, data_nascimento: null, notas: null, created_at: '' },
           profissionais: prof ?? undefined,
         }
         setAgendamentoFeito(novoAgendamento)

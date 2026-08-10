@@ -16,6 +16,22 @@ import type { PlanoPublico } from '@/components/perfil-publico/PlanosSection'
 // garante que só dado público sai daqui. Ver PrestadoraPublica em types.ts.
 const COLUNAS_PUBLICAS = 'id, nome, bio, foto_url, slug, cor_tema, whatsapp, instagram, endereco, plano, e_parceira, hora_abertura, hora_fechamento, pagina_texto_agendamento, pagina_mostrar_texto_agendamento, pagina_mostrar_estrelas, pagina_mostrar_avaliacoes, pagina_mostrar_galeria, pagina_galeria_modo, pagina_galeria_fotos_ids, pagina_mostrar_estabelecimento, pagina_estabelecimento_modo, pagina_estabelecimento_fotos_ids, pagina_estabelecimento_titulo, pagina_preset, pagina_banner_foto_id'
 
+/** Heurística pra extrair a cidade de um endereço em texto livre — não há
+ * campo estruturado de cidade no cadastro (ver `endereco` na Prestadora),
+ * só um textarea livre. Assume o formato comum "..., Cidade, UF" (a UF de 2
+ * letras no fim indica que a cidade é o pedaço anterior) ou, na falta disso,
+ * usa o último pedaço separado por vírgula como melhor palpite. Retorna
+ * null se o endereço não tiver vírgula nenhuma (não dá pra confiar num
+ * palpite melhor que isso). */
+function extrairCidade(endereco: string | null): string | null {
+  if (!endereco) return null
+  const partes = endereco.split(',').map((p) => p.trim()).filter(Boolean)
+  if (partes.length < 2) return null
+  const ultima = partes[partes.length - 1]
+  if (/^[a-zA-Z]{2}$/.test(ultima)) return partes[partes.length - 2]
+  return ultima
+}
+
 // ISR: essa é a página de maior tráfego do app (perfil público, sem sessão),
 // e até agora renderizava 100% dinâmico — buscava tudo do banco a cada
 // request. Os dados aqui (bio, serviços, galeria, horários...) mudam pouco;
@@ -115,33 +131,67 @@ export default async function PerfilPage({ params }: { params: Promise<{ slug: s
     planos: planosPublicos,
   }
 
-  if (presetEfetivo === 'premium') return <PerfilPublicoLandingPremiumClient {...props} />
-  if (presetEfetivo === 'landing') return <PerfilPublicoLandingClient {...props} />
-  return <PerfilPublicoClient {...props} />
+  // Schema.org LocalBusiness — "business.business" (og:type) e o @type de
+  // BeautySalon/HealthAndBeautyBusiness não têm campo dedicado na Metadata
+  // API tipada do Next (o union de OpenGraphType não inclui tipos
+  // business.*), então são emitidos aqui como tags soltas no corpo da
+  // página — o React 19 hoisteia <meta>/<script> renderizados em qualquer
+  // profundidade da árvore pra dentro de <head> automaticamente.
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': ['BeautySalon', 'HealthAndBeautyBusiness'],
+    name: prestadora.nome,
+    description: prestadora.bio || undefined,
+    url: `${SITE_URL}/n/${slug}`,
+    telephone: prestadora.whatsapp || undefined,
+    address: prestadora.endereco || undefined,
+    image: prestadora.foto_url || undefined,
+  }
+
+  return (
+    <>
+      <meta property="og:type" content="business.business" />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      {presetEfetivo === 'premium' ? <PerfilPublicoLandingPremiumClient {...props} />
+        : presetEfetivo === 'landing' ? <PerfilPublicoLandingClient {...props} />
+        : <PerfilPublicoClient {...props} />}
+    </>
+  )
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const supabase = createAdminClient()
-  const { data } = await supabase.from('prestadoras').select('nome, bio, foto_url').eq('slug', slug).single()
+  const { data } = await supabase.from('prestadoras').select('id, nome, bio, foto_url, endereco').eq('slug', slug).single()
   if (!data) return {}
 
-  const title = `${data.nome} — BelleBook`
-  const description = data.bio ?? `Agende seu horário com ${data.nome}`
+  const { data: servicos } = await supabase
+    .from('servicos')
+    .select('nome')
+    .eq('prestadora_id', data.id)
+    .eq('ativo', true)
+
+  const cidade = extrairCidade(data.endereco)
+  const bioLimpa = data.bio?.trim().replace(/[.!?]+$/, '') || null
+
+  const title = `${data.nome}${cidade ? ` — ${cidade}` : ''} | Agendamento Online`
+  const description = `Agende online com ${data.nome}. ${bioLimpa || 'Serviços de beleza com agendamento online 24h'}. Sem precisar ligar ou enviar mensagem!`
   const url = `${SITE_URL}/n/${slug}`
   const image = data.foto_url ?? '/og-image.png'
+  const keywords = [data.nome, cidade, ...(servicos ?? []).map((s) => s.nome)].filter((v): v is string => Boolean(v))
 
   return {
     title,
     description,
+    keywords,
     alternates: { canonical: url },
+    robots: { index: true, follow: true },
     openGraph: {
       title,
       description,
       url,
       siteName: 'BelleBook',
       locale: 'pt_BR',
-      type: 'profile',
       images: [{ url: image }],
     },
     twitter: {
