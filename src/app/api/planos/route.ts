@@ -52,32 +52,41 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Intervalo inválido' }, { status: 400 })
   }
 
+  const insertPayload = {
+    prestadora_id: prestadora.id,
+    nome,
+    descricao: body.descricao?.trim() || null,
+    preco: body.preco,
+    intervalo: body.intervalo,
+    desconto_tipo: body.descontoTipo ?? 'percentual',
+    desconto_valor: body.descontoValor ?? 0,
+    creditos_acumulam: body.creditosAcumulam ?? false,
+    limite_vagas: body.limiteVagas ?? null,
+  }
+  console.log('[planos POST] payload de insert:', insertPayload)
+
   const { data: plano, error } = await supabase
     .from('planos_prestadora')
-    .insert({
-      prestadora_id: prestadora.id,
-      nome,
-      descricao: body.descricao?.trim() || null,
-      preco: body.preco,
-      intervalo: body.intervalo,
-      desconto_tipo: body.descontoTipo ?? 'percentual',
-      desconto_valor: body.descontoValor ?? 0,
-      creditos_acumulam: body.creditosAcumulam ?? false,
-      limite_vagas: body.limiteVagas ?? null,
-    })
+    .insert(insertPayload)
     .select()
     .single()
 
   if (error || !plano) {
-    console.error('[planos] erro ao criar plano', error)
+    console.error('[planos POST] erro ao criar plano — code:', error?.code, '| message:', error?.message, '| details:', error?.details, '| hint:', error?.hint)
+    console.error('[planos POST] erro completo:', error)
     return NextResponse.json({ error: 'Erro ao criar plano' }, { status: 500 })
   }
 
+  console.log('[planos POST] plano criado com sucesso:', plano.id)
+
   const servicos = (body.servicos ?? []).filter((s) => s.servicoId && s.quantidade > 0)
   if (servicos.length > 0) {
-    await supabase.from('planos_servicos').insert(
+    const { error: servicosError } = await supabase.from('planos_servicos').insert(
       servicos.map((s) => ({ plano_id: plano.id, servico_id: s.servicoId, quantidade: s.quantidade }))
     )
+    if (servicosError) {
+      console.error('[planos POST] erro ao inserir planos_servicos — code:', servicosError.code, '| message:', servicosError.message, '| details:', servicosError.details)
+    }
   }
 
   return NextResponse.json({ plano })
