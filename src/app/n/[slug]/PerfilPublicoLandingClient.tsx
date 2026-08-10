@@ -70,7 +70,7 @@ function GaleriaGridCentralizada({
       {itens.map((item, i) => (
         <div
           key={item.id}
-          className="w-[calc(50%-4px)] sm:w-[calc(33.333%-6px)] max-w-[220px] aspect-square rounded-2xl overflow-hidden bg-gray-100 cursor-pointer relative group"
+          className="w-[calc(50%_-_4px)] sm:w-[calc(33.333%_-_6px)] max-w-[220px] aspect-square rounded-2xl overflow-hidden bg-gray-100 cursor-pointer relative group"
           onClick={() => onItemClick(i)}
         >
           {item.tipo === 'video' ? (
@@ -983,7 +983,7 @@ export default function PerfilPublicoLandingClient({
             <h2 className="font-serif text-2xl font-semibold text-gray-900 mb-6 text-center">Nossa equipe</h2>
             <div className="flex flex-wrap justify-center gap-5">
               {profissionais.map((p) => (
-                <div key={p.id} className="w-full sm:w-[calc(50%-10px)] lg:w-[calc(33.333%-14px)] max-w-sm bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col items-center text-center gap-3">
+                <div key={p.id} className="w-full sm:w-[calc(50%_-_10px)] lg:w-[calc(33.333%_-_14px)] max-w-sm bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col items-center text-center gap-3">
                   <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-white shadow bg-rose-100 shrink-0">
                     {p.foto_url ? (
                       <Image src={p.foto_url} alt={p.nome} width={80} height={80} className="w-full h-full object-cover" />
@@ -1064,7 +1064,7 @@ export default function PerfilPublicoLandingClient({
             <h2 className="font-serif text-2xl font-semibold text-gray-900 mb-6 text-center">O que dizem nossas clientes</h2>
             <div className="flex flex-wrap justify-center gap-4">
               {avaliacoesExibidas.map((av) => (
-                <div key={av.id} className="w-full sm:w-[calc(33.333%-11px)] max-w-sm bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+                <div key={av.id} className="w-full sm:w-[calc(33.333%_-_11px)] max-w-sm bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-0.5">
                       {Array.from({ length: 5 }, (_, i) => (

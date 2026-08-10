@@ -22,6 +22,7 @@ import {
 import { getServicoIcone } from '@/lib/servicoIcones'
 import { calcularValorSinal } from '@/lib/sinal'
 import type { PrestadoraPublica, Servico, GaleriaItem, Agendamento, Profissional, HorarioFuncionamento, Avaliacao } from '@/lib/types'
+import { getTema } from '@/lib/theme'
 import { planoEfetivo, ehPro } from '@/lib/plano'
 import { limitesPlano } from '@/lib/planoLimites'
 import {
@@ -32,7 +33,18 @@ import toast from 'react-hot-toast'
 import { format, addDays, startOfDay, isSameDay, isToday, isBefore, getDay, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 
-const OURO = '#fcd34d' // amber-300 — mesmo valor, usado em contextos onde a classe Tailwind não dá pra aplicar (ex: style inline em SVG/borda dinâmica)
+/** Deriva um "rgba(...)" a partir do hex da cor_tema — usado nos lugares que
+ * antes eram amber-300/NN (borda ou fundo com opacidade reduzida). Estilo
+ * inline não tem variante de opacidade do Tailwind, então calcula na mão. */
+function hexComOpacidade(hex: string, alpha: number): string {
+  const limpo = hex.replace('#', '')
+  const cheio = limpo.length === 3 ? limpo.split('').map((c) => c + c).join('') : limpo
+  const num = parseInt(cheio, 16)
+  const r = (num >> 16) & 255
+  const g = (num >> 8) & 255
+  const b = num & 255
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
 
 interface Props {
   prestadora: PrestadoraPublica
@@ -62,7 +74,7 @@ function GaleriaEditorial({
       {itens.map((item, i) => (
         <div
           key={item.id}
-          className="w-[calc(50%-2px)] sm:w-[calc(33.333%-3px)] max-w-[280px] aspect-square overflow-hidden bg-[#1a1a1a] cursor-pointer relative group"
+          className="w-[calc(50%_-_2px)] sm:w-[calc(33.333%_-_3px)] max-w-[280px] aspect-square overflow-hidden bg-[#1a1a1a] cursor-pointer relative group"
           onClick={() => onItemClick(i)}
         >
           {item.tipo === 'video' ? (
@@ -726,8 +738,11 @@ export default function PerfilPublicoLandingPremiumClient({
     ? avaliacoes.reduce((acc, a) => acc + a.nota, 0) / avaliacoes.length
     : null
 
-  // Premium tem paleta fixa (escuro + dourado) — não usa a cor_tema
-  // escolhida pela prestadora, então não depende de src/lib/theme.ts aqui.
+  // Fundo escuro é fixo do preset Premium, mas o dourado de destaque (bordas,
+  // ícones, preço, CTA) usa a cor_tema da prestadora — mesma fonte que
+  // PerfilPublicoClient.tsx usa pro gradiente do header.
+  const tema = getTema(prestadora.cor_tema)
+
   // O gate de plano (Studio/Studio Pro) já é aplicado antes de chegar nesse
   // componente (ver src/app/n/[slug]/page.tsx), mas a galeria/avaliações
   // ainda respeitam os limites do plano ao exibir, pro caso de downgrade.
@@ -782,7 +797,7 @@ export default function PerfilPublicoLandingPremiumClient({
               onClick={() => setLogoMenuAberto((v) => !v)}
               aria-expanded={logoMenuAberto}
               aria-haspopup="menu"
-              className="font-serif text-lg font-bold text-white rounded-lg px-1 py-1 hover:text-amber-200 transition-colors"
+              className="font-serif text-lg font-bold text-white rounded-lg px-1 py-1 hover:opacity-80 transition-opacity"
             >
               BelleBook
             </button>
@@ -815,7 +830,8 @@ export default function PerfilPublicoLandingPremiumClient({
                   href="/painel/cadastro"
                   role="menuitem"
                   onClick={() => setLogoMenuAberto(false)}
-                  className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-semibold text-[#0f0f0f] bg-amber-300 hover:bg-amber-200 transition-colors"
+                  className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-semibold text-[#0f0f0f] hover:brightness-95 transition-all"
+                  style={{ backgroundColor: tema.hex }}
                 >
                   <Sparkles className="w-4 h-4 shrink-0" />
                   Crie sua página grátis
@@ -859,7 +875,7 @@ export default function PerfilPublicoLandingPremiumClient({
                           onChange={(e) => setNovoNome(e.target.value)}
                           autoFocus
                         />
-                        <Button onClick={salvarNome} loading={salvandoNome} className="w-full !bg-amber-300 !text-[#0f0f0f] hover:!bg-amber-200" size="sm">
+                        <Button onClick={salvarNome} loading={salvandoNome} className="w-full text-[#0f0f0f] hover:brightness-95" style={{ backgroundColor: tema.hex }} size="sm">
                           Salvar
                         </Button>
                       </div>
@@ -910,7 +926,7 @@ export default function PerfilPublicoLandingPremiumClient({
       {/* ── HERO ───────────────────────────────── */}
       <section className="relative px-4 pt-16 pb-14 text-center bg-gradient-to-b from-[#0f0f0f] to-[#161616]">
         <div className="max-w-2xl mx-auto flex flex-col items-center gap-5">
-          <div className="w-40 h-40 rounded-full ring-2 ring-amber-300 p-1">
+          <div className="w-40 h-40 rounded-full p-1" style={{ backgroundColor: tema.hex }}>
             <div className="w-full h-full rounded-full overflow-hidden bg-[#1a1a1a]">
               {prestadora.foto_url ? (
                 <ImageWithSkeleton
@@ -922,7 +938,7 @@ export default function PerfilPublicoLandingPremiumClient({
                   priority
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-amber-300 font-bold text-5xl font-serif">
+                <div className="w-full h-full flex items-center justify-center font-bold text-5xl font-serif" style={{ color: tema.hex }}>
                   {prestadora.nome.charAt(0)}
                 </div>
               )}
@@ -934,20 +950,26 @@ export default function PerfilPublicoLandingPremiumClient({
 
             <div className="flex items-center justify-center gap-2 flex-wrap">
               {prestadora.pagina_mostrar_texto_agendamento && prestadora.pagina_texto_agendamento && (
-                <span className="inline-flex items-center gap-1.5 border border-amber-300/30 text-amber-300 rounded-full px-4 py-1.5 text-xs font-semibold">
-                  <Star className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold"
+                  style={{ border: `1px solid ${hexComOpacidade(tema.hex, 0.3)}`, color: tema.hex }}
+                >
+                  <Star className="w-3.5 h-3.5" style={{ fill: tema.hex, color: tema.hex }} />
                   {prestadora.pagina_texto_agendamento}
                 </span>
               )}
               {prestadora.pagina_mostrar_estrelas && mediaAvaliacoes !== null && (
-                <span className="inline-flex items-center gap-1.5 border border-amber-300/30 text-amber-300 rounded-full px-4 py-1.5 text-xs font-semibold">
-                  <Star className="w-3.5 h-3.5 fill-amber-300 text-amber-300" />
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold"
+                  style={{ border: `1px solid ${hexComOpacidade(tema.hex, 0.3)}`, color: tema.hex }}
+                >
+                  <Star className="w-3.5 h-3.5" style={{ fill: tema.hex, color: tema.hex }} />
                   {mediaAvaliacoes.toFixed(1)} ({avaliacoes.length} avaliaç{avaliacoes.length > 1 ? 'ões' : 'ão'})
                 </span>
               )}
               {abertoHoje && (
                 <span className="inline-flex items-center gap-1.5 text-xs text-gray-400">
-                  <Clock className="w-3.5 h-3.5 text-amber-300" />
+                  <Clock className="w-3.5 h-3.5" style={{ color: tema.hex }} />
                   Hoje: {formatHora(aberturaHoje)} – {formatHora(fechamentoHoje)}
                 </span>
               )}
@@ -984,14 +1006,20 @@ export default function PerfilPublicoLandingPremiumClient({
                   <button
                     key={s.id}
                     onClick={() => selecionarServicoEIrParaAgendar(s)}
-                    className="w-full sm:w-[calc(50%-8px)] max-w-md text-left bg-[#1a1a1a] border border-amber-300/30 rounded-2xl p-5 hover:border-amber-300/70 transition-colors"
+                    className="w-full sm:w-[calc(50%_-_8px)] max-w-md text-left bg-[#1a1a1a] rounded-2xl p-5 transition-colors"
+                    style={{ border: `1px solid ${hexComOpacidade(tema.hex, 0.3)}` }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = tema.hex }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = hexComOpacidade(tema.hex, 0.3) }}
                   >
                     <div className="flex items-center gap-4">
-                      <div className="relative w-12 h-12 rounded-xl flex items-center justify-center shrink-0 overflow-hidden bg-[#111111] border border-amber-300/20">
+                      <div
+                        className="relative w-12 h-12 rounded-xl flex items-center justify-center shrink-0 overflow-hidden bg-[#111111]"
+                        style={{ border: `1px solid ${hexComOpacidade(tema.hex, 0.2)}` }}
+                      >
                         {fotoServico ? (
                           <ImageWithSkeleton src={fotoServico.url} alt={s.nome} fill className="object-cover" />
                         ) : (
-                          <IconeServico className="w-5 h-5 text-amber-300" />
+                          <IconeServico className="w-5 h-5" style={{ color: tema.hex }} />
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -1002,7 +1030,7 @@ export default function PerfilPublicoLandingPremiumClient({
                           {s.duracao_minutos} min
                         </div>
                       </div>
-                      <span className="font-bold text-lg shrink-0 text-amber-300">{formatCurrency(s.preco)}</span>
+                      <span className="font-bold text-lg shrink-0" style={{ color: tema.hex }}>{formatCurrency(s.preco)}</span>
                     </div>
                   </button>
                 )
@@ -1032,13 +1060,13 @@ export default function PerfilPublicoLandingPremiumClient({
             <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-white mb-10 text-center">Nossa equipe</h2>
             <div className="flex flex-wrap justify-center gap-5">
               {profissionais.map((p) => (
-                <div key={p.id} className="w-full sm:w-[calc(50%-10px)] lg:w-[calc(33.333%-14px)] max-w-sm bg-[#1a1a1a] rounded-2xl border border-white/10 p-6 flex flex-col items-center text-center gap-3">
-                  <div className="w-20 h-20 rounded-full overflow-hidden ring-2 ring-amber-300 p-0.5 shrink-0">
+                <div key={p.id} className="w-full sm:w-[calc(50%_-_10px)] lg:w-[calc(33.333%_-_14px)] max-w-sm bg-[#1a1a1a] rounded-2xl border border-white/10 p-6 flex flex-col items-center text-center gap-3">
+                  <div className="w-20 h-20 rounded-full p-0.5 shrink-0" style={{ backgroundColor: tema.hex }}>
                     <div className="w-full h-full rounded-full overflow-hidden bg-[#111111]">
                       {p.foto_url ? (
                         <Image src={p.foto_url} alt={p.nome} width={80} height={80} className="w-full h-full object-cover" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-2xl font-bold font-serif text-amber-300">
+                        <div className="w-full h-full flex items-center justify-center text-2xl font-bold font-serif" style={{ color: tema.hex }}>
                           {p.nome.charAt(0)}
                         </div>
                       )}
@@ -1072,9 +1100,9 @@ export default function PerfilPublicoLandingPremiumClient({
             </div>
           )}
           {prestadora.endereco && (
-            <div className="bg-[#1a1a1a] rounded-2xl p-4 border border-amber-300/20 flex items-center gap-3 max-w-xl mx-auto">
+            <div className="bg-[#1a1a1a] rounded-2xl p-4 flex items-center gap-3 max-w-xl mx-auto" style={{ border: `1px solid ${hexComOpacidade(tema.hex, 0.2)}` }}>
               <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-[#111111]">
-                <MapPin className="w-5 h-5 text-amber-300" />
+                <MapPin className="w-5 h-5" style={{ color: tema.hex }} />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider mb-0.5">Localização</p>
@@ -1084,7 +1112,8 @@ export default function PerfilPublicoLandingPremiumClient({
                 href={`https://maps.google.com/?q=${encodeURIComponent(prestadora.endereco)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="shrink-0 flex items-center gap-1 text-xs font-semibold text-amber-300 hover:text-amber-200 transition-all whitespace-nowrap"
+                className="shrink-0 flex items-center gap-1 text-xs font-semibold hover:brightness-125 transition-all whitespace-nowrap"
+                style={{ color: tema.hex }}
               >
                 Como chegar
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -1101,13 +1130,14 @@ export default function PerfilPublicoLandingPremiumClient({
             <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-white mb-10 text-center">O que dizem nossas clientes</h2>
             <div className="flex flex-wrap justify-center gap-4">
               {avaliacoesExibidas.map((av) => (
-                <div key={av.id} className="w-full sm:w-[calc(33.333%-11px)] max-w-sm bg-[#1a1a1a] rounded-2xl p-4 border border-white/10">
+                <div key={av.id} className="w-full sm:w-[calc(33.333%_-_11px)] max-w-sm bg-[#1a1a1a] rounded-2xl p-4 border border-white/10">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-0.5">
                       {Array.from({ length: 5 }, (_, i) => (
                         <Star
                           key={i}
-                          className={`w-3.5 h-3.5 ${i < av.nota ? 'fill-amber-300 text-amber-300' : 'text-gray-700'}`}
+                          className={i < av.nota ? 'w-3.5 h-3.5' : 'w-3.5 h-3.5 text-gray-700'}
+                          style={i < av.nota ? { fill: tema.hex, color: tema.hex } : undefined}
                         />
                       ))}
                     </div>
@@ -1115,7 +1145,7 @@ export default function PerfilPublicoLandingPremiumClient({
                   </div>
                   {av.comentario && (
                     <p className="text-sm text-gray-300 leading-relaxed flex gap-1.5">
-                      <Quote className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-300" />
+                      <Quote className="w-3.5 h-3.5 shrink-0 mt-0.5" style={{ color: tema.hex }} />
                       {av.comentario}
                     </p>
                   )}
@@ -1130,14 +1160,14 @@ export default function PerfilPublicoLandingPremiumClient({
       )}
 
       {/* ── AGENDAMENTO INLINE ─────────────────── */}
-      <section id="agendar" className="scroll-mt-20 bg-[#0f0f0f] border-t-2 border-amber-300 px-4 py-16">
+      <section id="agendar" className="scroll-mt-20 bg-[#0f0f0f] px-4 py-16" style={{ borderTop: `2px solid ${tema.hex}` }}>
         <h2 className="font-serif text-2xl sm:text-3xl font-semibold text-white mb-10 text-center">Agende seu horário</h2>
 
         <div className="max-w-lg mx-auto">
           {step === 'confirmado' && agendamentoFeito ? (
-            <div className="bg-[#1a1a1a] rounded-2xl border border-amber-300/30 p-8 text-center space-y-5">
-              <div className="w-20 h-20 mx-auto rounded-full flex items-center justify-center bg-amber-300/10 animate-check-pop">
-                <CheckCircle2 className="w-12 h-12 text-amber-300" />
+            <div className="bg-[#1a1a1a] rounded-2xl p-8 text-center space-y-5" style={{ border: `1px solid ${hexComOpacidade(tema.hex, 0.3)}` }}>
+              <div className="w-20 h-20 mx-auto rounded-full flex items-center justify-center animate-check-pop" style={{ backgroundColor: hexComOpacidade(tema.hex, 0.1) }}>
+                <CheckCircle2 className="w-12 h-12" style={{ color: tema.hex }} />
               </div>
               <div>
                 <h3 className="font-serif text-2xl font-bold text-white">Agendado!</h3>
@@ -1160,7 +1190,7 @@ export default function PerfilPublicoLandingPremiumClient({
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Valor</span>
-                  <span className="font-medium text-amber-300">{formatCurrency(agendamentoFeito.servicos?.preco ?? 0)}</span>
+                  <span className="font-medium" style={{ color: tema.hex }}>{formatCurrency(agendamentoFeito.servicos?.preco ?? 0)}</span>
                 </div>
               </div>
 
@@ -1194,11 +1224,11 @@ export default function PerfilPublicoLandingPremiumClient({
                   const active = i <= currentStepIndex
                   return (
                     <div key={label} className="flex items-center gap-1.5">
-                      <span className={active ? 'font-medium text-amber-300' : ''}>{label}</span>
+                      <span className={active ? 'font-medium' : ''} style={active ? { color: tema.hex } : undefined}>{label}</span>
                       {i < progressSteps.length - 1 && (
                         <div
                           className="h-px w-3"
-                          style={{ backgroundColor: active && i < currentStepIndex ? OURO : '#3f3f46' }}
+                          style={{ backgroundColor: active && i < currentStepIndex ? tema.hex : '#3f3f46' }}
                         />
                       )}
                     </div>
@@ -1220,14 +1250,17 @@ export default function PerfilPublicoLandingPremiumClient({
                       <div
                         key={s.id}
                         onClick={() => selecionarServico(s)}
-                        className="bg-[#1a1a1a] border border-amber-300/20 rounded-2xl p-4 cursor-pointer hover:border-amber-300/60 transition-all duration-200"
+                        className="bg-[#1a1a1a] rounded-2xl p-4 cursor-pointer transition-all duration-200"
+                        style={{ border: `1px solid ${hexComOpacidade(tema.hex, 0.2)}` }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = hexComOpacidade(tema.hex, 0.6) }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = hexComOpacidade(tema.hex, 0.2) }}
                       >
                         <div className="flex items-center gap-4">
                           <div className="relative w-11 h-11 rounded-xl flex items-center justify-center shrink-0 overflow-hidden bg-[#111111]">
                             {fotoServico ? (
                               <ImageWithSkeleton src={fotoServico.url} alt={s.nome} fill className="object-cover" />
                             ) : (
-                              <IconeServico className="w-5 h-5 text-amber-300" />
+                              <IconeServico className="w-5 h-5" style={{ color: tema.hex }} />
                             )}
                           </div>
                           <div className="flex-1 min-w-0">
@@ -1238,7 +1271,7 @@ export default function PerfilPublicoLandingPremiumClient({
                               {s.duracao_minutos} min
                             </div>
                           </div>
-                          <span className="font-bold text-lg shrink-0 text-amber-300">{formatCurrency(s.preco)}</span>
+                          <span className="font-bold text-lg shrink-0" style={{ color: tema.hex }}>{formatCurrency(s.preco)}</span>
                         </div>
                       </div>
                       )
@@ -1248,13 +1281,13 @@ export default function PerfilPublicoLandingPremiumClient({
               )}
 
               {step === 'profissional' && servicoSelecionado && (
-                <div className="bg-[#1a1a1a] rounded-2xl border border-amber-300/20 p-4 space-y-4">
+                <div className="bg-[#1a1a1a] rounded-2xl p-4 space-y-4" style={{ border: `1px solid ${hexComOpacidade(tema.hex, 0.2)}` }}>
                   <div className="flex items-center gap-2">
                     <button onClick={() => setStep('servico')} className="text-gray-500 hover:text-white">
                       <ChevronLeft className="w-5 h-5" />
                     </button>
                     <h3 className="font-medium text-white">Escolha a profissional</h3>
-                    <Badge className="ml-auto !bg-amber-300/10 !text-amber-300">{servicoSelecionado.nome}</Badge>
+                    <Badge className="ml-auto" style={{ backgroundColor: hexComOpacidade(tema.hex, 0.1), color: tema.hex }}>{servicoSelecionado.nome}</Badge>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -1262,14 +1295,16 @@ export default function PerfilPublicoLandingPremiumClient({
                       <button
                         key={p.id}
                         onClick={() => selecionarProfissional(p)}
-                        className="flex flex-col items-center gap-3 p-4 rounded-2xl border border-white/10 hover:border-amber-300/50 hover:bg-white/5 transition-all text-center"
+                        className="flex flex-col items-center gap-3 p-4 rounded-2xl border border-white/10 hover:bg-white/5 transition-all text-center"
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = hexComOpacidade(tema.hex, 0.5) }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '' }}
                       >
-                        <div className="w-16 h-16 rounded-full overflow-hidden ring-2 ring-amber-300/50 p-0.5">
+                        <div className="w-16 h-16 rounded-full p-0.5" style={{ backgroundColor: hexComOpacidade(tema.hex, 0.5) }}>
                           <div className="w-full h-full rounded-full overflow-hidden bg-[#111111]">
                             {p.foto_url ? (
                               <Image src={p.foto_url} alt={p.nome} width={64} height={64} className="w-full h-full object-cover" />
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center text-xl font-bold font-serif text-amber-300">
+                              <div className="w-full h-full flex items-center justify-center text-xl font-bold font-serif" style={{ color: tema.hex }}>
                                 {p.nome.charAt(0)}
                               </div>
                             )}
@@ -1286,7 +1321,7 @@ export default function PerfilPublicoLandingPremiumClient({
               )}
 
               {step === 'data' && servicoSelecionado && (
-                <div className="bg-[#1a1a1a] rounded-2xl border border-amber-300/20 p-4">
+                <div className="bg-[#1a1a1a] rounded-2xl p-4" style={{ border: `1px solid ${hexComOpacidade(tema.hex, 0.2)}` }}>
                   <div className="flex items-center gap-2 mb-4">
                     <button
                       onClick={() => setStep(temMultiplasProfissionais ? 'profissional' : 'servico')}
@@ -1297,10 +1332,10 @@ export default function PerfilPublicoLandingPremiumClient({
                     <div>
                       <h3 className="font-medium text-white">{servicoSelecionado.nome}</h3>
                       {profissionalSelecionada && (
-                        <p className="text-xs text-amber-300">com {profissionalSelecionada.nome}</p>
+                        <p className="text-xs" style={{ color: tema.hex }}>com {profissionalSelecionada.nome}</p>
                       )}
                     </div>
-                    <Badge className="ml-auto !bg-amber-300/10 !text-amber-300">{formatCurrency(servicoSelecionado.preco)}</Badge>
+                    <Badge className="ml-auto" style={{ backgroundColor: hexComOpacidade(tema.hex, 0.1), color: tema.hex }}>{formatCurrency(servicoSelecionado.preco)}</Badge>
                   </div>
 
                   <div className="flex items-center justify-between mb-3">
@@ -1330,9 +1365,14 @@ export default function PerfilPublicoLandingPremiumClient({
                           onClick={() => selecionarData(d)}
                           className={`flex flex-col items-center py-2 rounded-xl transition-all text-xs font-medium
                             ${desativado ? 'opacity-30 cursor-not-allowed' : ''}
-                            ${selecionado ? 'bg-amber-300 text-[#0f0f0f]' : 'text-gray-300 hover:bg-white/5'}
-                            ${isToday(d) && !selecionado ? 'border border-amber-300/50' : ''}
+                            ${selecionado ? '' : 'text-gray-300 hover:bg-white/5'}
+                            ${isToday(d) && !selecionado ? 'border' : ''}
                           `}
+                          style={{
+                            backgroundColor: selecionado ? tema.hex : undefined,
+                            color: selecionado ? '#0f0f0f' : undefined,
+                            borderColor: isToday(d) && !selecionado ? hexComOpacidade(tema.hex, 0.5) : undefined,
+                          }}
                         >
                           <span className="text-[10px] text-current opacity-70 mb-0.5">
                             {format(d, 'EEE', { locale: ptBR }).slice(0, 3)}
@@ -1346,7 +1386,7 @@ export default function PerfilPublicoLandingPremiumClient({
               )}
 
               {step === 'horario' && servicoSelecionado && dataSelecionada && (
-                <div className="bg-[#1a1a1a] rounded-2xl border border-amber-300/20 p-4">
+                <div className="bg-[#1a1a1a] rounded-2xl p-4" style={{ border: `1px solid ${hexComOpacidade(tema.hex, 0.2)}` }}>
                   <div className="flex items-center gap-2 mb-4">
                     <button onClick={() => setStep('data')} className="text-gray-500 hover:text-white">
                       <ChevronLeft className="w-5 h-5" />
@@ -1355,7 +1395,7 @@ export default function PerfilPublicoLandingPremiumClient({
                       <h3 className="font-medium text-white">{servicoSelecionado.nome}</h3>
                       <p className="text-xs text-gray-500">
                         {format(dataSelecionada, "EEEE, d 'de' MMMM", { locale: ptBR })}
-                        {profissionalSelecionada && <span className="text-amber-300"> · {profissionalSelecionada.nome}</span>}
+                        {profissionalSelecionada && <span style={{ color: tema.hex }}> · {profissionalSelecionada.nome}</span>}
                       </p>
                     </div>
                   </div>
@@ -1370,7 +1410,8 @@ export default function PerfilPublicoLandingPremiumClient({
                         <p className="text-xs mt-1">
                           <button
                             onClick={() => setStep('profissional')}
-                            className="text-amber-300 hover:underline"
+                            className="hover:underline"
+                            style={{ color: tema.hex }}
                           >
                             Tentar outra profissional
                           </button>
@@ -1392,10 +1433,11 @@ export default function PerfilPublicoLandingPremiumClient({
                               setLoginModal(true)
                             }}
                             className={`py-2.5 rounded-xl text-sm font-medium transition-all border ${
-                              selecionadoSlot
-                                ? 'bg-amber-300 border-amber-300 text-[#0f0f0f]'
-                                : 'bg-[#111111] border-white/10 text-gray-300 hover:border-amber-300/50'
+                              selecionadoSlot ? '' : 'bg-[#111111] border-white/10 text-gray-300'
                             }`}
+                            style={selecionadoSlot ? { backgroundColor: tema.hex, borderColor: tema.hex, color: '#0f0f0f' } : undefined}
+                            onMouseEnter={(e) => { if (!selecionadoSlot) e.currentTarget.style.borderColor = hexComOpacidade(tema.hex, 0.5) }}
+                            onMouseLeave={(e) => { if (!selecionadoSlot) e.currentTarget.style.borderColor = '' }}
                           >
                             {h}
                           </button>
@@ -1407,7 +1449,7 @@ export default function PerfilPublicoLandingPremiumClient({
               )}
 
               {step === 'cliente' && servicoSelecionado && dataSelecionada && horarioSelecionado && (
-                <div className="bg-[#1a1a1a] rounded-2xl border border-amber-300/20 p-4 space-y-4">
+                <div className="bg-[#1a1a1a] rounded-2xl p-4 space-y-4" style={{ border: `1px solid ${hexComOpacidade(tema.hex, 0.2)}` }}>
                   <div className="flex items-center gap-2 mb-2">
                     <button onClick={() => setStep('horario')} className="text-gray-500 hover:text-white">
                       <ChevronLeft className="w-5 h-5" />
@@ -1421,7 +1463,7 @@ export default function PerfilPublicoLandingPremiumClient({
                       <span className="font-medium">{formatCurrency(servicoSelecionado.preco)}</span>
                     </div>
                     {profissionalSelecionada && (
-                      <div className="flex items-center gap-1.5 text-xs text-amber-300">
+                      <div className="flex items-center gap-1.5 text-xs" style={{ color: tema.hex }}>
                         <UserCircle2 className="w-3 h-3" />
                         {profissionalSelecionada.nome}
                       </div>
@@ -1440,7 +1482,8 @@ export default function PerfilPublicoLandingPremiumClient({
                         </span>
                         <button
                           onClick={() => setLoginModal(true)}
-                          className="text-xs font-medium text-amber-300 hover:underline shrink-0 ml-2"
+                          className="text-xs font-medium hover:underline shrink-0 ml-2"
+                          style={{ color: tema.hex }}
                         >
                           Trocar
                         </button>
@@ -1449,11 +1492,11 @@ export default function PerfilPublicoLandingPremiumClient({
                       {servicoSelecionado.aceitar_pagamento_online ? (
                         servicoSelecionado.sinal_obrigatorio ? (
                           <div className="space-y-3">
-                            <div className="rounded-xl bg-amber-300/10 border border-amber-300/30 px-3 py-2.5">
-                              <p className="text-sm font-semibold text-amber-200">
+                            <div className="rounded-xl px-3 py-2.5" style={{ backgroundColor: hexComOpacidade(tema.hex, 0.1), border: `1px solid ${hexComOpacidade(tema.hex, 0.3)}` }}>
+                              <p className="text-sm font-semibold" style={{ color: tema.hex }}>
                                 Sinal: {formatCurrency(calcularValorSinal(servicoSelecionado.preco, servicoSelecionado.sinal_tipo, servicoSelecionado.sinal_valor))}
                               </p>
-                              <p className="text-xs text-amber-100/80 mt-1">
+                              <p className="text-xs text-gray-300 mt-1">
                                 Este pagamento é não reembolsável. Em caso de cancelamento, o valor não será devolvido.
                               </p>
                             </div>
@@ -1462,7 +1505,8 @@ export default function PerfilPublicoLandingPremiumClient({
                                 type="checkbox"
                                 checked={concordaNaoReembolsavel}
                                 onChange={(e) => setConcordaNaoReembolsavel(e.target.checked)}
-                                className="w-4 h-4 mt-0.5 rounded border-gray-600 text-amber-300 focus:ring-amber-300 shrink-0"
+                                className="w-4 h-4 mt-0.5 rounded border-gray-600 shrink-0"
+                                style={{ accentColor: tema.hex }}
                               />
                               Li e concordo que este pagamento não é reembolsável
                             </label>
@@ -1470,7 +1514,7 @@ export default function PerfilPublicoLandingPremiumClient({
                               onClick={pagarEIrParaCheckout}
                               disabled={!concordaNaoReembolsavel}
                               loading={agendando}
-                              className="w-full !bg-amber-300 !text-[#0f0f0f] hover:!bg-amber-200"
+                              className="w-full text-[#0f0f0f] hover:brightness-95" style={{ backgroundColor: tema.hex }}
                               size="lg"
                             >
                               Pagar sinal e confirmar agendamento
@@ -1480,7 +1524,7 @@ export default function PerfilPublicoLandingPremiumClient({
                           <div className="space-y-2.5">
                             <Button
                               onClick={() => setMostrarPagamentoOpcional(true)}
-                              className="w-full !bg-amber-300 !text-[#0f0f0f] hover:!bg-amber-200"
+                              className="w-full text-[#0f0f0f] hover:brightness-95" style={{ backgroundColor: tema.hex }}
                               size="lg"
                             >
                               Pagar agora ({formatCurrency(servicoSelecionado.preco)})
@@ -1497,8 +1541,8 @@ export default function PerfilPublicoLandingPremiumClient({
                           </div>
                         ) : (
                           <div className="space-y-3">
-                            <div className="rounded-xl bg-amber-300/10 border border-amber-300/30 px-3 py-2.5">
-                              <p className="text-xs text-amber-100/80">
+                            <div className="rounded-xl px-3 py-2.5" style={{ backgroundColor: hexComOpacidade(tema.hex, 0.1), border: `1px solid ${hexComOpacidade(tema.hex, 0.3)}` }}>
+                              <p className="text-xs text-gray-300">
                                 Este pagamento é não reembolsável. Em caso de cancelamento, o valor não será devolvido.
                               </p>
                             </div>
@@ -1507,7 +1551,8 @@ export default function PerfilPublicoLandingPremiumClient({
                                 type="checkbox"
                                 checked={concordaNaoReembolsavel}
                                 onChange={(e) => setConcordaNaoReembolsavel(e.target.checked)}
-                                className="w-4 h-4 mt-0.5 rounded border-gray-600 text-amber-300 focus:ring-amber-300 shrink-0"
+                                className="w-4 h-4 mt-0.5 rounded border-gray-600 shrink-0"
+                                style={{ accentColor: tema.hex }}
                               />
                               Li e concordo que este pagamento não é reembolsável
                             </label>
@@ -1515,7 +1560,7 @@ export default function PerfilPublicoLandingPremiumClient({
                               onClick={pagarEIrParaCheckout}
                               disabled={!concordaNaoReembolsavel}
                               loading={agendando}
-                              className="w-full !bg-amber-300 !text-[#0f0f0f] hover:!bg-amber-200"
+                              className="w-full text-[#0f0f0f] hover:brightness-95" style={{ backgroundColor: tema.hex }}
                               size="lg"
                             >
                               Pagar e confirmar agendamento
@@ -1533,7 +1578,7 @@ export default function PerfilPublicoLandingPremiumClient({
                         <Button
                           onClick={confirmarAgendamento}
                           loading={agendando}
-                          className="w-full !bg-amber-300 !text-[#0f0f0f] hover:!bg-amber-200"
+                          className="w-full text-[#0f0f0f] hover:brightness-95" style={{ backgroundColor: tema.hex }}
                           size="lg"
                         >
                           Confirmar agendamento
@@ -1543,7 +1588,7 @@ export default function PerfilPublicoLandingPremiumClient({
                   ) : (
                     <Button
                       onClick={() => { if (isDemo) { loginDemoInstantaneo() } else { setPendingBooking(true); setLoginModal(true) } }}
-                      className="w-full !bg-amber-300 !text-[#0f0f0f] hover:!bg-amber-200"
+                      className="w-full text-[#0f0f0f] hover:brightness-95" style={{ backgroundColor: tema.hex }}
                       size="lg"
                     >
                       Entrar para confirmar
@@ -1629,13 +1674,14 @@ export default function PerfilPublicoLandingPremiumClient({
                 value={senhaAuth}
                 onChange={(e) => setSenhaAuth(e.target.value)}
               />
-              <Button onClick={submitLogin} loading={enviandoAuth} className="w-full !bg-amber-300 !text-[#0f0f0f] hover:!bg-amber-200">
+              <Button onClick={submitLogin} loading={enviandoAuth} className="w-full text-[#0f0f0f] hover:brightness-95" style={{ backgroundColor: tema.hex }}>
                 Entrar
               </Button>
               <div className="flex items-center justify-between text-xs">
                 <button
                   onClick={() => { setAuthMode('cadastro'); setAuthStep('inicio'); setSenhaAuth('') }}
-                  className="hover:underline text-amber-600"
+                  className="hover:underline"
+                  style={{ color: tema.hexDark }}
                 >
                   Criar conta
                 </button>
@@ -1656,7 +1702,7 @@ export default function PerfilPublicoLandingPremiumClient({
               </p>
               <Button
                 onClick={() => { setAuthMode('cadastro'); setNumeroNaoEncontrado(false) }}
-                className="w-full !bg-amber-300 !text-[#0f0f0f] hover:!bg-amber-200"
+                className="w-full text-[#0f0f0f] hover:brightness-95" style={{ backgroundColor: tema.hex }}
               >
                 Criar conta
               </Button>
@@ -1692,7 +1738,7 @@ export default function PerfilPublicoLandingPremiumClient({
                 value={telefoneAuth}
                 onChange={(e) => setTelefoneAuth(maskTelefone(e.target.value))}
               />
-              <Button onClick={enviarCodigo} loading={enviandoAuth} className="w-full !bg-amber-300 !text-[#0f0f0f] hover:!bg-amber-200">
+              <Button onClick={enviarCodigo} loading={enviandoAuth} className="w-full text-[#0f0f0f] hover:brightness-95" style={{ backgroundColor: tema.hex }}>
                 Enviar código
               </Button>
               <button
@@ -1716,7 +1762,7 @@ export default function PerfilPublicoLandingPremiumClient({
                 value={codigoAuth}
                 onChange={(e) => setCodigoAuth(e.target.value.replace(/\D/g, ''))}
               />
-              <Button onClick={verificarCodigo} loading={enviandoAuth} className="w-full !bg-amber-300 !text-[#0f0f0f] hover:!bg-amber-200">
+              <Button onClick={verificarCodigo} loading={enviandoAuth} className="w-full text-[#0f0f0f] hover:brightness-95" style={{ backgroundColor: tema.hex }}>
                 Confirmar
               </Button>
               <button
@@ -1744,7 +1790,7 @@ export default function PerfilPublicoLandingPremiumClient({
                 value={senhaAuth}
                 onChange={(e) => setSenhaAuth(e.target.value)}
               />
-              <Button onClick={finalizarCadastro} loading={enviandoAuth} className="w-full !bg-amber-300 !text-[#0f0f0f] hover:!bg-amber-200">
+              <Button onClick={finalizarCadastro} loading={enviandoAuth} className="w-full text-[#0f0f0f] hover:brightness-95" style={{ backgroundColor: tema.hex }}>
                 Criar conta
               </Button>
             </>
@@ -1760,7 +1806,7 @@ export default function PerfilPublicoLandingPremiumClient({
                 value={senhaAuth}
                 onChange={(e) => setSenhaAuth(e.target.value)}
               />
-              <Button onClick={redefinirSenha} loading={enviandoAuth} className="w-full !bg-amber-300 !text-[#0f0f0f] hover:!bg-amber-200">
+              <Button onClick={redefinirSenha} loading={enviandoAuth} className="w-full text-[#0f0f0f] hover:brightness-95" style={{ backgroundColor: tema.hex }}>
                 Salvar nova senha
               </Button>
             </>
@@ -1785,7 +1831,7 @@ export default function PerfilPublicoLandingPremiumClient({
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-gray-900 text-sm">{a.servicos?.nome}</p>
                     {a.profissionais && (
-                      <p className="text-xs text-amber-600">{a.profissionais.nome}</p>
+                      <p className="text-xs" style={{ color: tema.hexDark }}>{a.profissionais.nome}</p>
                     )}
                     <p className="text-xs text-gray-400">{formatDateTime(a.data_hora)}</p>
                   </div>
