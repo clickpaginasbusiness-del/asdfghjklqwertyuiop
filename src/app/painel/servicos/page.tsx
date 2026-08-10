@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import ServicosClient, { type ServicoComProfissionais } from './ServicosClient'
+import { planoEfetivo } from '@/lib/plano'
+import { limitesPlano } from '@/lib/planoLimites'
 
 export default async function ServicosPage() {
   const supabase = await createClient()
@@ -9,13 +11,15 @@ export default async function ServicosPage() {
 
   const { data: prestadora } = await supabase
     .from('prestadoras')
-    .select('id')
+    .select('id, plano, e_parceira')
     .eq('user_id', user.id)
     .single()
 
   if (!prestadora) redirect('/painel/login')
 
-  const [{ data: servicos }, { data: profissionais }, { data: galeria }] = await Promise.all([
+  const podeUsarPlanos = limitesPlano(planoEfetivo(prestadora)).assinaturas_clientes
+
+  const [{ data: servicos }, { data: profissionais }, { data: galeria }, { data: planos }] = await Promise.all([
     supabase
       .from('servicos')
       .select('*, servico_profissionais(profissional_id)')
@@ -32,6 +36,11 @@ export default async function ServicosPage() {
       .select('*')
       .eq('prestadora_id', prestadora.id)
       .order('created_at', { ascending: false }),
+    supabase
+      .from('planos_prestadora')
+      .select('*, planos_servicos(id, servico_id, quantidade, servicos(nome)), planos_assinaturas(id, status)')
+      .eq('prestadora_id', prestadora.id)
+      .order('created_at', { ascending: false }),
   ])
 
   return (
@@ -40,6 +49,8 @@ export default async function ServicosPage() {
       profissionais={profissionais ?? []}
       galeria={galeria ?? []}
       prestadoraId={prestadora.id}
+      planosIniciais={planos ?? []}
+      podeUsarPlanos={podeUsarPlanos}
     />
   )
 }

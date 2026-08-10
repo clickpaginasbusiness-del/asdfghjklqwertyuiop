@@ -25,6 +25,10 @@ import type { PrestadoraPublica, Servico, GaleriaItem, Agendamento, Profissional
 import { getTema } from '@/lib/theme'
 import { planoEfetivo, ehPro } from '@/lib/plano'
 import { limitesPlano } from '@/lib/planoLimites'
+import { PlanosSection, type PlanoPublico } from '@/components/perfil-publico/PlanosSection'
+import { usePlanoCredito, calcularValorComDesconto } from '@/components/perfil-publico/usePlanoCredito'
+import { CreditoPlanoCard } from '@/components/perfil-publico/CreditoPlanoCard'
+import { MeusPlanosModal } from '@/components/perfil-publico/MeusPlanosModal'
 import toast from 'react-hot-toast'
 import { format, addDays, startOfDay, isSameDay, isToday, isBefore, getDay, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -41,6 +45,7 @@ interface Props {
   profissionais: Profissional[]
   horariosFuncionamento: HorarioFuncionamento[]
   avaliacoes: Avaliacao[]
+  planos: PlanoPublico[]
   isDemo?: boolean
 }
 
@@ -123,7 +128,7 @@ export function GaleriaGrid({
 }
 
 export default function PerfilPublicoClient({
-  prestadora, servicos, galeria, diasBloqueados, profissionais, horariosFuncionamento, avaliacoes, isDemo = false,
+  prestadora, servicos, galeria, diasBloqueados, profissionais, horariosFuncionamento, avaliacoes, planos, isDemo = false,
 }: Props) {
   const temMultiplasProfissionais = profissionais.length >= 2
 
@@ -175,6 +180,7 @@ export default function PerfilPublicoClient({
   const [clienteLogado, setClienteLogado] = useState<{ id: string; nome: string; telefone: string } | null>(null)
   const [meusAgendamentos, setMeusAgendamentos] = useState<Agendamento[]>([])
   const [meusAgendamentosModal, setMeusAgendamentosModal] = useState(false)
+  const [meusPlanosModal, setMeusPlanosModal] = useState(false)
   const [agendamentoParaCancelar, setAgendamentoParaCancelar] = useState<Agendamento | null>(null)
   const [cancelando, setCancelando] = useState(false)
   const [googleEmail, setGoogleEmail] = useState('')
@@ -665,6 +671,7 @@ export default function PerfilPublicoClient({
         servicoId: servicoSelecionado.id,
         profissionalId: profissionalSelecionada?.id ?? null,
         dataHora: dataHora.toISOString(),
+        usarCreditoPlano: !!assinaturaComCredito && usarCredito,
       }),
     })
     const data = await res.json()
@@ -702,6 +709,7 @@ export default function PerfilPublicoClient({
         servicoId: servicoSelecionado.id,
         profissionalId: profissionalSelecionada?.id ?? null,
         dataHora: dataHora.toISOString(),
+        usarCreditoPlano: !!assinaturaComCredito && usarCredito,
       }),
     })
     const data = await res.json()
@@ -783,6 +791,21 @@ export default function PerfilPublicoClient({
   const currentStepIndex = allSteps.indexOf(step)
 
   const tema = getTema(prestadora.cor_tema)
+
+  const { assinatura: assinaturaComCredito, usarCredito, setUsarCredito } = usePlanoCredito({
+    clienteLogado,
+    prestadoraId: prestadora.id,
+    servicoId: servicoSelecionado?.id ?? null,
+  })
+
+  /** Só é usado como preview: o valor cobrado de verdade é recalculado no
+   * servidor (ver /api/agendamentos/pagar) a partir de plano_assinatura_id. */
+  function valorComDescontoDoPlano(valor: number): number {
+    if (assinaturaComCredito && usarCredito) {
+      return calcularValorComDesconto(valor, assinaturaComCredito.descontoTipo, assinaturaComCredito.descontoValor)
+    }
+    return valor
+  }
 
   const igHandle = prestadora.instagram?.replace('@', '')
   const waUrl = prestadora.whatsapp
@@ -943,6 +966,12 @@ export default function PerfilPublicoClient({
                             className="w-full text-left px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors"
                           >
                             Alterar nome
+                          </button>
+                          <button
+                            onClick={() => { setPerfilAberto(false); setMeusPlanosModal(true) }}
+                            className="w-full text-left px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                          >
+                            Meus planos
                           </button>
                           <button
                             onClick={sair}
@@ -1150,6 +1179,13 @@ export default function PerfilPublicoClient({
             </div>
           </section>
         )}
+
+        <PlanosSection
+          planos={planos}
+          corTema={tema.hex}
+          clienteLogado={clienteLogado}
+          onRequireLogin={() => { if (isDemo) { loginDemoInstantaneo() } else { setLoginModal(true) } }}
+        />
 
         {/* Booking flow */}
         <section data-animate>
@@ -1486,12 +1522,20 @@ export default function PerfilPublicoClient({
                         </button>
                       </div>
 
+                      {assinaturaComCredito && (
+                        <CreditoPlanoCard
+                          assinatura={assinaturaComCredito}
+                          usarCredito={usarCredito}
+                          onChange={setUsarCredito}
+                        />
+                      )}
+
                       {servicoSelecionado.aceitar_pagamento_online ? (
                         servicoSelecionado.sinal_obrigatorio ? (
                           <div className="space-y-3">
                             <div className="rounded-xl bg-amber-50 border border-amber-100 px-3 py-2.5">
                               <p className="text-sm font-semibold text-amber-800">
-                                Sinal: {formatCurrency(calcularValorSinal(servicoSelecionado.preco, servicoSelecionado.sinal_tipo, servicoSelecionado.sinal_valor))}
+                                Sinal: {formatCurrency(valorComDescontoDoPlano(calcularValorSinal(servicoSelecionado.preco, servicoSelecionado.sinal_tipo, servicoSelecionado.sinal_valor)))}
                               </p>
                               <p className="text-xs text-amber-700 mt-1">
                                 Este pagamento é não reembolsável. Em caso de cancelamento, o valor não será devolvido.
@@ -1525,7 +1569,7 @@ export default function PerfilPublicoClient({
                               size="lg"
                               style={{ backgroundColor: tema.hex }}
                             >
-                              Pagar agora ({formatCurrency(servicoSelecionado.preco)})
+                              Pagar agora ({formatCurrency(valorComDescontoDoPlano(servicoSelecionado.preco))})
                             </Button>
                             <Button
                               onClick={confirmarAgendamento}
@@ -1815,6 +1859,13 @@ export default function PerfilPublicoClient({
           )}
         </div>
       </Modal>
+
+      <MeusPlanosModal
+        open={meusPlanosModal}
+        onClose={() => setMeusPlanosModal(false)}
+        prestadoraId={prestadora.id}
+        corTema={tema.hex}
+      />
 
       {/* ── MODAL MEUS AGENDAMENTOS ─────────────── */}
       <Modal

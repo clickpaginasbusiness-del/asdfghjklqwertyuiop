@@ -6,6 +6,7 @@ import PerfilPublicoLandingPremiumClient from './PerfilPublicoLandingPremiumClie
 import { SITE_URL } from '@/lib/seo'
 import { planoEfetivo } from '@/lib/plano'
 import { limitesPlano } from '@/lib/planoLimites'
+import type { PlanoPublico } from '@/components/perfil-publico/PlanosSection'
 
 // Colunas seguras pra expor num contexto público/anônimo — exclui email,
 // telefone, dados de pagamento (mp_*), chave Pix de parceira etc. Usa
@@ -46,6 +47,12 @@ export default async function PerfilPage({ params }: { params: Promise<{ slug: s
     ? prestadora.pagina_preset
     : 'classico'
 
+  // Planos de assinatura pra clientes são exclusivos do Studio/Studio Pro
+  // (mesmo gate de `assinaturas_clientes` em planoLimites.ts) — se a
+  // prestadora caiu pra um plano sem acesso, a seção simplesmente some da
+  // página pública (os planos continuam salvos no banco, só não aparecem).
+  const temAcessoAPlanos = limitesPlano(planoAtual).assinaturas_clientes
+
   const [
     { data: servicos },
     { data: galeria },
@@ -53,6 +60,7 @@ export default async function PerfilPage({ params }: { params: Promise<{ slug: s
     { data: profissionais },
     { data: horariosFuncionamento },
     { data: avaliacoes },
+    { data: planos },
   ] = await Promise.all([
     supabase.from('servicos').select('*, servico_profissionais(profissional_id)').eq('prestadora_id', prestadora.id).eq('ativo', true).order('nome'),
     supabase.from('galeria').select('*').eq('prestadora_id', prestadora.id).order('created_at', { ascending: false }),
@@ -60,7 +68,41 @@ export default async function PerfilPage({ params }: { params: Promise<{ slug: s
     supabase.from('profissionais').select('*').eq('prestadora_id', prestadora.id).eq('ativa', true).order('nome'),
     supabase.from('horarios_funcionamento').select('*').eq('prestadora_id', prestadora.id).order('dia_semana'),
     supabase.from('avaliacoes').select('*, agendamentos(clientes(nome))').eq('prestadora_id', prestadora.id).order('created_at', { ascending: false }),
+    temAcessoAPlanos
+      ? supabase
+          .from('planos_prestadora')
+          .select('id, nome, descricao, preco, intervalo, desconto_tipo, desconto_valor, limite_vagas, planos_servicos(quantidade, servicos(nome)), planos_assinaturas(status)')
+          .eq('prestadora_id', prestadora.id)
+          .eq('ativo', true)
+          .order('preco')
+      : Promise.resolve({ data: null }),
   ])
+
+  type PlanoRow = {
+    id: string
+    nome: string
+    descricao: string | null
+    preco: number
+    intervalo: PlanoPublico['intervalo']
+    desconto_tipo: PlanoPublico['desconto_tipo']
+    desconto_valor: number
+    limite_vagas: number | null
+    planos_servicos: { quantidade: number; servicos: { nome: string } | null }[] | null
+    planos_assinaturas: { status: string }[] | null
+  }
+
+  const planosPublicos: PlanoPublico[] = ((planos ?? []) as unknown as PlanoRow[]).map((p) => ({
+    id: p.id,
+    nome: p.nome,
+    descricao: p.descricao,
+    preco: p.preco,
+    intervalo: p.intervalo,
+    desconto_tipo: p.desconto_tipo,
+    desconto_valor: p.desconto_valor,
+    limite_vagas: p.limite_vagas,
+    vagasOcupadas: (p.planos_assinaturas ?? []).filter((a) => a.status === 'ativa').length,
+    servicos: (p.planos_servicos ?? []).map((ps) => ({ nome: ps.servicos?.nome ?? '', quantidade: ps.quantidade })),
+  }))
 
   const props = {
     prestadora,
@@ -70,6 +112,7 @@ export default async function PerfilPage({ params }: { params: Promise<{ slug: s
     profissionais: profissionais ?? [],
     horariosFuncionamento: horariosFuncionamento ?? [],
     avaliacoes: avaliacoes ?? [],
+    planos: planosPublicos,
   }
 
   if (presetEfetivo === 'premium') return <PerfilPublicoLandingPremiumClient {...props} />

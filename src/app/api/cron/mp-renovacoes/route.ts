@@ -1,5 +1,6 @@
 import { preApproval, preference, NOME_PLANO, PRECOS, calcularProximaCobranca, incrementarUsoCupom, type Plano } from '@/lib/mercadopago'
 import { liberarCaixaVencido } from '@/lib/caixa'
+import { payerEmailPlanoCliente } from '@/lib/planosPrestadora'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { NextRequest, NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
@@ -166,8 +167,66 @@ export async function GET(request: NextRequest) {
     }).eq('id', p.id)
   }
 
+  // ── Planos de assinatura de CLIENTES (não da prestadora) ────────────────
+  let planosRenovados = 0
+  let planosSuspensos = 0
+
+  // Pix: sem recorrência automática nativa (mesma limitação já assumida
+  // acima pro Pix/débito da prestadora) — gera a cobrança avulsa do próximo
+  // ciclo na véspera do vencimento. Cartão não precisa de nada aqui: o MP
+  // cobra sozinho, e o webhook (processarPreapproval/processarPayment)
+  // renova o período quando a cobrança chega.
+  const { data: assinaturasPix } = await admin
+    .from('planos_assinaturas')
+    .select('id, plano_id, cliente_id, prestadora_id, periodo_fim, planos_prestadora(nome, preco, ativo)')
+    .eq('mp_metodo', 'pix')
+    .eq('status', 'ativa')
+    .not('periodo_fim', 'is', null)
+
+  for (const a of assinaturasPix ?? []) {
+    const plano = a.planos_prestadora as unknown as { nome: string; preco: number; ativo: boolean } | null
+    if (!plano || !a.periodo_fim) continue
+    const diasAteVencimento = (new Date(a.periodo_fim).getTime() - agora) / MS_DIA
+    if (diasAteVencimento < 0 || diasAteVencimento > 1) continue // só gera na véspera
+
+    try {
+      const referencia = `plano_cliente:${a.plano_id}:${a.cliente_id}:${randomUUID()}`
+      const pref = await preference.create({
+        body: {
+          items: [{ id: `plano_${a.plano_id}`, title: `Plano ${plano.nome}`, quantity: 1, unit_price: plano.preco, currency_id: 'BRL' }],
+          payer: { email: payerEmailPlanoCliente(a.plano_id, a.cliente_id) },
+          back_urls: { success: appUrl, failure: appUrl, pending: appUrl },
+          auto_return: 'approved',
+          external_reference: referencia,
+          payment_methods: { excluded_payment_types: [{ id: 'credit_card' }] },
+        },
+      })
+      if (pref.init_point) planosRenovados++
+    } catch (err) {
+      console.error('[cron/mp-renovacoes] erro ao gerar cobrança de plano de cliente', a.id, err)
+    }
+  }
+
+  // Suspende quem passou do período pago sem renovar (Pix que não pagou a
+  // tempo, ou cartão cujo preapproval morreu sem o webhook de cancelamento
+  // chegar — rede de segurança).
+  const { data: assinaturasVencidas } = await admin
+    .from('planos_assinaturas')
+    .select('id')
+    .eq('status', 'ativa')
+    .not('periodo_fim', 'is', null)
+    .lt('periodo_fim', new Date(agora).toISOString())
+
+  if (assinaturasVencidas && assinaturasVencidas.length > 0) {
+    await admin
+      .from('planos_assinaturas')
+      .update({ status: 'suspensa' })
+      .in('id', assinaturasVencidas.map((a) => a.id))
+    planosSuspensos = assinaturasVencidas.length
+  }
+
   // ── Caixa da prestadora — libera saldo cujo prazo de 7 dias já passou ───
   await liberarCaixaVencido(admin)
 
-  return NextResponse.json({ ok: true, renovadas, suspensas, precosAjustados })
+  return NextResponse.json({ ok: true, renovadas, suspensas, precosAjustados, planosRenovados, planosSuspensos })
 }

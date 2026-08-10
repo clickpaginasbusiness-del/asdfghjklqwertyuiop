@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { VoceBadge } from '@/components/painel/VoceBadge'
 import { ManualBadge } from '@/components/painel/ManualBadge'
+import { PlanoBadge } from '@/components/painel/PlanoBadge'
 import { AgendarButton } from '@/components/painel/AgendarButton'
 import { logMissaoEvento } from '@/lib/missoesClient'
 import type { Agendamento, Profissional } from '@/lib/types'
@@ -439,6 +440,7 @@ export default function AgendamentosClient({
                           {a.clientes?.nome}
                           {a.cliente_e_prestadora && <VoceBadge />}
                           {a.agendamento_manual && <ManualBadge />}
+                          {a.planos_assinaturas?.planos_prestadora?.nome && <PlanoBadge nome={a.planos_assinaturas.planos_prestadora.nome} />}
                         </p>
                         <Badge variant={statusVariant(a.status)}>{statusLabel(a.status)}</Badge>
                       </div>

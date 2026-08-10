@@ -11,9 +11,10 @@ import { Modal } from '@/components/ui/modal'
 import { Switch } from '@/components/ui/switch'
 import { ImageWithSkeleton } from '@/components/ui/image-with-skeleton'
 import { formatCurrency, cn } from '@/lib/utils'
-import { Plus, Pencil, Trash2, Clock, Scissors, ImageIcon, Check, CreditCard } from 'lucide-react'
+import { Plus, Pencil, Trash2, Clock, Scissors, ImageIcon, Check, CreditCard, Lock } from 'lucide-react'
 import { SERVICO_ICONE_OPTIONS, SERVICO_ICONE_PADRAO, getServicoIcone, type ServicoIcone } from '@/lib/servicoIcones'
 import type { Servico, GaleriaItem } from '@/lib/types'
+import PlanosPrestadoraClient, { type PlanoComRelacoes } from './PlanosPrestadoraClient'
 import toast from 'react-hot-toast'
 
 interface ServicoForm {
@@ -120,12 +121,17 @@ export default function ServicosClient({
   profissionais,
   galeria,
   prestadoraId,
+  planosIniciais,
+  podeUsarPlanos,
 }: {
   servicos: ServicoComProfissionais[]
   profissionais: ProfissionalLite[]
   galeria: GaleriaItem[]
   prestadoraId: string
+  planosIniciais: PlanoComRelacoes[]
+  podeUsarPlanos: boolean
 }) {
+  const [aba, setAba] = useState<'servicos' | 'planos'>('servicos')
   const [servicos, setServicos] = useState(initial)
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState<ServicoForm>(emptyForm)
@@ -252,6 +258,45 @@ export default function ServicosClient({
 
   return (
     <div className="space-y-6">
+      <div className="inline-flex rounded-xl border border-gray-200 p-1 bg-gray-50">
+        {(['servicos', 'planos'] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setAba(t)}
+            className={cn(
+              'px-4 py-1.5 rounded-lg text-sm font-medium transition-colors',
+              aba === t ? 'bg-white text-rose-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            )}
+          >
+            {t === 'servicos' ? 'Serviços' : 'Planos'}
+          </button>
+        ))}
+      </div>
+
+      {aba === 'planos' ? (
+        podeUsarPlanos ? (
+          <PlanosPrestadoraClient planos={planosIniciais} servicosDisponiveis={servicos} />
+        ) : (
+          <Card>
+            <CardContent>
+              <div className="flex flex-col items-center text-center gap-2 py-14 px-6">
+                <div className="w-11 h-11 rounded-full bg-gray-100 flex items-center justify-center mb-1">
+                  <Lock className="w-5 h-5 text-gray-400" />
+                </div>
+                <p className="font-semibold text-gray-900">Planos de assinatura pra clientes</p>
+                <p className="text-sm text-gray-500 max-w-sm">
+                  Disponível a partir do Plano Studio. Crie planos recorrentes com crédito de serviços pras suas clientes assinarem direto na sua página.
+                </p>
+                <Link href="/painel/assinatura" className="mt-2 text-sm font-semibold text-rose-500 hover:text-rose-600 underline underline-offset-2">
+                  Fazer upgrade
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        )
+      ) : (
+      <>
       <div className="flex items-center justify-between">
         <h1 className="font-serif text-2xl font-semibold text-gray-900">Serviços</h1>
         <Button onClick={openCreate} size="sm">
@@ -513,6 +558,8 @@ export default function ServicosClient({
           </div>
         </div>
       </Modal>
+      </>
+      )}
     </div>
   )
 }

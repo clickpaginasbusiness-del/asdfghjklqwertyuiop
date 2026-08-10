@@ -3,6 +3,9 @@ import { aplicarRestricoesDoPlano } from '@/lib/downgrade'
 import { concluirMissaoIndicacaoBonus } from '@/lib/missoes'
 import { criarComissaoSeAplicavel, cancelarComissaoPendente } from '@/lib/parceiras'
 import { criarEntradaCaixa, reembolsarEntradaCaixa } from '@/lib/caixa'
+import {
+  criarOuRenovarAssinatura, creditarCaixaPlano, notificarRenovacaoPlano, parsePayerEmailPlanoCliente, aplicarUsoCredito,
+} from '@/lib/planosPrestadora'
 import { formatCurrency } from '@/lib/utils'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { WebhookSignatureValidator, InvalidWebhookSignatureError } from 'mercadopago'
@@ -161,6 +164,19 @@ async function processarPayment(paymentId: string) {
   const processouAgendamento = externalRef ? await processarPagamentoAgendamento(externalRef, pago) : false
   if (processouAgendamento) return
 
+  // Pagamento de plano de assinatura de cliente via Pix — external_reference
+  // no formato 'plano_cliente:{planoId}:{clienteId}:{uuid}' (ver
+  // /api/planos/[id]/assinar). Preference garante external_reference
+  // confiável, diferente do preapproval hospedado usado no caminho cartão
+  // (ver processarPreapproval/processarCobrancaRecorrenteCartao).
+  if (externalRef?.startsWith('plano_cliente:')) {
+    const [, planoId, clienteId] = externalRef.split(':')
+    if (planoId && clienteId) {
+      await processarPagamentoPlanoCliente({ planoId, clienteId, metodo: 'pix', pago })
+      return
+    }
+  }
+
   console.log('[mp webhook][payment] buscando checkout correspondente', { paymentId, externalRef })
 
   const { data: checkout } = externalRef
@@ -234,7 +250,7 @@ async function processarPagamentoAgendamento(
 ): Promise<boolean> {
   const { data: agendamento } = await supabaseAdmin
     .from('agendamentos')
-    .select('id, prestadora_id, servicos(nome, preco), clientes(nome)')
+    .select('id, prestadora_id, plano_assinatura_id, servicos(nome, preco), clientes(nome)')
     .eq('id', agendamentoId)
     .eq('status', 'aguardando_pagamento')
     .maybeSingle()
@@ -246,6 +262,23 @@ async function processarPagamentoAgendamento(
   const valorBruto = pago.transaction_amount ?? 0
 
   await supabaseAdmin.from('agendamentos').update({ status: 'confirmado' }).eq('id', agendamento.id)
+
+  // Reservado com crédito de plano — debita agora que o pagamento (sinal ou
+  // valor total, já com desconto do plano aplicado) foi de fato confirmado.
+  if (agendamento.plano_assinatura_id) {
+    const { data: assinatura } = await supabaseAdmin
+      .from('planos_assinaturas')
+      .select('id, creditos_restantes')
+      .eq('id', agendamento.plano_assinatura_id)
+      .maybeSingle()
+    if (assinatura && assinatura.creditos_restantes > 0) {
+      await aplicarUsoCredito(supabaseAdmin, {
+        assinaturaId: assinatura.id,
+        agendamentoId: agendamento.id,
+        creditosRestantes: assinatura.creditos_restantes,
+      })
+    }
+  }
 
   // Cobrou menos que o preço cheio do serviço → foi sinal; senão foi o
   // valor total (cenário de pagamento online opcional).
@@ -284,6 +317,17 @@ async function processarCobrancaRecorrenteCartao(pago: Awaited<ReturnType<typeof
   const email = pago.payer?.email
   if (!email) return
 
+  // Cobrança recorrente de plano de assinatura de CLIENTE (não da
+  // prestadora) — identificada pelo payer_email sintético (ver
+  // payerEmailPlanoCliente em src/lib/planosPrestadora.ts). Preapproval
+  // hospedado não garante external_reference de volta, então é esse o único
+  // jeito confiável de correlacionar aqui.
+  const refPlanoCliente = parsePayerEmailPlanoCliente(email)
+  if (refPlanoCliente) {
+    await processarPagamentoPlanoCliente({ ...refPlanoCliente, metodo: 'cartao', pago })
+    return
+  }
+
   const { data: prestadora } = await supabaseAdmin
     .from('prestadoras')
     .select('id, plano, mp_subscription_id, mp_metodo_pagamento, indicado_por, indicacao_recompensa_processada')
@@ -295,8 +339,99 @@ async function processarCobrancaRecorrenteCartao(pago: Awaited<ReturnType<typeof
   await processarRecompensaIndicacaoEComissao(prestadora.id, prestadora, pago.transaction_amount ?? 0, String(pago.id))
 }
 
+/**
+ * Pagamento (Pix avulso ou cobrança recorrente de cartão) de um plano de
+ * assinatura de cliente aprovado — cria/renova a assinatura, credita o
+ * caixa da prestadora e notifica ela. Idempotência já garantida por quem
+ * chama (mp_eventos_processados, no topo de processarPayment).
+ */
+async function processarPagamentoPlanoCliente(
+  { planoId, clienteId, metodo, pago }: {
+    planoId: string
+    clienteId: string
+    metodo: 'cartao' | 'pix'
+    pago: Awaited<ReturnType<typeof mpPayment.get>>
+  }
+): Promise<void> {
+  const [{ data: plano }, { data: cliente }] = await Promise.all([
+    supabaseAdmin.from('planos_prestadora').select('id, nome, prestadora_id').eq('id', planoId).maybeSingle(),
+    supabaseAdmin.from('clientes').select('nome').eq('id', clienteId).maybeSingle(),
+  ])
+  if (!plano) {
+    console.error('[mp webhook][payment] plano de cliente não encontrado', planoId)
+    return
+  }
+
+  const { data: assinaturaExistente } = await supabaseAdmin
+    .from('planos_assinaturas')
+    .select('id, mp_subscription_id')
+    .eq('plano_id', planoId)
+    .eq('cliente_id', clienteId)
+    .maybeSingle()
+
+  const assinatura = await criarOuRenovarAssinatura(supabaseAdmin, {
+    planoId,
+    clienteId,
+    prestadoraId: plano.prestadora_id,
+    mpSubscriptionId: assinaturaExistente?.mp_subscription_id ?? null,
+    metodo,
+  })
+
+  await creditarCaixaPlano(supabaseAdmin, {
+    prestadoraId: plano.prestadora_id,
+    assinaturaId: assinatura.id,
+    valorBruto: pago.transaction_amount ?? 0,
+    paymentId: String(pago.id),
+  })
+
+  await notificarRenovacaoPlano(supabaseAdmin, {
+    prestadoraId: plano.prestadora_id,
+    clienteNome: cliente?.nome ?? 'Uma cliente',
+    planoNome: plano.nome,
+  })
+}
+
 async function processarPreapproval(preapprovalId: string) {
   const sub = await preApproval.get({ id: preapprovalId })
+
+  // Preapproval de plano de assinatura de CLIENTE (não da prestadora) —
+  // identificado pelo payer_email sintético. Só captura/atualiza o
+  // mp_subscription_id aqui (pra permitir cancelar depois) — crédito de
+  // caixa e renovação de período/créditos ficam a cargo do evento `payment`
+  // correspondente (processarPagamentoPlanoCliente), que tem payment_id pra
+  // deduplicar; repetir isso aqui arriscaria contar a mesma cobrança 2x.
+  const refPlanoCliente = parsePayerEmailPlanoCliente(sub.payer_email)
+  if (refPlanoCliente) {
+    if (sub.status === 'cancelled') {
+      await supabaseAdmin
+        .from('planos_assinaturas')
+        .update({ status: 'cancelada', cancelado_em: new Date().toISOString() })
+        .eq('mp_subscription_id', preapprovalId)
+      return
+    }
+    if (sub.status === 'authorized') {
+      // upsert (cria se o evento `payment` ainda não criou a linha, ou só
+      // garante o mp_subscription_id se já criou) — mesma função usada pelo
+      // lado do pagamento, então o pior caso de ambos dispararem próximos é
+      // renovar o período uma vez a mais, não perder o vínculo com o MP.
+      const { data: plano } = await supabaseAdmin
+        .from('planos_prestadora')
+        .select('id, prestadora_id')
+        .eq('id', refPlanoCliente.planoId)
+        .maybeSingle()
+      if (plano) {
+        await criarOuRenovarAssinatura(supabaseAdmin, {
+          planoId: refPlanoCliente.planoId,
+          clienteId: refPlanoCliente.clienteId,
+          prestadoraId: plano.prestadora_id,
+          mpSubscriptionId: preapprovalId,
+          metodo: 'cartao',
+        })
+      }
+    }
+    return
+  }
+
   // `preapproval_plan_id` existe na resposta real da API (documentado pela
   // MP) mas não está no tipo `PreApprovalResponse` do SDK — só no tipo de
   // resultado de busca (`PreApprovalResults`).

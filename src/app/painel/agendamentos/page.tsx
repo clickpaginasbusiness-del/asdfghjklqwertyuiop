@@ -18,7 +18,7 @@ export default async function AgendamentosPage() {
   const [{ data: agendamentos }, { data: profissionais }] = await Promise.all([
     supabase
       .from('agendamentos')
-      .select('*, servicos(*), clientes(*), profissionais(*)')
+      .select('*, servicos(*), clientes(*), profissionais(*), planos_assinaturas(planos_prestadora(nome))')
       .eq('prestadora_id', prestadora.id)
       .eq('arquivado', false)
       .order('data_hora', { ascending: false }),

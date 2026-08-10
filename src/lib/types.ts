@@ -144,13 +144,62 @@ export type Servico = {
   created_at: string
 }
 
+export type PlanoPrestadora = {
+  id: string
+  prestadora_id: string
+  nome: string
+  descricao: string | null
+  preco: number
+  intervalo: 'mensal' | 'bimensal' | 'trimestral' | 'semestral' | 'anual'
+  desconto_tipo: 'percentual' | 'fixo'
+  desconto_valor: number
+  creditos_acumulam: boolean
+  limite_vagas: number | null
+  ativo: boolean
+  mp_preapproval_plan_id: string | null
+  created_at: string
+}
+
+export type PlanoServico = {
+  id: string
+  plano_id: string
+  servico_id: string
+  quantidade: number
+}
+
+export type PlanoAssinatura = {
+  id: string
+  plano_id: string
+  cliente_id: string
+  prestadora_id: string
+  status: 'ativa' | 'cancelada' | 'suspensa'
+  mp_subscription_id: string | null
+  mp_metodo: 'cartao' | 'pix' | null
+  creditos_restantes: number
+  creditos_totais: number
+  periodo_inicio: string
+  periodo_fim: string | null
+  cancelado_em: string | null
+  created_at: string
+}
+
+export type PlanoUso = {
+  id: string
+  assinatura_id: string
+  agendamento_id: string | null
+  tipo: 'automatico' | 'manual'
+  descricao: string | null
+  created_at: string
+}
+
 export type CaixaPrestadora = {
   id: string
   prestadora_id: string
-  tipo: 'sinal' | 'pagamento_servico' | 'saque'
+  tipo: 'sinal' | 'pagamento_servico' | 'saque' | 'plano_assinatura'
   valor: number
   valor_bruto: number
   taxa_percentual: number
+  plano_assinatura_id?: string | null
   status: 'pendente' | 'disponivel' | 'sacado' | 'reembolsado'
   agendamento_id: string | null
   mp_payment_id: string | null
@@ -190,9 +239,11 @@ export type Agendamento = {
   arquivado: boolean
   cliente_e_prestadora: boolean
   agendamento_manual: boolean
+  plano_assinatura_id?: string | null
   created_at: string
   servicos?: Servico
   clientes?: Cliente
+  planos_assinaturas?: { planos_prestadora: { nome: string } | null } | null
   prestadoras?: Prestadora
   profissionais?: Profissional
 }

@@ -235,3 +235,47 @@ export async function darDiasGratis(
     trial_fim: novoFim.toISOString(),
   }).eq('id', prestadoraId)
 }
+
+/**
+ * Busca (ou cria, na primeira assinatura) o preapproval_plan do MP pra um
+ * plano de assinatura de CLIENTE (planos_prestadora — ex.: "4 cortes por
+ * mês"), pago por cartão de crédito. Diferente de getOrCreatePlanoMensal
+ * (planos de tier do BelleBook, compartilhados entre todas as prestadoras):
+ * aqui cada plano é específico de uma prestadora com preço/intervalo
+ * próprios, então o id fica salvo direto na linha (planos_prestadora.
+ * mp_preapproval_plan_id) em vez de em app_config.
+ */
+export async function getOrCreatePreapprovalPlanoCliente(
+  admin: SupabaseClient,
+  plano: { id: string; nome: string; preco: number; intervalo: 'mensal' | 'bimensal' | 'trimestral' | 'semestral' | 'anual'; mp_preapproval_plan_id: string | null },
+  prestadoraSlug: string
+): Promise<string> {
+  if (plano.mp_preapproval_plan_id) return plano.mp_preapproval_plan_id
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  if (!appUrl) throw new Error('NEXT_PUBLIC_APP_URL not set')
+
+  const mesesPorIntervalo: Record<typeof plano.intervalo, number> = {
+    mensal: 1, bimensal: 2, trimestral: 3, semestral: 6, anual: 12,
+  }
+
+  const criado = await preApprovalPlan.create({
+    body: {
+      reason: `BelleBook — Plano ${plano.nome}`,
+      auto_recurring: {
+        frequency: mesesPorIntervalo[plano.intervalo],
+        frequency_type: 'months',
+        transaction_amount: plano.preco,
+        currency_id: 'BRL',
+      },
+      back_url: `${appUrl}/n/${prestadoraSlug}?assinatura=sucesso`,
+      payment_methods_allowed: { payment_types: [{ id: 'credit_card' }] },
+    },
+  })
+
+  const id = criado.id
+  if (!id) throw new Error('Mercado Pago não retornou id do plano criado')
+
+  await admin.from('planos_prestadora').update({ mp_preapproval_plan_id: id }).eq('id', plano.id)
+  return id
+}

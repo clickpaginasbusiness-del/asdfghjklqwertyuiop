@@ -241,6 +241,7 @@ export default function DemoPage() {
         profissionais={DEMO_PROFISSIONAIS}
         horariosFuncionamento={DEMO_HORARIOS}
         avaliacoes={DEMO_AVALIACOES}
+        planos={[]}
         isDemo
       />
     </div>

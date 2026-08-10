@@ -26,6 +26,7 @@ export default function RelatoriosDemoPage() {
       eParceira={false}
       codigoIndicacao={null}
       resumoParceira={null}
+      resumoPlanos={{ totalAssinantesAtivos: 0, receitaMensalEstimada: 0, planosAtivos: 0, planos: [] }}
     />
   )
 }

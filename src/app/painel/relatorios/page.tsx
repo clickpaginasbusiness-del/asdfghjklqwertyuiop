@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import { getResumoParceira } from '@/lib/parceiras'
+import { getResumoPlanos } from '@/lib/planosPrestadora'
 import RelatoriosClient, { type Ag, type AvaliacaoRel, type LancamentoFinanceiro } from './RelatoriosClient'
 
 export default async function RelatoriosPage() {
@@ -23,6 +24,10 @@ export default async function RelatoriosPage() {
   const resumoParceira = prestadora.e_parceira
     ? await getResumoParceira(createAdminClient(), prestadora.id)
     : null
+
+  // getResumoPlanos usa o cliente admin pelo mesmo motivo: agrega receita
+  // histórica de caixa_prestadora entre planos, fora do escopo de uma única RLS SELECT simples.
+  const resumoPlanos = await getResumoPlanos(createAdminClient(), prestadora.id)
 
   const [
     { data: agendamentos },
@@ -69,6 +74,7 @@ export default async function RelatoriosPage() {
       eParceira={prestadora.e_parceira}
       codigoIndicacao={prestadora.codigo_indicacao}
       resumoParceira={resumoParceira}
+      resumoPlanos={resumoPlanos}
     />
   )
 }

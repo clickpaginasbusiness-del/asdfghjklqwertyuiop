@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyClientToken } from '@/lib/clientAuth'
 import { formatDateKey, dateKeyToDate, diaAtivoPadrao } from '@/lib/utils'
+import { buscarAssinaturaComCredito } from '@/lib/planosPrestadora'
 
 type Body = {
   token?: string
@@ -9,6 +10,7 @@ type Body = {
   servicoId?: string
   profissionalId?: string | null
   dataHora?: string
+  usarCreditoPlano?: boolean
 }
 
 /**
@@ -109,6 +111,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Esse horário já foi reservado. Escolha outro.' }, { status: 409 })
   }
 
+  // Guarda a intenção de usar crédito (reconferida aqui, nunca confia no
+  // client) — o crédito só é debitado de verdade quando o pagamento é
+  // confirmado pelo webhook do MP (ver processarPagamentoAgendamento em
+  // /api/mp/webhook), pra não consumir crédito de um pagamento abandonado.
+  const assinaturaComCredito = body.usarCreditoPlano
+    ? await buscarAssinaturaComCredito(supabaseAdmin, { clienteId: session.clienteId, prestadoraId, servicoId })
+    : null
+
   const { data: ag, error } = await supabaseAdmin
     .from('agendamentos')
     .insert({
@@ -118,6 +128,7 @@ export async function POST(request: NextRequest) {
       cliente_id: session.clienteId,
       data_hora: dataHora,
       status: 'aguardando_pagamento',
+      plano_assinatura_id: assinaturaComCredito?.id ?? null,
     })
     .select('id')
     .single()

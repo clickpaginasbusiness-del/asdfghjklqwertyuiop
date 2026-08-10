@@ -11,6 +11,7 @@ import { Calendar, DollarSign, Clock, MessageCircle, CheckCheck } from 'lucide-r
 import { cn } from '@/lib/utils'
 import { VoceBadge } from '@/components/painel/VoceBadge'
 import { ManualBadge } from '@/components/painel/ManualBadge'
+import { PlanoBadge } from '@/components/painel/PlanoBadge'
 import { AgendarButton } from '@/components/painel/AgendarButton'
 import { logMissaoEvento } from '@/lib/missoesClient'
 import {
@@ -32,6 +33,7 @@ type Ag = {
   profissionais: { nome: string } | null
   cliente_e_prestadora: boolean
   agendamento_manual: boolean
+  planos_assinaturas: { planos_prestadora: { nome: string } | null } | null
 }
 
 interface Props {
@@ -84,6 +86,7 @@ function AgendamentoItem({
             {a.clientes?.nome}
             {a.cliente_e_prestadora && <VoceBadge />}
             {a.agendamento_manual && <ManualBadge />}
+            {a.planos_assinaturas?.planos_prestadora?.nome && <PlanoBadge nome={a.planos_assinaturas.planos_prestadora.nome} />}
           </p>
           <p className="text-xs text-gray-500 truncate">
             {a.servicos?.nome}

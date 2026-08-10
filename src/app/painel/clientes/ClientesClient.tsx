@@ -29,6 +29,7 @@ type ClienteEntry = {
   ultimaVisitaAtiva: string | null
   ehPrestadora: boolean
   historico: AgItem[]
+  planoAtivo?: boolean
 }
 
 type FiltroCliente = 'todos' | 'frequentes' | 'ausentes'
@@ -72,7 +73,7 @@ function statusVariant(s: string): 'success' | 'concluido' | 'danger' {
 }
 
 function ClienteCard({
-  cliente, total, gasto, ultimaVisita, ultimaVisitaAtiva, ehPrestadora, historico, prestadoraNome,
+  cliente, total, gasto, ultimaVisita, ultimaVisitaAtiva, ehPrestadora, historico, planoAtivo, prestadoraNome,
   onEdited, onDeleted,
 }: ClienteEntry & {
   prestadoraNome: string
@@ -170,6 +171,7 @@ function ClienteCard({
               {ehPrestadora && <VoceBadge />}
               {cliente.cliente_manual && <ManualBadge />}
             </p>
+            {planoAtivo && <Badge variant="success" className="text-[10px] px-2 py-0.5">Plano ativo</Badge>}
             {ausente ? (
               <Badge variant="warning" className="text-[10px] px-2 py-0.5">Ausente</Badge>
             ) : isFrequente ? (

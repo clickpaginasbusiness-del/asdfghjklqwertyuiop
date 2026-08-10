@@ -25,6 +25,10 @@ import type { PrestadoraPublica, Servico, GaleriaItem, Agendamento, Profissional
 import { getTema } from '@/lib/theme'
 import { planoEfetivo, ehPro } from '@/lib/plano'
 import { limitesPlano } from '@/lib/planoLimites'
+import { PlanosSection, type PlanoPublico } from '@/components/perfil-publico/PlanosSection'
+import { usePlanoCredito, calcularValorComDesconto } from '@/components/perfil-publico/usePlanoCredito'
+import { CreditoPlanoCard } from '@/components/perfil-publico/CreditoPlanoCard'
+import { MeusPlanosModal } from '@/components/perfil-publico/MeusPlanosModal'
 import {
   buildGoogleCalendarUrl, formatHora,
   type Step, type ServicoComProfissionais,
@@ -54,6 +58,7 @@ interface Props {
   profissionais: Profissional[]
   horariosFuncionamento: HorarioFuncionamento[]
   avaliacoes: Avaliacao[]
+  planos: PlanoPublico[]
   isDemo?: boolean
 }
 
@@ -102,7 +107,7 @@ function GaleriaEditorial({
 }
 
 export default function PerfilPublicoLandingPremiumClient({
-  prestadora, servicos, galeria, diasBloqueados, profissionais, horariosFuncionamento, avaliacoes, isDemo = false,
+  prestadora, servicos, galeria, diasBloqueados, profissionais, horariosFuncionamento, avaliacoes, planos, isDemo = false,
 }: Props) {
   const temMultiplasProfissionais = profissionais.length >= 2
 
@@ -152,6 +157,7 @@ export default function PerfilPublicoLandingPremiumClient({
   const [clienteLogado, setClienteLogado] = useState<{ id: string; nome: string; telefone: string } | null>(null)
   const [meusAgendamentos, setMeusAgendamentos] = useState<Agendamento[]>([])
   const [meusAgendamentosModal, setMeusAgendamentosModal] = useState(false)
+  const [meusPlanosModal, setMeusPlanosModal] = useState(false)
   const [agendamentoParaCancelar, setAgendamentoParaCancelar] = useState<Agendamento | null>(null)
   const [cancelando, setCancelando] = useState(false)
   const [googleEmail, setGoogleEmail] = useState('')
@@ -617,6 +623,7 @@ export default function PerfilPublicoLandingPremiumClient({
         servicoId: servicoSelecionado.id,
         profissionalId: profissionalSelecionada?.id ?? null,
         dataHora: dataHora.toISOString(),
+        usarCreditoPlano: !!assinaturaComCredito && usarCredito,
       }),
     })
     const data = await res.json()
@@ -650,6 +657,7 @@ export default function PerfilPublicoLandingPremiumClient({
         servicoId: servicoSelecionado.id,
         profissionalId: profissionalSelecionada?.id ?? null,
         dataHora: dataHora.toISOString(),
+        usarCreditoPlano: !!assinaturaComCredito && usarCredito,
       }),
     })
     const data = await res.json()
@@ -742,6 +750,21 @@ export default function PerfilPublicoLandingPremiumClient({
   // ícones, preço, CTA) usa a cor_tema da prestadora — mesma fonte que
   // PerfilPublicoClient.tsx usa pro gradiente do header.
   const tema = getTema(prestadora.cor_tema)
+
+  const { assinatura: assinaturaComCredito, usarCredito, setUsarCredito } = usePlanoCredito({
+    clienteLogado,
+    prestadoraId: prestadora.id,
+    servicoId: servicoSelecionado?.id ?? null,
+  })
+
+  /** Só é usado como preview: o valor cobrado de verdade é recalculado no
+   * servidor (ver /api/agendamentos/pagar) a partir de plano_assinatura_id. */
+  function valorComDescontoDoPlano(valor: number): number {
+    if (assinaturaComCredito && usarCredito) {
+      return calcularValorComDesconto(valor, assinaturaComCredito.descontoTipo, assinaturaComCredito.descontoValor)
+    }
+    return valor
+  }
 
   // O gate de plano (Studio/Studio Pro) já é aplicado antes de chegar nesse
   // componente (ver src/app/n/[slug]/page.tsx), mas a galeria/avaliações
@@ -892,6 +915,12 @@ export default function PerfilPublicoLandingPremiumClient({
                           className="w-full text-left px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-white/5 transition-colors"
                         >
                           Alterar nome
+                        </button>
+                        <button
+                          onClick={() => { setPerfilAberto(false); setMeusPlanosModal(true) }}
+                          className="w-full text-left px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-white/5 transition-colors"
+                        >
+                          Meus planos
                         </button>
                         <button
                           onClick={sair}
@@ -1158,6 +1187,14 @@ export default function PerfilPublicoLandingPremiumClient({
           </div>
         </section>
       )}
+
+      <PlanosSection
+        planos={planos}
+        corTema={tema.hex}
+        dark
+        clienteLogado={clienteLogado}
+        onRequireLogin={() => { if (isDemo) { loginDemoInstantaneo() } else { setLoginModal(true) } }}
+      />
 
       {/* ── AGENDAMENTO INLINE ─────────────────── */}
       <section id="agendar" className="scroll-mt-20 bg-[#0f0f0f] px-4 py-16" style={{ borderTop: `2px solid ${tema.hex}` }}>
@@ -1489,12 +1526,21 @@ export default function PerfilPublicoLandingPremiumClient({
                         </button>
                       </div>
 
+                      {assinaturaComCredito && (
+                        <CreditoPlanoCard
+                          assinatura={assinaturaComCredito}
+                          usarCredito={usarCredito}
+                          onChange={setUsarCredito}
+                          dark
+                        />
+                      )}
+
                       {servicoSelecionado.aceitar_pagamento_online ? (
                         servicoSelecionado.sinal_obrigatorio ? (
                           <div className="space-y-3">
                             <div className="rounded-xl px-3 py-2.5" style={{ backgroundColor: hexComOpacidade(tema.hex, 0.1), border: `1px solid ${hexComOpacidade(tema.hex, 0.3)}` }}>
                               <p className="text-sm font-semibold" style={{ color: tema.hex }}>
-                                Sinal: {formatCurrency(calcularValorSinal(servicoSelecionado.preco, servicoSelecionado.sinal_tipo, servicoSelecionado.sinal_valor))}
+                                Sinal: {formatCurrency(valorComDescontoDoPlano(calcularValorSinal(servicoSelecionado.preco, servicoSelecionado.sinal_tipo, servicoSelecionado.sinal_valor)))}
                               </p>
                               <p className="text-xs text-gray-300 mt-1">
                                 Este pagamento é não reembolsável. Em caso de cancelamento, o valor não será devolvido.
@@ -1527,7 +1573,7 @@ export default function PerfilPublicoLandingPremiumClient({
                               className="w-full text-[#0f0f0f] hover:brightness-95" style={{ backgroundColor: tema.hex }}
                               size="lg"
                             >
-                              Pagar agora ({formatCurrency(servicoSelecionado.preco)})
+                              Pagar agora ({formatCurrency(valorComDescontoDoPlano(servicoSelecionado.preco))})
                             </Button>
                             <Button
                               onClick={confirmarAgendamento}
@@ -1813,6 +1859,13 @@ export default function PerfilPublicoLandingPremiumClient({
           )}
         </div>
       </Modal>
+
+      <MeusPlanosModal
+        open={meusPlanosModal}
+        onClose={() => setMeusPlanosModal(false)}
+        prestadoraId={prestadora.id}
+        corTema={tema.hex}
+      />
 
       {/* ── MODAL MEUS AGENDAMENTOS ─────────────── */}
       <Modal

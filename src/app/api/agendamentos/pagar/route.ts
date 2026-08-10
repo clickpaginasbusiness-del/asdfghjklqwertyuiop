@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { preference } from '@/lib/mercadopago'
 import { calcularValorSinal } from '@/lib/sinal'
+import { calcularValorComDesconto } from '@/lib/planosPrestadora'
 
 type MetodoPagamento = 'cartao' | 'pix' | 'debito'
 const METODOS_VALIDOS = new Set<MetodoPagamento>(['cartao', 'pix', 'debito'])
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
 
   const { data: agendamento } = await admin
     .from('agendamentos')
-    .select('id, status, servicos(nome, preco, sinal_tipo, sinal_valor, sinal_obrigatorio, aceitar_pagamento_online), clientes(nome, telefone)')
+    .select('id, status, plano_assinatura_id, servicos(nome, preco, sinal_tipo, sinal_valor, sinal_obrigatorio, aceitar_pagamento_online), clientes(nome, telefone)')
     .eq('id', agendamentoId)
     .eq('status', 'aguardando_pagamento')
     .maybeSingle()
@@ -44,9 +45,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Agendamento não encontrado ou já processado.' }, { status: 404 })
   }
 
-  const valor = servico.sinal_obrigatorio
+  let valor = servico.sinal_obrigatorio
     ? calcularValorSinal(servico.preco, servico.sinal_tipo, servico.sinal_valor)
     : servico.preco
+
+  // Agendamento reservado com crédito de plano — aplica o desconto do plano
+  // sobre o valor cobrado (sinal ou total), nunca sobre a mensalidade do
+  // plano em si (essa já foi cobrada à parte na assinatura do plano).
+  if (agendamento.plano_assinatura_id) {
+    const { data: assinatura } = await admin
+      .from('planos_assinaturas')
+      .select('plano:planos_prestadora(desconto_tipo, desconto_valor)')
+      .eq('id', agendamento.plano_assinatura_id)
+      .maybeSingle()
+    const plano = assinatura?.plano as unknown as { desconto_tipo: 'percentual' | 'fixo'; desconto_valor: number } | null
+    if (plano) valor = calcularValorComDesconto(valor, plano.desconto_tipo, plano.desconto_valor)
+  }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
   if (!appUrl) throw new Error('NEXT_PUBLIC_APP_URL not set')

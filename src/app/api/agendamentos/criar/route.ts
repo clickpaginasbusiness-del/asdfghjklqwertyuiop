@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyClientToken } from '@/lib/clientAuth'
 import { formatDateShort, formatDateKey, dateKeyToDate, diaAtivoPadrao, mesmoTelefone } from '@/lib/utils'
+import { buscarAssinaturaComCredito, aplicarUsoCredito } from '@/lib/planosPrestadora'
 
 type Body = {
   token?: string
@@ -9,6 +10,7 @@ type Body = {
   servicoId?: string
   profissionalId?: string | null
   dataHora?: string
+  usarCreditoPlano?: boolean
 }
 
 export async function POST(request: NextRequest) {
@@ -107,6 +109,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Esse horário já foi reservado. Escolha outro.' }, { status: 409 })
   }
 
+  // Nunca confia no client sobre ter crédito de plano — reconfere aqui
+  // mesmo se usarCreditoPlano vier true no corpo da requisição.
+  const assinaturaComCredito = body.usarCreditoPlano
+    ? await buscarAssinaturaComCredito(supabaseAdmin, { clienteId: session.clienteId, prestadoraId, servicoId })
+    : null
+
   const { data: ag, error } = await supabaseAdmin
     .from('agendamentos')
     .insert({
@@ -116,12 +124,23 @@ export async function POST(request: NextRequest) {
       cliente_id: session.clienteId,
       data_hora: dataHora,
       status: 'confirmado',
+      plano_assinatura_id: assinaturaComCredito?.id ?? null,
     })
     .select('*, servicos(*), clientes(*), profissionais(*)')
     .single()
 
   if (error || !ag) {
     return NextResponse.json({ error: 'Erro ao agendar. Tente novamente.' }, { status: 500 })
+  }
+
+  let creditosRestantesApos: number | null = null
+  if (assinaturaComCredito) {
+    await aplicarUsoCredito(supabaseAdmin, {
+      assinaturaId: assinaturaComCredito.id,
+      agendamentoId: ag.id,
+      creditosRestantes: assinaturaComCredito.creditos_restantes,
+    })
+    creditosRestantesApos = Math.max(0, assinaturaComCredito.creditos_restantes - 1)
   }
 
   // Cliente testando o próprio sistema (mesmo telefone da prestadora) — não
@@ -158,5 +177,5 @@ export async function POST(request: NextRequest) {
     console.error('[agendamentos/criar] erro de rede ao chamar push/send:', err)
   }
 
-  return NextResponse.json({ agendamento: ag })
+  return NextResponse.json({ agendamento: ag, creditosRestantesApos })
 }

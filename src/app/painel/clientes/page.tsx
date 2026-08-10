@@ -16,11 +16,20 @@ export default async function ClientesPage() {
   if (!prestadora) redirect('/painel/login')
 
   // Busca todos os agendamentos com joins — sem filtro de status para ter histórico completo
-  const { data: agendamentos } = await supabase
-    .from('agendamentos')
-    .select('id, data_hora, status, cliente_e_prestadora, servicos(nome, preco), clientes(id, nome, telefone, cliente_manual)')
-    .eq('prestadora_id', prestadora.id)
-    .order('data_hora', { ascending: false })
+  const [{ data: agendamentos }, { data: assinaturasAtivas }] = await Promise.all([
+    supabase
+      .from('agendamentos')
+      .select('id, data_hora, status, cliente_e_prestadora, servicos(nome, preco), clientes(id, nome, telefone, cliente_manual)')
+      .eq('prestadora_id', prestadora.id)
+      .order('data_hora', { ascending: false }),
+    supabase
+      .from('planos_assinaturas')
+      .select('cliente_id')
+      .eq('prestadora_id', prestadora.id)
+      .eq('status', 'ativa'),
+  ])
+
+  const clientesComPlanoAtivo = new Set((assinaturasAtivas ?? []).map((a) => a.cliente_id))
 
   // Agrupa por cliente
   type AgItem = {
@@ -77,7 +86,9 @@ export default async function ClientesPage() {
     }
   })
 
-  const clientes = Array.from(clienteMap.values()).sort((a, b) => b.total - a.total)
+  const clientes = Array.from(clienteMap.values())
+    .map((c) => ({ ...c, planoAtivo: clientesComPlanoAtivo.has(c.cliente.id) }))
+    .sort((a, b) => b.total - a.total)
 
   return <ClientesClient clientes={clientes} prestadoraNome={prestadora.nome} />
 }

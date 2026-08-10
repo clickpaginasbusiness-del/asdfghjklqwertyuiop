@@ -16,7 +16,9 @@ import {
 } from 'date-fns'
 import { RelatorioParceiraClient } from '@/components/parceiras/RelatorioParceiraClient'
 import { FinanceiroTabClient } from '@/components/relatorios/FinanceiroTabClient'
+import { PlanosTabClient } from '@/components/relatorios/PlanosTabClient'
 import type { ResumoParceira } from '@/lib/parceiras'
+import type { ResumoPlanos } from '@/lib/planosPrestadora'
 
 const ROSE = '#fb7185'
 const ROSE_LIGHT = '#fecdd3'
@@ -64,10 +66,11 @@ interface Props {
   eParceira: boolean
   codigoIndicacao: string | null
   resumoParceira: ResumoParceira | null
+  resumoPlanos: ResumoPlanos
 }
 
 type QuickSel = 'hoje' | '7d' | '30d' | null
-type Aba = 'geral' | 'financeiro' | 'avaliacoes' | 'parceira'
+type Aba = 'geral' | 'financeiro' | 'avaliacoes' | 'planos' | 'parceira'
 
 const QUICK_BUTTONS: { value: Exclude<QuickSel, null>; label: string }[] = [
   { value: 'hoje', label: 'Hoje' },
@@ -86,7 +89,7 @@ function heatColor(value: number, max: number) {
 
 export default function RelatoriosClient({
   prestadoraId, agendamentos, profissionais, visitas, avaliacoes, lancamentos, horaAbertura, horaFechamento,
-  eParceira, codigoIndicacao, resumoParceira,
+  eParceira, codigoIndicacao, resumoParceira, resumoPlanos,
 }: Props) {
   const todayStr = format(new Date(), 'yyyy-MM-dd')
   const [aba, setAba] = useState<Aba>('geral')
@@ -347,6 +350,15 @@ export default function RelatoriosClient({
         >
           Avaliações
         </button>
+        <button
+          onClick={() => setAba('planos')}
+          className={cn(
+            'px-4 py-1.5 rounded-lg text-sm font-medium transition-all',
+            aba === 'planos' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          )}
+        >
+          Planos
+        </button>
         {eParceira && (
           <button
             onClick={() => setAba('parceira')}
@@ -372,6 +384,8 @@ export default function RelatoriosClient({
           dataFim={dataFim}
           periodoLabel={periodoLabel}
         />
+      ) : aba === 'planos' ? (
+        <PlanosTabClient resumo={resumoPlanos} />
       ) : aba === 'avaliacoes' ? (
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

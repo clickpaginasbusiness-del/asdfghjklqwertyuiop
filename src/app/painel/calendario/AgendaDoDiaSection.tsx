@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { CalendarDays, Phone, Scissors, UserCircle2, DollarSign } from 'lucide-react'
 import { VoceBadge } from '@/components/painel/VoceBadge'
 import { ManualBadge } from '@/components/painel/ManualBadge'
+import { PlanoBadge } from '@/components/painel/PlanoBadge'
 import {
   cn,
   formatCurrency,
@@ -184,6 +185,7 @@ export function AgendaDoDiaSection({
                               {ag.clientes?.nome}
                               {ag.cliente_e_prestadora && <VoceBadge />}
                               {ag.agendamento_manual && <ManualBadge />}
+                              {ag.planos_assinaturas?.planos_prestadora?.nome && <PlanoBadge nome={ag.planos_assinaturas.planos_prestadora.nome} />}
                             </p>
                             <p className="text-[11px] text-rose-500 truncate">{ag.servicos?.nome}</p>
                             <p className="text-[10px] text-rose-400">{formatFaixaHorario(ag)}</p>
@@ -210,6 +212,7 @@ export function AgendaDoDiaSection({
                 {modalAg.clientes?.nome}
                 {modalAg.cliente_e_prestadora && <VoceBadge />}
                 {modalAg.agendamento_manual && <ManualBadge />}
+                {modalAg.planos_assinaturas?.planos_prestadora?.nome && <PlanoBadge nome={modalAg.planos_assinaturas.planos_prestadora.nome} />}
               </p>
               <Badge variant={modalAg.status === 'concluido' ? 'concluido' : modalAg.status === 'aguardando_pagamento' ? 'warning' : 'success'}>
                 {modalAg.status === 'concluido' ? 'Concluído' : modalAg.status === 'aguardando_pagamento' ? 'Aguardando pagamento' : 'Confirmado'}
