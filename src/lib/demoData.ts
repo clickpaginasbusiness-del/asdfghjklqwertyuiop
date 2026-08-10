@@ -85,6 +85,8 @@ export const DEMO_PROFISSIONAIS: Profissional[] = [
     dias_semana: null,
     hora_abertura: null,
     hora_fechamento: null,
+    intervalo_inicio: null,
+    intervalo_fim: null,
     created_at: '2025-01-15T12:00:00Z',
   },
   {
@@ -97,6 +99,8 @@ export const DEMO_PROFISSIONAIS: Profissional[] = [
     dias_semana: null,
     hora_abertura: null,
     hora_fechamento: null,
+    intervalo_inicio: null,
+    intervalo_fim: null,
     created_at: '2025-02-01T12:00:00Z',
   },
 ]

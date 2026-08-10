@@ -175,6 +175,8 @@ interface ProfissionalHorarioLike {
   hora_abertura: string | null
   hora_fechamento: string | null
   dias_semana: number[] | null
+  intervalo_inicio?: string | null
+  intervalo_fim?: string | null
 }
 
 /** Lógica única de disponibilidade compartilhada entre a página pública
@@ -184,7 +186,12 @@ interface ProfissionalHorarioLike {
 /** Janela de horário (+ intervalo de almoço) de um dia específico. Se a
  * profissional tiver horário próprio configurado, ele substitui a janela do
  * dia inteiro — e nesse caso o intervalo de almoço da prestadora não se
- * aplica, já que a agenda dela já é um recorte específico do dia. */
+ * aplica, já que a agenda dela já é um recorte específico do dia. O
+ * intervalo de almoço PRÓPRIO da profissional (intervalo_inicio/fim), por
+ * outro lado, sempre tem prioridade sobre o do estabelecimento, mesmo
+ * quando ela usa o horário de funcionamento padrão — é o que permite Ana
+ * almoçar 12h-13h e Carol 13h-14h sem duas profissionais com hora_abertura
+ * customizada. */
 export function computeHorasDoDia(
   diaSemana: number,
   horariosFuncionamento: HorarioFuncionamento[],
@@ -194,11 +201,12 @@ export function computeHorasDoDia(
 ): HorasDoDia {
   const horario = horariosFuncionamento.find((h) => h.dia_semana === diaSemana)
   const temHorarioProprio = Boolean(profissional?.hora_abertura && profissional?.hora_fechamento)
+  const temIntervaloProprio = Boolean(profissional?.intervalo_inicio && profissional?.intervalo_fim)
   return {
     abertura: profissional?.hora_abertura ?? horario?.hora_abertura ?? prestadoraHoraAbertura,
     fechamento: profissional?.hora_fechamento ?? horario?.hora_fechamento ?? prestadoraHoraFechamento,
-    turno2Inicio: temHorarioProprio ? null : horario?.turno2_inicio ?? null,
-    turno2Fim: temHorarioProprio ? null : horario?.turno2_fim ?? null,
+    turno2Inicio: temIntervaloProprio ? profissional!.intervalo_inicio! : temHorarioProprio ? null : horario?.turno2_inicio ?? null,
+    turno2Fim: temIntervaloProprio ? profissional!.intervalo_fim! : temHorarioProprio ? null : horario?.turno2_fim ?? null,
   }
 }
 

@@ -39,6 +39,8 @@ interface ProfissionalOption {
   hora_abertura: string | null
   hora_fechamento: string | null
   dias_semana: number[] | null
+  intervalo_inicio: string | null
+  intervalo_fim: string | null
 }
 
 interface Props {
@@ -83,7 +85,7 @@ export function AgendarManualModal({ onClose, prestadoraId, onCriado }: Props) {
     Promise.all([
       supabase.from('agendamentos').select('clientes(id, nome, telefone, cliente_manual)').eq('prestadora_id', prestadoraId),
       supabase.from('servicos').select('id, nome, preco, duracao_minutos, servico_profissionais(profissional_id)').eq('prestadora_id', prestadoraId).eq('ativo', true).order('nome'),
-      supabase.from('profissionais').select('id, nome, hora_abertura, hora_fechamento, dias_semana').eq('prestadora_id', prestadoraId).eq('ativa', true).order('nome'),
+      supabase.from('profissionais').select('id, nome, hora_abertura, hora_fechamento, dias_semana, intervalo_inicio, intervalo_fim').eq('prestadora_id', prestadoraId).eq('ativa', true).order('nome'),
       supabase.from('horarios_funcionamento').select('*').eq('prestadora_id', prestadoraId),
       supabase.from('dias_bloqueados').select('data').eq('prestadora_id', prestadoraId),
       supabase.from('prestadoras').select('hora_abertura, hora_fechamento').eq('id', prestadoraId).single(),

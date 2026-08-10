@@ -113,6 +113,8 @@ export type Profissional = {
   dias_semana: number[] | null
   hora_abertura: string | null
   hora_fechamento: string | null
+  intervalo_inicio: string | null
+  intervalo_fim: string | null
   created_at: string
 }
 

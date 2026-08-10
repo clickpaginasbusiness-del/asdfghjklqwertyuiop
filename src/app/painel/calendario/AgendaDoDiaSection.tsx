@@ -1,14 +1,17 @@
 'use client'
 
 import { Fragment, useMemo, useState } from 'react'
-import { parseISO } from 'date-fns'
+import { addDays, parseISO, startOfDay } from 'date-fns'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Modal } from '@/components/ui/modal'
 import { Badge } from '@/components/ui/badge'
-import { CalendarDays, Phone, Scissors, UserCircle2, DollarSign } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { CalendarDays, Phone, Scissors, UserCircle2, DollarSign, MessageCircle, CheckCheck } from 'lucide-react'
 import { VoceBadge } from '@/components/painel/VoceBadge'
 import { ManualBadge } from '@/components/painel/ManualBadge'
 import { PlanoBadge } from '@/components/painel/PlanoBadge'
+import { WhatsappAcoesMenu } from '@/components/painel/WhatsappAcoesMenu'
+import { cancelarAgendamento, concluirAgendamento } from '@/lib/agendamentoAcoes'
 import {
   cn,
   formatCurrency,
@@ -20,17 +23,16 @@ import {
   formatWeekdayShort,
   startOfTodaySP,
   dateKeyToDate,
+  computeHorasDoDia,
 } from '@/lib/utils'
 import type { Prestadora, HorarioFuncionamento } from '@/lib/types'
-import type { AgendaSlotAg } from './page'
+import type { AgendaSlotAg, ProfissionalCalendario } from './page'
+import toast from 'react-hot-toast'
 
 const SLOT_MINUTOS = 30
 const DIAS_BUTTON = 8
 
-interface ProfissionalLite {
-  id: string
-  nome: string
-}
+type ProfissionalLite = ProfissionalCalendario
 
 function gerarSlots(abertura: string, fechamento: string): string[] {
   const [hAb, mAb] = abertura.slice(0, 5).split(':').map(Number)
@@ -50,7 +52,7 @@ export function AgendaDoDiaSection({
   prestadora,
   horariosFuncionamento,
   profissionais,
-  agendamentos,
+  agendamentos: agendamentosIniciais,
 }: {
   prestadora: Prestadora
   horariosFuncionamento: HorarioFuncionamento[]
@@ -59,7 +61,15 @@ export function AgendaDoDiaSection({
 }) {
   const hoje = startOfTodaySP()
   const [selectedDate, setSelectedDate] = useState(formatDateKey(hoje))
+  const [agendamentos, setAgendamentos] = useState(agendamentosIniciais)
   const [modalAg, setModalAg] = useState<AgendaSlotAg | null>(null)
+  const [confirmCancelar, setConfirmCancelar] = useState(false)
+  const [cancelando, setCancelando] = useState(false)
+  const [concluindo, setConcluindo] = useState(false)
+  const [waOpen, setWaOpen] = useState(false)
+
+  const amanha = startOfDay(addDays(new Date(), 1))
+  const passouAgendamento = modalAg ? new Date(modalAg.data_hora) < new Date() : false
 
   const diasFiltro = useMemo(
     () => Array.from({ length: DIAS_BUTTON }, (_, i) => new Date(hoje.getTime() + i * 86400000)),
@@ -82,6 +92,9 @@ export function AgendaDoDiaSection({
   // Slots padrão de 30 em 30 min (mostram os horários livres) + horários
   // exatos de agendamentos que não caem nessa grade (ex.: 09:45) — sem isso
   // um agendamento fora do padrão de 30 min simplesmente não apareceria.
+  // Sempre baseado no horário do ESTABELECIMENTO (nunca no de uma
+  // profissional individual) — quem limita colunas específicas é
+  // colunaIndisponivel, não a grade inteira.
   const slots = useMemo(() => {
     if (!ativo) return []
     const padrao = gerarSlots(abertura, fechamento)
@@ -91,7 +104,7 @@ export function AgendaDoDiaSection({
 
   const colunas: ProfissionalLite[] = profissionais.length > 0
     ? profissionais
-    : [{ id: 'solo', nome: prestadora.nome }]
+    : [{ id: 'solo', nome: prestadora.nome, hora_abertura: null, hora_fechamento: null, dias_semana: null, intervalo_inicio: null, intervalo_fim: null }]
 
   function agendamentoNoSlot(slot: string, colunaId: string): AgendaSlotAg | undefined {
     return agendamentosDoDia.find((a) => {
@@ -102,10 +115,49 @@ export function AgendaDoDiaSection({
     })
   }
 
+  /** Slot fora do horário de trabalho (ou dentro do intervalo de almoço)
+   * dessa profissional especificamente — a grade em si nunca encolhe, só a
+   * coluna dela fica bloqueada/acinzentada nesses horários. */
+  function colunaIndisponivel(prof: ProfissionalLite, slot: string): boolean {
+    if (prof.dias_semana && !prof.dias_semana.includes(diaSemana)) return true
+    const horas = computeHorasDoDia(diaSemana, horariosFuncionamento, prof, prestadora.hora_abertura, prestadora.hora_fechamento)
+    if (slot < horas.abertura.slice(0, 5) || slot >= horas.fechamento.slice(0, 5)) return true
+    if (horas.turno2Inicio && horas.turno2Fim && slot >= horas.turno2Inicio.slice(0, 5) && slot < horas.turno2Fim.slice(0, 5)) return true
+    return false
+  }
+
   function formatFaixaHorario(ag: AgendaSlotAg): string {
     const inicio = parseISO(ag.data_hora)
     const fim = new Date(inicio.getTime() + (ag.servicos?.duracao_minutos ?? 30) * 60000)
     return `${formatTime(inicio)} - ${formatTime(fim)}`
+  }
+
+  function fecharModal() {
+    setModalAg(null)
+    setWaOpen(false)
+    setConfirmCancelar(false)
+  }
+
+  async function handleCancelar() {
+    if (!modalAg) return
+    setCancelando(true)
+    const res = await cancelarAgendamento(modalAg, prestadora.id)
+    setCancelando(false)
+    if (!res.ok) { toast.error(res.error); return }
+    setAgendamentos((prev) => prev.map((a) => a.id === modalAg.id ? { ...a, status: 'cancelado' as const } : a))
+    toast.success('Agendamento cancelado')
+    fecharModal()
+  }
+
+  async function handleConcluir() {
+    if (!modalAg) return
+    setConcluindo(true)
+    const res = await concluirAgendamento(modalAg.id)
+    setConcluindo(false)
+    if (!res.ok) { toast.error(res.error); return }
+    setAgendamentos((prev) => prev.map((a) => a.id === modalAg.id ? { ...a, status: 'concluido' as const } : a))
+    setModalAg((prev) => prev ? { ...prev, status: 'concluido' as const } : prev)
+    toast.success('Atendimento concluído! ✓')
   }
 
   return (
@@ -167,17 +219,22 @@ export function AgendaDoDiaSection({
                   <div className="text-xs text-gray-400 font-medium flex items-center px-1">{slot}</div>
                   {colunas.map((c) => {
                     const ag = agendamentoNoSlot(slot, c.id)
+                    const bloqueado = !ag && profissionais.length > 0 && colunaIndisponivel(c, slot)
                     return (
                       <button
                         key={c.id}
                         disabled={!ag}
                         onClick={() => ag && setModalAg(ag)}
+                        title={bloqueado ? 'Fora do horário de trabalho dessa profissional' : undefined}
                         className={cn(
                           'rounded-lg px-2 py-1.5 text-left text-xs transition-colors min-h-11',
                           ag
                             ? 'bg-rose-50 border border-rose-200 hover:bg-rose-100 cursor-pointer'
-                            : 'bg-gray-50 border border-gray-100 text-gray-300'
+                            : bloqueado
+                              ? 'bg-gray-100 border border-gray-200 text-gray-300 cursor-not-allowed'
+                              : 'bg-gray-50 border border-gray-100 text-gray-300'
                         )}
+                        style={bloqueado ? { backgroundImage: 'repeating-linear-gradient(135deg, rgba(0,0,0,0.04) 0px, rgba(0,0,0,0.04) 4px, transparent 4px, transparent 8px)' } : undefined}
                       >
                         {ag ? (
                           <>
@@ -190,7 +247,7 @@ export function AgendaDoDiaSection({
                             <p className="text-[11px] text-rose-500 truncate">{ag.servicos?.nome}</p>
                             <p className="text-[10px] text-rose-400">{formatFaixaHorario(ag)}</p>
                           </>
-                        ) : (
+                        ) : bloqueado ? null : (
                           <span>—</span>
                         )}
                       </button>
@@ -204,7 +261,7 @@ export function AgendaDoDiaSection({
       </CardContent>
 
       {/* Modal de detalhes */}
-      <Modal open={!!modalAg} onClose={() => setModalAg(null)} title="Detalhes do agendamento">
+      <Modal open={!!modalAg} onClose={fecharModal} title="Detalhes do agendamento">
         {modalAg && (
           <div className="p-6 space-y-4">
             <div className="flex items-center justify-between">
@@ -240,8 +297,73 @@ export function AgendaDoDiaSection({
                 {formatDateTime(modalAg.data_hora)}
               </p>
             </div>
+
+            {modalAg.status === 'confirmado' && (
+              <div className="flex items-center gap-2 flex-wrap pt-3 border-t border-gray-100">
+                {modalAg.clientes?.telefone && (
+                  <div className="relative">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setWaOpen((v) => !v) }}
+                      className="flex items-center gap-1 bg-green-50 hover:bg-green-100 border border-green-100 text-green-600 rounded-full px-2.5 min-h-11 text-xs font-medium transition-colors"
+                    >
+                      <MessageCircle className="w-3 h-3" />
+                      WhatsApp
+                    </button>
+                    {waOpen && (
+                      <WhatsappAcoesMenu
+                        agendamento={modalAg}
+                        telefone={modalAg.clientes.telefone}
+                        prestadoraNome={prestadora.nome}
+                        msgConfirmacao={prestadora.mensagem_confirmacao}
+                        msgCancelamento={prestadora.mensagem_cancelamento}
+                        msgLembrete={prestadora.mensagem_lembrete}
+                        amanha={amanha}
+                        onClose={() => setWaOpen(false)}
+                      />
+                    )}
+                  </div>
+                )}
+
+                <button
+                  onClick={() => passouAgendamento && !concluindo && handleConcluir()}
+                  disabled={!passouAgendamento || concluindo}
+                  title={!passouAgendamento ? 'Disponível após o horário do atendimento' : 'Marcar como concluído'}
+                  className={cn(
+                    'flex items-center gap-1 text-xs rounded-lg px-2.5 font-medium transition-all border min-h-11',
+                    passouAgendamento
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 cursor-pointer'
+                      : 'bg-gray-50 border-gray-100 text-gray-300 cursor-not-allowed'
+                  )}
+                >
+                  <CheckCheck className="w-3 h-3" />
+                  {concluindo ? '...' : 'Concluído'}
+                </button>
+
+                <button
+                  onClick={() => setConfirmCancelar(true)}
+                  className="text-xs text-red-400 hover:text-red-500 transition-colors px-2.5 min-h-11 ml-auto"
+                >
+                  Cancelar agendamento
+                </button>
+              </div>
+            )}
           </div>
         )}
+      </Modal>
+
+      {/* Modal confirmar cancelamento */}
+      <Modal open={confirmCancelar} onClose={() => setConfirmCancelar(false)} title="Cancelar agendamento?">
+        <div className="p-6 space-y-4">
+          <p className="text-sm text-gray-600">Essa ação não pode ser desfeita.</p>
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={() => setConfirmCancelar(false)} className="flex-1">
+              Voltar
+            </Button>
+            <Button variant="danger" onClick={handleCancelar} loading={cancelando} className="flex-1">
+              Cancelar agendamento
+            </Button>
+          </div>
+        </div>
       </Modal>
     </Card>
   )

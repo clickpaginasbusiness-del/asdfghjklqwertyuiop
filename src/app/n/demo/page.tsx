@@ -139,6 +139,8 @@ const DEMO_PROFISSIONAIS: Profissional[] = [
     dias_semana: [1, 2, 3, 4, 5],
     hora_abertura: null,
     hora_fechamento: null,
+    intervalo_inicio: null,
+    intervalo_fim: null,
   },
   {
     id: 'p2', prestadora_id: 'demo', ativa: true, created_at: '',
@@ -148,6 +150,8 @@ const DEMO_PROFISSIONAIS: Profissional[] = [
     dias_semana: [2, 4, 6],
     hora_abertura: null,
     hora_fechamento: null,
+    intervalo_inicio: null,
+    intervalo_fim: null,
   },
   {
     id: 'p3', prestadora_id: 'demo', ativa: true, created_at: '',
@@ -157,6 +161,8 @@ const DEMO_PROFISSIONAIS: Profissional[] = [
     dias_semana: [1, 3, 5],
     hora_abertura: null,
     hora_fechamento: null,
+    intervalo_inicio: null,
+    intervalo_fim: null,
   },
 ]
 

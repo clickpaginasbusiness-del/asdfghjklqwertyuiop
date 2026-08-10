@@ -2,7 +2,7 @@
 
 import { AgendaDoDiaSection } from './AgendaDoDiaSection'
 import { AgendarButton } from '@/components/painel/AgendarButton'
-import type { AgendaSlotAg } from './page'
+import type { AgendaSlotAg, ProfissionalCalendario } from './page'
 import type { Prestadora, HorarioFuncionamento } from '@/lib/types'
 
 export default function CalendarioClient({
@@ -13,7 +13,7 @@ export default function CalendarioClient({
 }: {
   prestadora: Prestadora
   horariosFuncionamento: HorarioFuncionamento[]
-  profissionais: { id: string; nome: string }[]
+  profissionais: ProfissionalCalendario[]
   agendamentos: AgendaSlotAg[]
 }) {
   return (

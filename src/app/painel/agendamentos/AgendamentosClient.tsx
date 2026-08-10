@@ -8,7 +8,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
-import { formatCurrency, formatDateTime, maskTelefone, buildWhatsappUrl, formatDateShort } from '@/lib/utils'
+import { formatCurrency, formatDateTime, maskTelefone, buildWhatsappUrl } from '@/lib/utils'
+import { cancelarAgendamento, concluirAgendamento } from '@/lib/agendamentoAcoes'
 import { Calendar, Phone, Search, MessageCircle, ArrowDownAZ, ArrowUpAZ, Clock4, CheckCheck, Trash2, Star } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -16,9 +17,8 @@ import { VoceBadge } from '@/components/painel/VoceBadge'
 import { ManualBadge } from '@/components/painel/ManualBadge'
 import { PlanoBadge } from '@/components/painel/PlanoBadge'
 import { AgendarButton } from '@/components/painel/AgendarButton'
-import { logMissaoEvento } from '@/lib/missoesClient'
+import { WhatsappAcoesMenu } from '@/components/painel/WhatsappAcoesMenu'
 import type { Agendamento, Profissional } from '@/lib/types'
-import { renderTemplate, MSG_CONFIRMACAO_DEFAULT, MSG_CANCELAMENTO_DEFAULT, MSG_LEMBRETE_DEFAULT } from '@/lib/whatsappTemplates'
 import toast from 'react-hot-toast'
 
 type FiltroStatus = 'todos' | 'confirmado' | 'concluido' | 'cancelado'
@@ -170,27 +170,13 @@ export default function AgendamentosClient({
 
   async function cancelar(id: string) {
     setCancelando(id)
-    const supabase = createClient()
     const ag = agendamentos.find((a) => a.id === id)
-    const { error } = await supabase
-      .from('agendamentos')
-      .update({ status: 'cancelado', cancelado_por: 'prestadora' })
-      .eq('id', id)
+    const res = ag ? await cancelarAgendamento(ag, prestadoraId) : { ok: false as const, error: 'Agendamento não encontrado' }
 
-    if (error) {
-      toast.error('Erro ao cancelar')
+    if (!res.ok) {
+      toast.error(res.error)
       setCancelando(null)
       return
-    }
-
-    if (ag) {
-      const profNome = ag.profissionais?.nome ? ` com ${ag.profissionais.nome}` : ''
-      const dt = formatDateShort(ag.data_hora)
-      await supabase.from('notificacoes').insert({
-        prestadora_id: prestadoraId,
-        tipo: 'cancelamento',
-        mensagem: `Você cancelou o agendamento de ${ag.clientes?.nome} - ${ag.servicos?.nome}${profNome} em ${dt}`,
-      })
     }
 
     setAgendamentos((prev) => prev.map((a) => a.id === id ? { ...a, status: 'cancelado' as const } : a))
@@ -201,14 +187,10 @@ export default function AgendamentosClient({
 
   async function concluir(id: string) {
     setConcluindoId(id)
-    const supabase = createClient()
-    const { error } = await supabase
-      .from('agendamentos')
-      .update({ status: 'concluido' })
-      .eq('id', id)
+    const res = await concluirAgendamento(id)
 
-    if (error) {
-      toast.error('Erro ao concluir')
+    if (!res.ok) {
+      toast.error(res.error)
     } else {
       setAgendamentos((prev) => prev.map((a) => a.id === id ? { ...a, status: 'concluido' as const } : a))
       toast.success('Atendimento concluído! ✓')
@@ -469,40 +451,16 @@ export default function AgendamentosClient({
                               WhatsApp
                             </button>
                             {waOpenId === a.id && (
-                              <div
-                                className="absolute left-0 bottom-full mb-1 z-20 bg-white border border-gray-100 rounded-xl shadow-xl p-1.5 space-y-0.5 w-52"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <a
-                                  href={buildWhatsappUrl(a.clientes!.telefone!, renderTemplate(msgConfirmacao || MSG_CONFIRMACAO_DEFAULT, a, prestadoraNome))}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  onClick={() => { setWaOpenId(null); logMissaoEvento('confirmacao', a.cliente_id, a.id) }}
-                                  className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-green-50 rounded-lg transition-colors"
-                                >
-                                  ✅ Enviar confirmação
-                                </a>
-                                <a
-                                  href={buildWhatsappUrl(a.clientes!.telefone!, renderTemplate(msgCancelamento || MSG_CANCELAMENTO_DEFAULT, a, prestadoraNome))}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  onClick={() => setWaOpenId(null)}
-                                  className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-red-50 rounded-lg transition-colors"
-                                >
-                                  ❌ Enviar cancelamento
-                                </a>
-                                {a.status === 'confirmado' && new Date(a.data_hora) >= amanha && (
-                                  <a
-                                    href={buildWhatsappUrl(a.clientes!.telefone!, renderTemplate(msgLembrete || MSG_LEMBRETE_DEFAULT, a, prestadoraNome))}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={() => { setWaOpenId(null); logMissaoEvento('lembrete', a.cliente_id) }}
-                                    className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-amber-50 rounded-lg transition-colors"
-                                  >
-                                    🔔 Enviar lembrete
-                                  </a>
-                                )}
-                              </div>
+                              <WhatsappAcoesMenu
+                                agendamento={a}
+                                telefone={a.clientes!.telefone!}
+                                prestadoraNome={prestadoraNome}
+                                msgConfirmacao={msgConfirmacao}
+                                msgCancelamento={msgCancelamento}
+                                msgLembrete={msgLembrete}
+                                amanha={amanha}
+                                onClose={() => setWaOpenId(null)}
+                              />
                             )}
                           </div>
                         )}

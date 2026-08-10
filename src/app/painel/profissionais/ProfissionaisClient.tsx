@@ -31,6 +31,9 @@ interface DispForm {
   usarHorarioEstabelecimento: boolean
   hora_abertura: string
   hora_fechamento: string
+  temIntervaloProprio: boolean
+  intervalo_inicio: string
+  intervalo_fim: string
 }
 
 const emptyForm: ProfForm = { nome: '', bio: '' }
@@ -65,6 +68,9 @@ export default function ProfissionaisClient({
     usarHorarioEstabelecimento: true,
     hora_abertura: '09:00',
     hora_fechamento: '18:00',
+    temIntervaloProprio: false,
+    intervalo_inicio: '12:00',
+    intervalo_fim: '13:00',
   })
   const [savingDisp, setSavingDisp] = useState(false)
 
@@ -88,6 +94,9 @@ export default function ProfissionaisClient({
       usarHorarioEstabelecimento: !p.hora_abertura,
       hora_abertura: p.hora_abertura ?? '09:00',
       hora_fechamento: p.hora_fechamento ?? '18:00',
+      temIntervaloProprio: !!p.intervalo_inicio,
+      intervalo_inicio: p.intervalo_inicio ?? '12:00',
+      intervalo_fim: p.intervalo_fim ?? '13:00',
     })
     setDispModal(true)
   }
@@ -126,6 +135,8 @@ export default function ProfissionaisClient({
       dias_semana: dispForm.usarDiasEstabelecimento ? null : dispForm.dias,
       hora_abertura: dispForm.usarHorarioEstabelecimento ? null : dispForm.hora_abertura,
       hora_fechamento: dispForm.usarHorarioEstabelecimento ? null : dispForm.hora_fechamento,
+      intervalo_inicio: dispForm.temIntervaloProprio ? dispForm.intervalo_inicio : null,
+      intervalo_fim: dispForm.temIntervaloProprio ? dispForm.intervalo_fim : null,
     }
     const { error } = await supabase.from('profissionais').update(updates).eq('id', dispProfId)
     if (error) { toast.error('Erro ao salvar'); setSavingDisp(false); return }
@@ -284,14 +295,17 @@ export default function ProfissionaisClient({
                     </div>
                     {p.bio && <p className="text-xs text-gray-500 mt-1 leading-relaxed line-clamp-2">{p.bio}</p>}
                     {/* Resumo disponibilidade */}
-                    {(p.dias_semana || p.hora_abertura) && (
-                      <div className="mt-1.5 text-xs text-rose-400 flex items-center gap-1">
+                    {(p.dias_semana || p.hora_abertura || p.intervalo_inicio) && (
+                      <div className="mt-1.5 text-xs text-rose-400 flex items-center gap-1 flex-wrap">
                         <CalendarDays className="w-3 h-3" />
                         {p.dias_semana
                           ? p.dias_semana.map((d) => DIAS_SEMANA[d]).join(' · ')
                           : 'Dias do estabelecimento'}
                         {p.hora_abertura && p.hora_fechamento && (
                           <span className="text-gray-400"> · {p.hora_abertura}–{p.hora_fechamento}</span>
+                        )}
+                        {p.intervalo_inicio && p.intervalo_fim && (
+                          <span className="text-gray-400"> · Almoço {p.intervalo_inicio}–{p.intervalo_fim}</span>
                         )}
                       </div>
                     )}
@@ -457,6 +471,46 @@ export default function ProfissionaisClient({
                     type="time"
                     value={dispForm.hora_fechamento}
                     onChange={(e) => setDispForm((f) => ({ ...f, hora_fechamento: e.target.value }))}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-300"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Intervalo de almoço */}
+          <div>
+            <h4 className="text-sm font-semibold text-gray-700 mb-3">Intervalo de almoço</h4>
+            <label className="flex items-center gap-2.5 text-sm text-gray-600 cursor-pointer mb-3">
+              <input
+                type="checkbox"
+                checked={dispForm.temIntervaloProprio}
+                onChange={(e) => setDispForm((f) => ({ ...f, temIntervaloProprio: e.target.checked }))}
+                className="rounded border-gray-300 text-rose-400 focus:ring-rose-300"
+              />
+              Tem intervalo próprio?
+            </label>
+            <p className="text-xs text-gray-400 mb-3">
+              Sem isso, ela segue o intervalo do estabelecimento (se houver, configurado em Horários).
+            </p>
+
+            {dispForm.temIntervaloProprio && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Início</label>
+                  <input
+                    type="time"
+                    value={dispForm.intervalo_inicio}
+                    onChange={(e) => setDispForm((f) => ({ ...f, intervalo_inicio: e.target.value }))}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-300"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Fim</label>
+                  <input
+                    type="time"
+                    value={dispForm.intervalo_fim}
+                    onChange={(e) => setDispForm((f) => ({ ...f, intervalo_fim: e.target.value }))}
                     className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-300"
                   />
                 </div>

@@ -9,6 +9,7 @@ export default function CalendarioDemoPage() {
       id: a.id,
       data_hora: a.data_hora,
       status: a.status,
+      cliente_id: a.cliente_id,
       profissional_id: a.profissional_id,
       cliente_e_prestadora: a.cliente_e_prestadora,
       agendamento_manual: a.agendamento_manual,
@@ -25,7 +26,15 @@ export default function CalendarioDemoPage() {
       <AgendaDoDiaSection
         prestadora={DEMO_PRESTADORA}
         horariosFuncionamento={DEMO_HORARIOS_FUNCIONAMENTO}
-        profissionais={DEMO_PROFISSIONAIS.map((p) => ({ id: p.id, nome: p.nome }))}
+        profissionais={DEMO_PROFISSIONAIS.map((p) => ({
+          id: p.id,
+          nome: p.nome,
+          hora_abertura: p.hora_abertura,
+          hora_fechamento: p.hora_fechamento,
+          dias_semana: p.dias_semana,
+          intervalo_inicio: p.intervalo_inicio,
+          intervalo_fim: p.intervalo_fim,
+        }))}
         agendamentos={agendamentos}
       />
     </div>
