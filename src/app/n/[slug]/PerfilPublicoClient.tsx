@@ -1180,12 +1180,19 @@ export default function PerfilPublicoClient({
           </section>
         )}
 
-        <PlanosSection
-          planos={planos}
-          corTema={tema.hex}
-          clienteLogado={clienteLogado}
-          onRequireLogin={() => { if (isDemo) { loginDemoInstantaneo() } else { setLoginModal(true) } }}
-        />
+        {/* PlanosSection não seta data-animate sozinho (só essa página tem o
+            IntersectionObserver que revela [data-animate] — nas outras 2
+            variantes isso deixava a seção presa em opacity:0 pra sempre).
+            Aqui embrulha pra manter o fade-in consistente com as seções
+            vizinhas. */}
+        <div data-animate>
+          <PlanosSection
+            planos={planos}
+            corTema={tema.hex}
+            clienteLogado={clienteLogado}
+            onRequireLogin={() => { if (isDemo) { loginDemoInstantaneo() } else { setLoginModal(true) } }}
+          />
+        </div>
 
         {/* Booking flow */}
         <section data-animate>

@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import {
   formatCurrency, formatDateTime, formatDateShort, generateTimeSlots,
   maskTelefone, cleanTelefone, buildWhatsappUrl, diaAtivoPadrao,
-  computeHorasDoDia, diaIndisponivelParaAgendar, cn,
+  computeHorasDoDia, diaIndisponivelParaAgendar,
 } from '@/lib/utils'
 import {
   Clock, CheckCircle2, Calendar, ChevronLeft, ChevronRight, X,
@@ -55,12 +55,19 @@ interface Props {
  * - "empilhada": flex-wrap + justify-center em vez de CSS grid de colunas
  *   fixas (um grid de 3 colunas com poucos itens deixa células vazias à
  *   direita, então o conteúdo parece alinhado à esquerda).
- * - "carrossel": mesmo scroll horizontal do GaleriaGrid original, mas com
- *   justify-center quando há menos de 4 fotos (cabem todas sem precisar
- *   rolar, então faz sentido centralizar) — com 4+ fotos mantém o
- *   comportamento padrão (empacotado à esquerda, rolável), porque
- *   justify-center num container com overflow pode esconder o início do
- *   conteúdo atrás da borda esquerda quando ele não cabe todo.
+ * - "carrossel": NÃO usa "itens.length < N" pra decidir centralizar — um
+ *   número fixo não tem como acertar em toda largura de tela (4 fotos cabem
+ *   inteiras num desktop largo mas já estourariam um celular). Em vez
+ *   disso, o container externo só tem overflow-x-auto (sem flex/justify), e
+ *   quem centraliza é o container INTERNO com `w-max mx-auto`: quando o
+ *   conteúdo é mais estreito que a tela, w-max encolhe pro tamanho do
+ *   conteúdo e mx-auto centraliza; quando o conteúdo é mais largo que a
+ *   tela, w-max já estoura o container e mx-auto não tem margem sobrando
+ *   pra aplicar — o carrossel fica encostado à esquerda e rola normalmente.
+ *   NÃO troque isso por `justify-center` direto no container com overflow:
+ *   com conteúdo maior que a tela, justify-center centraliza o scroll
+ *   INTEIRO (não só o conteúdo visível), deixando a primeira foto escondida
+ *   atrás da borda esquerda ao carregar a seção.
  * Não reaproveita o GaleriaGrid compartilhado pra não arriscar mudar o
  * comportamento da página clássica (PerfilPublicoClient.tsx).
  */
@@ -100,15 +107,17 @@ function GaleriaGridCentralizada({
 
   if (modo === 'carrossel') {
     return (
-      <div className={cn(
-        'flex gap-2 overflow-x-auto snap-x snap-mandatory pb-1 -mx-4 px-4',
-        itens.length < 4 && 'justify-center'
-      )}>
-        {itens.map((item, i) => (
-          <div key={item.id} className="w-32 sm:w-40 shrink-0 snap-center">
-            {tile(item, i, 'group relative aspect-square rounded-2xl overflow-hidden bg-gray-100 cursor-pointer')}
-          </div>
-        ))}
+      // Container externo só rola (sem flex/justify aqui) — quem centraliza
+      // é o `w-max mx-auto` do container interno. Ver comentário do
+      // GaleriaGridCentralizada acima antes de mexer nisso.
+      <div className="overflow-x-auto snap-x snap-mandatory pb-1 -mx-4 px-4">
+        <div className="flex gap-2 w-max mx-auto">
+          {itens.map((item, i) => (
+            <div key={item.id} className="w-32 sm:w-40 shrink-0 snap-center">
+              {tile(item, i, 'group relative aspect-square rounded-2xl overflow-hidden bg-gray-100 cursor-pointer')}
+            </div>
+          ))}
+        </div>
       </div>
     )
   }

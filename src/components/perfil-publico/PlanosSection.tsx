@@ -111,7 +111,7 @@ export function PlanosSection({ planos, corTema, dark, clienteLogado, onRequireL
 
   return (
     <>
-      <section id="planos" className={dark ? 'bg-[#111111] px-4 py-16' : undefined} data-animate={dark ? undefined : true}>
+      <section id="planos" className={dark ? 'bg-[#111111] px-4 py-16' : undefined}>
         <div className={dark ? 'max-w-5xl mx-auto' : undefined}>
           <h2 className={dark
             ? 'font-serif text-2xl sm:text-3xl font-semibold text-white mb-2 text-center'
