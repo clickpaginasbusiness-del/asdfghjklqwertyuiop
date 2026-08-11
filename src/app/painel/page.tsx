@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { endOfYear, subDays } from 'date-fns'
-import { getChecklistStatus } from '@/lib/checklist'
 import PainelDashboardClient from './PainelDashboardClient'
 
 /** Próxima ocorrência do aniversário a partir de hoje (esse ano, ou o
@@ -31,7 +30,7 @@ export default async function PainelPage() {
 
   const hoje = new Date()
 
-  const [{ data: agendamentosAno }, { data: agendamentosComNascimento }, checklistStatus] = await Promise.all([
+  const [{ data: agendamentosAno }, { data: agendamentosComNascimento }] = await Promise.all([
     // 60 dias atrás → cobre filtros "30 dias" + resto do ano
     supabase
       .from('agendamentos')
@@ -49,7 +48,6 @@ export default async function PainelPage() {
       .select('clientes!inner(id, nome, telefone, data_nascimento)')
       .eq('prestadora_id', prestadora.id)
       .not('clientes.data_nascimento', 'is', null),
-    getChecklistStatus(supabase, prestadora),
   ])
 
   const hojeZerado = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate())
@@ -75,7 +73,6 @@ export default async function PainelPage() {
       msgCancelamento={prestadora.mensagem_cancelamento}
       msgLembrete={prestadora.mensagem_lembrete}
       aniversariantes={aniversariantes}
-      checklistStatus={checklistStatus}
     />
   )
 }

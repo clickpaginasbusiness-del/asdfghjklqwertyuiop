@@ -865,12 +865,16 @@ export default function PerfilPublicoClient({
 
       {/* ── HEADER ─────────────────────────────── */}
       <div
-        className="relative overflow-hidden pb-14"
+        className="relative pb-14"
         style={{ background: `linear-gradient(to bottom, ${tema.hexHeader}, white)` }}
       >
-        {/* Decorative blobs */}
-        <div aria-hidden className="absolute -top-20 -right-20 w-72 h-72 rounded-full blur-3xl pointer-events-none" style={{ backgroundColor: tema.hex, opacity: 0.18 }} />
-        <div aria-hidden className="absolute top-10 -left-16 w-56 h-56 rounded-full blur-3xl pointer-events-none" style={{ backgroundColor: tema.hex, opacity: 0.12 }} />
+        {/* Decorative blobs — clipadas no próprio wrapper (não no header
+            inteiro), senão dropdowns como o de horários da semana (que pode
+            estender além do fim do header no mobile) ficavam cortados junto. */}
+        <div aria-hidden className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full blur-3xl" style={{ backgroundColor: tema.hex, opacity: 0.18 }} />
+          <div className="absolute top-10 -left-16 w-56 h-56 rounded-full blur-3xl" style={{ backgroundColor: tema.hex, opacity: 0.12 }} />
+        </div>
 
         <div className="max-w-2xl mx-auto px-4 pt-8">
           {/* Top bar */}

@@ -65,7 +65,7 @@ export function HorarioHojeDropdown({
       {open && (
         <div
           className={cn(
-            'animate-dropdown-in absolute left-1/2 -translate-x-1/2 top-full mt-2 w-60 rounded-xl shadow-lg z-30 py-1.5',
+            'animate-dropdown-in absolute left-1/2 -translate-x-1/2 top-full mt-2 w-60 rounded-xl shadow-lg z-[100] py-1.5',
             dark ? 'bg-[#1a1a1a] border border-white/10' : 'bg-white border border-gray-100'
           )}
         >

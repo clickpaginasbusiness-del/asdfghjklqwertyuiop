@@ -26,15 +26,6 @@ export interface ChecklistStatus {
 
 export const TOTAL_ITENS_CHECKLIST = 7
 
-/**
- * Checagem barata (sem consultas ao banco) pra descartar rápido o caso mais
- * comum — prestadora ainda no meio do onboarding, sem telefone/foto/link
- * compartilhado — sem precisar contar horários/serviços/agendamentos.
- */
-export function podeEstarCompleto(prestadora: Prestadora): boolean {
-  return Boolean(prestadora.telefone && prestadora.foto_url && prestadora.link_compartilhado_em)
-}
-
 export async function getChecklistStatus(supabase: SupabaseClient, prestadora: Prestadora): Promise<ChecklistStatus> {
   const [{ count: horarios }, { count: servicos }, { count: agendamentos }] = await Promise.all([
     supabase.from('horarios_funcionamento').select('id', { count: 'exact', head: true }).eq('prestadora_id', prestadora.id).eq('ativo', true),
@@ -61,11 +52,4 @@ export async function getChecklistStatus(supabase: SupabaseClient, prestadora: P
     percentual: Math.round((completos / TOTAL_ITENS_CHECKLIST) * 100),
     completo: completos === TOTAL_ITENS_CHECKLIST,
   }
-}
-
-/** Versão barata pra decidir só se a aba do checklist deve aparecer na sidebar — evita as 3 consultas de contagem quando os itens obrigatórios de perfil ainda nem foram preenchidos. */
-export async function checklistEstaCompleto(supabase: SupabaseClient, prestadora: Prestadora): Promise<boolean> {
-  if (!podeEstarCompleto(prestadora)) return false
-  const status = await getChecklistStatus(supabase, prestadora)
-  return status.completo
 }

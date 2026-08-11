@@ -17,6 +17,7 @@ import { InstallPwaModal } from '@/components/painel/InstallPwaModal'
 import { FeedbackModal } from '@/components/painel/FeedbackModal'
 import { cn } from '@/lib/utils'
 import type { Prestadora } from '@/lib/types'
+import type { ChecklistStatus } from '@/lib/checklist'
 
 // driver.js (o tour em si) só roda de fato pra quem ainda não completou o
 // onboarding (checagem via localStorage dentro do próprio componente) — mas
@@ -92,6 +93,28 @@ function TrialBanner({ dias }: { dias: number }) {
   )
 }
 
+/** Compacto de propósito — some sozinho quando o checklist chega em 100%. */
+function ChecklistBanner({ status }: { status: ChecklistStatus }) {
+  return (
+    <div className="px-4 lg:px-8 py-2 flex flex-wrap items-center gap-x-3 gap-y-1 bg-rose-50 border-b border-rose-100">
+      <span className="text-xs font-semibold text-rose-700 shrink-0">Complete seu perfil</span>
+      <div className="flex-1 min-w-16 max-w-xs h-1.5 rounded-full bg-rose-100 overflow-hidden">
+        <div
+          className="h-full rounded-full bg-rose-400 transition-all duration-500"
+          style={{ width: `${status.percentual}%` }}
+        />
+      </div>
+      <span className="text-xs font-bold text-rose-600 shrink-0">{status.percentual}%</span>
+      <Link
+        href="/painel/checklist"
+        className="shrink-0 text-xs font-semibold text-rose-500 hover:text-rose-600 underline underline-offset-2 whitespace-nowrap"
+      >
+        Ver mais
+      </Link>
+    </div>
+  )
+}
+
 const TOUR_NAV_KEYS: Record<string, string> = {
   '/painel/servicos': 'tour-servicos',
   '/painel/horarios': 'tour-horarios',
@@ -134,16 +157,16 @@ export default function PainelLayoutClient({
   children,
   prestadora,
   trialDiasRestantes,
-  checklistCompleto,
+  checklistStatus,
 }: {
   children: React.ReactNode
   prestadora: Prestadora
   trialDiasRestantes: number | null
-  checklistCompleto: boolean
+  checklistStatus: ChecklistStatus
 }) {
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const items = checklistCompleto ? navItems : [CHECKLIST_NAV_ITEM, ...navItems]
+  const items = checklistStatus.completo ? navItems : [CHECKLIST_NAV_ITEM, ...navItems]
 
   // Marca a prestadora como "online" pro indicador em tempo real do painel
   // admin — dispara uma vez quando o painel é aberto (o layout não remonta
@@ -270,6 +293,9 @@ export default function PainelLayoutClient({
             <NotificacoesSino prestadoraId={prestadora.id} />
           </div>
         </header>
+
+        {/* Checklist de ativação — em toda página do painel, some sozinho em 100% */}
+        {!checklistStatus.completo && <ChecklistBanner status={checklistStatus} />}
 
         {/* Downgrade banner */}
         {prestadora.downgrade_aviso && (
