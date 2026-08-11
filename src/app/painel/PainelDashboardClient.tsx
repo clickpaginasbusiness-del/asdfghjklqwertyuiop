@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -13,6 +14,7 @@ import { VoceBadge } from '@/components/painel/VoceBadge'
 import { ManualBadge } from '@/components/painel/ManualBadge'
 import { PlanoBadge } from '@/components/painel/PlanoBadge'
 import { AgendarButton } from '@/components/painel/AgendarButton'
+import type { ChecklistStatus } from '@/lib/checklist'
 import {
   format, isToday, startOfDay, endOfDay, parseISO, subDays, addDays,
 } from 'date-fns'
@@ -52,6 +54,7 @@ interface Props {
   msgCancelamento: string | null
   msgLembrete: string | null
   aniversariantes: Aniversariante[]
+  checklistStatus: ChecklistStatus
 }
 
 /* ── Constants ── */
@@ -173,6 +176,7 @@ export default function PainelDashboardClient({
   msgCancelamento,
   msgLembrete,
   aniversariantes,
+  checklistStatus,
 }: Props) {
   const todayStr = format(new Date(), 'yyyy-MM-dd')
 
@@ -399,6 +403,29 @@ export default function PainelDashboardClient({
 
   return (
     <div className="space-y-6" onClick={() => waOpenId && setWaOpenId(null)}>
+
+      {/* ── Checklist de ativação — some sozinho ao chegar em 100% ── */}
+      {!checklistStatus.completo && (
+        <Card>
+          <CardContent className="pt-6 flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <p className="font-semibold text-gray-900 text-sm">Complete seu perfil</p>
+                <span className="text-sm font-bold text-rose-500 shrink-0">{checklistStatus.percentual}%</span>
+              </div>
+              <div className="w-full h-2 rounded-full bg-gray-100 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-rose-400 transition-all duration-500"
+                  style={{ width: `${checklistStatus.percentual}%` }}
+                />
+              </div>
+            </div>
+            <Link href="/painel/checklist" className="shrink-0">
+              <Button size="sm" variant="outline" className="w-full sm:w-auto">Ver mais</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      )}
 
       {/* ── Header ── */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
