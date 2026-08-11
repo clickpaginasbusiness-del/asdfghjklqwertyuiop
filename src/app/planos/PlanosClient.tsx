@@ -20,15 +20,15 @@ const FEATURES: Record<Plano, Feature[]> = {
     { texto: 'Notificações por WhatsApp', incluido: true },
     { texto: '1 profissional cadastrada', incluido: true },
     { texto: 'Galeria de trabalhos (4 fotos)', incluido: true },
+    { texto: 'Cor personalizada da página', incluido: true },
+    { texto: 'Relatórios completos', incluido: true },
     { texto: 'Fotos do estabelecimento', incluido: false },
-    { texto: 'Relatórios completos', incluido: false },
   ],
   pro: [
     { texto: 'Tudo do Start', incluido: true },
     { texto: 'Até 3 profissionais', incluido: true },
     { texto: 'Galeria de trabalhos (8 fotos)', incluido: true },
     { texto: 'Fotos do estabelecimento (8 fotos)', incluido: true },
-    { texto: 'Relatórios completos', incluido: true },
     { texto: 'Personalização da página (cor)', incluido: true },
     { texto: 'Suporte prioritário', incluido: true },
     { texto: 'WhatsApp automático', incluido: true, emBreve: true },
@@ -39,7 +39,7 @@ const FEATURES: Record<Plano, Feature[]> = {
     { texto: 'Fotos ilimitadas (trabalhos + estabelecimento)', incluido: true },
     { texto: 'Presets de página', incluido: true },
     { texto: 'WhatsApp automático', incluido: true, emBreve: true },
-    { texto: 'Assinaturas de clientes', incluido: true, emBreve: true },
+    { texto: 'Assinaturas de clientes', incluido: true },
   ],
 }
 

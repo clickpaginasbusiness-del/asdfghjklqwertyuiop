@@ -44,12 +44,7 @@ export async function POST(request: NextRequest) {
   const admin = createAdminClient()
 
   if (estado === 'real') {
-    let update: Record<string, unknown> = {
-      // Sem trial_pro_fim: essa simulação nunca teve assinatura de verdade,
-      // então volta pro estado limpo — sem isso um trial_pro_fim simulado no
-      // passado dispararia a expiração do trial Pro no próximo carregamento.
-      trial_pro_fim: null,
-    }
+    let update: Record<string, unknown> = {}
 
     if (prestadora.mp_subscription_id && prestadora.mp_metodo_pagamento === 'cartao') {
       try {
@@ -87,26 +82,21 @@ export async function POST(request: NextRequest) {
       trial_fim: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       plano: 'start',
       assinatura_ativa: true,
-      trial_pro_fim: null,
     },
     start: {
       e_trial: false,
       plano: 'start',
       assinatura_ativa: true,
-      trial_pro_usado: false,
-      trial_pro_fim: null,
     },
     pro: {
       e_trial: false,
       plano: 'pro',
       assinatura_ativa: true,
-      trial_pro_fim: null,
     },
     studio: {
       e_trial: false,
       plano: 'studio',
       assinatura_ativa: true,
-      trial_pro_fim: null,
     },
   }
 

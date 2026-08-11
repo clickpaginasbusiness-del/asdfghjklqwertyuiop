@@ -3,12 +3,11 @@
 import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Calendar, CalendarDays, Scissors, ImageIcon,
-  Clock, Users, LogOut, Menu, X, ExternalLink, UserCircle, UserCircle2, CreditCard, AlertCircle, BarChart3, Headset, Sparkles, Settings, Wallet,
+  Clock, Users, LogOut, Menu, X, ExternalLink, UserCircle, UserCircle2, CreditCard, AlertCircle, BarChart3, Headset, Settings, Wallet,
 } from 'lucide-react'
-import toast from 'react-hot-toast'
 import { createClient } from '@/lib/supabase/client'
 import { NotificacoesSino } from '@/components/painel/NotificacoesSino'
 import { MissoesDrawer } from '@/components/painel/MissoesDrawer'
@@ -93,163 +92,6 @@ function TrialBanner({ dias }: { dias: number }) {
   )
 }
 
-const TRIAL_PRO_DISMISS_KEY = 'bb_trial_pro_banner_dismissed_until'
-
-function trialProBannerEstaDispensado() {
-  const until = localStorage.getItem(TRIAL_PRO_DISMISS_KEY)
-  return !!until && Date.now() < Number(until)
-}
-
-function dispensarTrialProBannerPor24h() {
-  localStorage.setItem(TRIAL_PRO_DISMISS_KEY, String(Date.now() + 24 * 60 * 60 * 1000))
-}
-
-function TrialProBanner() {
-  const router = useRouter()
-  // Começa fechado e só aparece via useEffect (depende de localStorage, que não
-  // existe no servidor) — evita mismatch de hidratação entre servidor e cliente.
-  const [visivel, setVisivel] = useState(false)
-  const [ativando, setAtivando] = useState(false)
-
-  useEffect(() => {
-    function checar() {
-      if (trialProBannerEstaDispensado()) return
-      setVisivel(true)
-    }
-    checar()
-  }, [])
-
-  async function ativar() {
-    setAtivando(true)
-    try {
-      const res = await fetch('/api/trial-pro', { method: 'POST' })
-      const data = await res.json()
-      if (!res.ok) {
-        toast.error(data.error ?? 'Erro ao ativar trial')
-        setAtivando(false)
-        return
-      }
-      toast.success('Pro ativado por 7 dias! ✨')
-      router.refresh()
-    } catch {
-      toast.error('Erro de conexão')
-      setAtivando(false)
-    }
-  }
-
-  function fechar() {
-    setVisivel(false)
-    dispensarTrialProBannerPor24h()
-  }
-
-  if (!visivel) return null
-
-  return (
-    <div className="px-4 lg:px-8 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 bg-gradient-to-r from-purple-500 via-fuchsia-500 to-rose-400 text-white">
-      <div className="flex items-center gap-2 min-w-0">
-        <Sparkles className="w-4 h-4 shrink-0" />
-        <p className="text-sm font-medium">✨ Experimente o Pro grátis por 7 dias!</p>
-      </div>
-      <div className="flex items-center gap-3 shrink-0 self-start sm:self-auto">
-        <button
-          onClick={ativar}
-          disabled={ativando}
-          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-fuchsia-600 hover:bg-white/90 transition-colors disabled:opacity-50"
-        >
-          {ativando ? 'Ativando...' : 'Ativar agora'}
-        </button>
-        <button onClick={fechar} aria-label="Fechar" className="text-white/70 hover:text-white transition-colors">
-          <X className="w-4 h-4" />
-        </button>
-      </div>
-    </div>
-  )
-}
-
-const TRIAL_PRO_ATIVO_DISMISS_KEY = 'bb_trial_pro_ativo_banner_dismissed_until'
-
-function trialProAtivoBannerEstaDispensado() {
-  const until = localStorage.getItem(TRIAL_PRO_ATIVO_DISMISS_KEY)
-  return !!until && Date.now() < Number(until)
-}
-
-function dispensarTrialProAtivoBannerPor24h() {
-  localStorage.setItem(TRIAL_PRO_ATIVO_DISMISS_KEY, String(Date.now() + 24 * 60 * 60 * 1000))
-}
-
-function TrialProAtivoBanner({ dias }: { dias: number }) {
-  // Mesmo motivo do TrialProBanner: começa fechado, só aparece via useEffect
-  // (localStorage não existe no servidor) — evita mismatch de hidratação.
-  const [visivel, setVisivel] = useState(false)
-
-  useEffect(() => {
-    function checar() {
-      if (trialProAtivoBannerEstaDispensado()) return
-      setVisivel(true)
-    }
-    checar()
-  }, [])
-
-  function fechar() {
-    setVisivel(false)
-    dispensarTrialProAtivoBannerPor24h()
-  }
-
-  if (!visivel) return null
-
-  const prazo = dias === 0 ? 'hoje' : dias === 1 ? 'amanhã' : `em ${dias} dias`
-
-  return (
-    <div className="px-4 lg:px-8 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 bg-gradient-to-r from-purple-500 via-fuchsia-500 to-rose-400 text-white">
-      <div className="flex items-center gap-2 min-w-0">
-        <Sparkles className="w-4 h-4 shrink-0" />
-        <p className="text-sm font-medium">
-          ✨ Seu trial Pro gratuito encerra {prazo} — Assine o Pro para continuar com todas as funcionalidades
-        </p>
-      </div>
-      <div className="flex items-center gap-3 shrink-0 self-start sm:self-auto">
-        <Link
-          href="/planos"
-          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-fuchsia-600 hover:bg-white/90 transition-colors"
-        >
-          Assinar Pro
-        </Link>
-        <button onClick={fechar} aria-label="Fechar" className="text-white/70 hover:text-white transition-colors">
-          <X className="w-4 h-4" />
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function TrialProExpiradoBanner() {
-  const [visivel, setVisivel] = useState(true)
-
-  if (!visivel) return null
-
-  return (
-    <div className="px-4 lg:px-8 py-3 flex items-start justify-between gap-4 bg-amber-50 border-b border-amber-200">
-      <div className="flex items-start gap-2 min-w-0">
-        <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-        <p className="text-sm text-amber-800">
-          Seu trial Pro expirou.{' '}
-          <Link href="/planos" className="font-semibold underline underline-offset-2 hover:no-underline">
-            Assine
-          </Link>{' '}
-          para continuar com todas as funcionalidades.
-        </p>
-      </div>
-      <button
-        onClick={() => setVisivel(false)}
-        aria-label="Dispensar aviso"
-        className="shrink-0 text-amber-400 hover:text-amber-600 transition-colors mt-0.5"
-      >
-        <X className="w-4 h-4" />
-      </button>
-    </div>
-  )
-}
-
 const TOUR_NAV_KEYS: Record<string, string> = {
   '/painel/servicos': 'tour-servicos',
   '/painel/horarios': 'tour-horarios',
@@ -290,14 +132,10 @@ export default function PainelLayoutClient({
   children,
   prestadora,
   trialDiasRestantes,
-  trialProAcabouDeExpirar,
-  trialProDiasRestantes,
 }: {
   children: React.ReactNode
   prestadora: Prestadora
   trialDiasRestantes: number | null
-  trialProAcabouDeExpirar: boolean
-  trialProDiasRestantes: number | null
 }) {
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -438,15 +276,6 @@ export default function PainelLayoutClient({
         {!prestadora.e_parceira && prestadora.e_trial && !prestadora.mp_metodo_pagamento && trialDiasRestantes !== null && (
           <TrialBanner dias={trialDiasRestantes} />
         )}
-
-        {/* Trial Pro acabou de expirar (checado no servidor ao carregar a página) */}
-        {trialProAcabouDeExpirar && <TrialProExpiradoBanner />}
-
-        {/* Trial Pro em andamento — dias restantes até encerrar */}
-        {trialProDiasRestantes !== null && <TrialProAtivoBanner dias={trialProDiasRestantes} />}
-
-        {/* Oferta de trial Pro grátis — só quem está no Start e nunca usou (parceira já tem Pro vitalício, oferta seria redundante) */}
-        {!prestadora.e_parceira && prestadora.plano === 'start' && !prestadora.trial_pro_usado && <TrialProBanner />}
 
         {/* Ativar notificações push */}
         <PushNotificationPrompt prestadoraId={prestadora.id} />

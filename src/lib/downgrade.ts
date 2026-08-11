@@ -53,6 +53,20 @@ export async function aplicarRestricoesDoPlano(
       .eq('id', prestadoraId)
   }
 
+  if (!PLANO_LIMITES[planoNovo].presets) {
+    // Preset de página: volta pro clássico. A renderização pública (ver
+    // presetEfetivo em src/app/n/[slug]/page.tsx) já ignora pagina_preset
+    // fora do Studio, então isso não é o que desbloqueava a página — mas sem
+    // resetar aqui o valor salvo continuava "landing"/"premium" pra sempre,
+    // e Personalizar Página mostrava esse preset como "atual" mesmo sem a
+    // prestadora poder usá-lo, além de reaparecer sozinho se ela assinasse o
+    // Studio de novo no futuro sem ter escolhido de propósito.
+    await supabase
+      .from('prestadoras')
+      .update({ pagina_preset: 'classico' })
+      .eq('id', prestadoraId)
+  }
+
   // Galeria de trabalhos/estabelecimento: as fotos e ids selecionados
   // continuam salvos — a página pública já respeita o limite de fotos do
   // plano atual ao exibir (slice), sem precisar apagar nada aqui.
