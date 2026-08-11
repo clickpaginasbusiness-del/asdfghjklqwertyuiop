@@ -5,7 +5,7 @@ import { criarEntradaCaixa, reembolsarEntradaCaixa } from '@/lib/caixa'
 import {
   criarOuRenovarAssinatura, creditarCaixaPlano, notificarRenovacaoPlano, parsePayerEmailPlanoCliente, aplicarUsoCredito,
 } from '@/lib/planosPrestadora'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, formatDateShort } from '@/lib/utils'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { WebhookSignatureValidator, InvalidWebhookSignatureError } from 'mercadopago'
 import { NextRequest, NextResponse } from 'next/server'
@@ -247,20 +247,29 @@ async function processarPagamentoAgendamento(
   agendamentoId: string,
   pago: Awaited<ReturnType<typeof mpPayment.get>>
 ): Promise<boolean> {
+  console.log('[mp webhook][payment] processarPagamentoAgendamento — buscando agendamento aguardando_pagamento', { agendamentoId })
+
   const { data: agendamento } = await supabaseAdmin
     .from('agendamentos')
-    .select('id, prestadora_id, plano_assinatura_id, servicos(nome, preco), clientes(nome)')
+    .select('id, data_hora, prestadora_id, plano_assinatura_id, servicos(nome, preco), clientes(nome), profissionais(nome)')
     .eq('id', agendamentoId)
     .eq('status', 'aguardando_pagamento')
     .maybeSingle()
 
-  if (!agendamento) return false
+  if (!agendamento) {
+    console.log('[mp webhook][payment] nenhum agendamento aguardando_pagamento com esse id — não é pagamento de agendamento (segue pro fluxo de plano/assinatura)', { agendamentoId })
+    return false
+  }
 
   const servico = agendamento.servicos as unknown as { nome: string; preco: number } | null
   const cliente = agendamento.clientes as unknown as { nome: string } | null
+  const profissional = agendamento.profissionais as unknown as { nome: string } | null
   const valorBruto = pago.transaction_amount ?? 0
 
-  await supabaseAdmin.from('agendamentos').update({ status: 'confirmado' }).eq('id', agendamento.id)
+  const { error: erroUpdateStatus } = await supabaseAdmin.from('agendamentos').update({ status: 'confirmado' }).eq('id', agendamento.id)
+  console.log('[mp webhook][payment] update de status do agendamento para confirmado', {
+    agendamentoId: agendamento.id, sucesso: !erroUpdateStatus, erro: erroUpdateStatus ?? null,
+  })
 
   // Reservado com crédito de plano — debita agora que o pagamento (sinal ou
   // valor total, já com desconto do plano aplicado) foi de fato confirmado.
@@ -292,18 +301,78 @@ async function processarPagamentoAgendamento(
   })
 
   const label = tipo === 'sinal' ? 'o sinal' : 'o pagamento'
-  await supabaseAdmin.from('notificacoes').insert({
+  const { error: erroNotifPagamento } = await supabaseAdmin.from('notificacoes').insert({
     prestadora_id: agendamento.prestadora_id,
     tipo: 'pagamento',
     mensagem: `${cliente?.nome ?? 'Cliente'} pagou ${label} de ${formatCurrency(valorBruto)} e confirmou o agendamento${servico ? ` de ${servico.nome}` : ''}.`,
   })
+  console.log('[mp webhook][payment] notificação in-app de pagamento inserida', {
+    agendamentoId: agendamento.id, sucesso: !erroNotifPagamento, erro: erroNotifPagamento ?? null,
+  })
 
-  console.log('[mp webhook][payment] agendamento confirmado, disparando push de pagamento', {
+  // Mesma notificação "Novo agendamento" que uma reserva grátis dispara em
+  // /api/agendamentos/criar — uma reserva paga também É uma reserva nova,
+  // então a prestadora recebe as duas (uma avisando do agendamento em si,
+  // outra do pagamento), igual já acontecia pro fluxo sem pagamento online.
+  const profNome = profissional?.nome ? ` com ${profissional.nome}` : ''
+  const { error: erroNotifAgendamento } = await supabaseAdmin.from('notificacoes').insert({
+    prestadora_id: agendamento.prestadora_id,
+    tipo: 'agendamento',
+    mensagem: `Nova cliente! ${cliente?.nome ?? 'Cliente'} agendou ${servico?.nome ?? 'um serviço'}${profNome} para ${formatDateShort(agendamento.data_hora)}`,
+  })
+  console.log('[mp webhook][payment] notificação in-app de novo agendamento inserida', {
+    agendamentoId: agendamento.id, sucesso: !erroNotifAgendamento, erro: erroNotifAgendamento ?? null,
+  })
+
+  console.log('[mp webhook][payment] agendamento confirmado, disparando push de novo agendamento + push de pagamento', {
     agendamentoId: agendamento.id, tipo, valorBruto,
   })
+  await enviarPushNovoAgendamento(agendamento.id)
   await enviarPushPagamento(agendamento.id, valorBruto)
 
   return true
+}
+
+/**
+ * Notificação push de "novo agendamento" — mesmo payload que
+ * /api/agendamentos/criar dispara pra reserva grátis (sem tipo definido, cai
+ * no branch default de /api/push/send que já busca serviço/cliente/
+ * profissional/status sozinho e monta "Novo agendamento!"). Best-effort,
+ * mesmo raciocínio de enviarPushPagamento — roda ANTES da de pagamento pra
+ * a prestadora ver as duas na ordem natural (agendou → pagou).
+ */
+async function enviarPushNovoAgendamento(agendamentoId: string): Promise<void> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  if (!appUrl) {
+    console.error('[mp webhook] enviarPushNovoAgendamento abortado — NEXT_PUBLIC_APP_URL não configurada', { agendamentoId })
+    return
+  }
+  if (!process.env.INTERNAL_API_SECRET) {
+    console.error('[mp webhook] enviarPushNovoAgendamento abortado — INTERNAL_API_SECRET não configurada', { agendamentoId })
+    return
+  }
+
+  const url = new URL('/api/push/send', appUrl)
+  console.log('[mp webhook] enviarPushNovoAgendamento chamando push/send', { agendamentoId, url: url.toString() })
+
+  try {
+    const pushRes = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-internal-secret': process.env.INTERNAL_API_SECRET ?? '',
+      },
+      body: JSON.stringify({ agendamentoId }),
+    })
+    const pushBody = await pushRes.json().catch(() => ({}))
+    if (!pushRes.ok) {
+      console.error('[mp webhook] push/send (novo agendamento) falhou — status:', pushRes.status, pushBody)
+    } else {
+      console.log('[mp webhook] push/send (novo agendamento) respondeu ok', { agendamentoId, status: pushRes.status, body: pushBody })
+    }
+  } catch (err) {
+    console.error('[mp webhook] erro de rede ao chamar push/send (novo agendamento):', err)
+  }
 }
 
 /**
