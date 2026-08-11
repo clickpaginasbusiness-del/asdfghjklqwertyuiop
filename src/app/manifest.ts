@@ -6,6 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: 'BelleBook',
     description: 'A plataforma mais elegante para profissionais de beleza gerenciarem seus agendamentos',
     start_url: '/painel',
+    scope: '/',
     display: 'standalone',
     orientation: 'portrait',
     background_color: '#fff7fa',
