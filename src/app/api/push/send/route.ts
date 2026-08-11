@@ -129,6 +129,7 @@ export async function POST(request: NextRequest) {
         url: '/painel/agendamentos',
         tipo: 'pagamento',
       })
+      console.log('[push/send] payload de pagamento montado', { agendamentoId, souSinal, valorPago, payload })
     } else {
       const profNome = profissional?.nome ? ` com ${profissional.nome}` : ''
       const dataFormatada = formatDateShort(agendamento.data_hora)

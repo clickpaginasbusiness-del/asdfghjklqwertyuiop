@@ -298,6 +298,9 @@ async function processarPagamentoAgendamento(
     mensagem: `${cliente?.nome ?? 'Cliente'} pagou ${label} de ${formatCurrency(valorBruto)} e confirmou o agendamento${servico ? ` de ${servico.nome}` : ''}.`,
   })
 
+  console.log('[mp webhook][payment] agendamento confirmado, disparando push de pagamento', {
+    agendamentoId: agendamento.id, tipo, valorBruto,
+  })
   await enviarPushPagamento(agendamento.id, valorBruto)
 
   return true
@@ -310,10 +313,20 @@ async function processarPagamentoAgendamento(
  */
 async function enviarPushPagamento(agendamentoId: string, valorPago: number): Promise<void> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
-  if (!appUrl) return
+  if (!appUrl) {
+    console.error('[mp webhook] enviarPushPagamento abortado — NEXT_PUBLIC_APP_URL não configurada', { agendamentoId })
+    return
+  }
+  if (!process.env.INTERNAL_API_SECRET) {
+    console.error('[mp webhook] enviarPushPagamento abortado — INTERNAL_API_SECRET não configurada', { agendamentoId })
+    return
+  }
+
+  const url = new URL('/api/push/send', appUrl)
+  console.log('[mp webhook] enviarPushPagamento chamando push/send', { agendamentoId, valorPago, url: url.toString() })
 
   try {
-    const pushRes = await fetch(new URL('/api/push/send', appUrl), {
+    const pushRes = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -321,9 +334,11 @@ async function enviarPushPagamento(agendamentoId: string, valorPago: number): Pr
       },
       body: JSON.stringify({ agendamentoId, tipo: 'pagamento', valorPago }),
     })
+    const pushBody = await pushRes.json().catch(() => ({}))
     if (!pushRes.ok) {
-      const pushErr = await pushRes.json().catch(() => ({}))
-      console.error('[mp webhook] push/send (pagamento) falhou — status:', pushRes.status, pushErr)
+      console.error('[mp webhook] push/send (pagamento) falhou — status:', pushRes.status, pushBody)
+    } else {
+      console.log('[mp webhook] push/send (pagamento) respondeu ok', { agendamentoId, status: pushRes.status, body: pushBody })
     }
   } catch (err) {
     console.error('[mp webhook] erro de rede ao chamar push/send (pagamento):', err)

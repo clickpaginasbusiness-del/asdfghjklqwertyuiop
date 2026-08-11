@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { CheckCircle2, Loader2, Clock, CalendarPlus, ListChecks } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
 
@@ -25,7 +24,8 @@ function googleCalendarUrl(opts: { titulo: string; detalhes: string; dataHoraISO
 }
 
 export default function SucessoClient({
-  status,
+  agendamentoId,
+  status: statusInicial,
   dataHora,
   duracaoMinutos,
   servicoNome,
@@ -33,6 +33,7 @@ export default function SucessoClient({
   prestadoraNome,
   prestadoraSlug,
 }: {
+  agendamentoId: string
   status: Status
   dataHora: string
   duracaoMinutos: number
@@ -41,8 +42,8 @@ export default function SucessoClient({
   prestadoraNome: string
   prestadoraSlug: string
 }) {
-  const router = useRouter()
   const tentativasRef = useRef(0)
+  const [status, setStatus] = useState(statusInicial)
   const [poolExpirado, setPoolExpirado] = useState(false)
 
   const confirmado = status === 'confirmado' || status === 'concluido'
@@ -51,19 +52,36 @@ export default function SucessoClient({
   // Chegou aqui pelo auto_return do MP (pagamento aprovado), mas a confirmação
   // do agendamento em si depende do webhook processar de forma assíncrona —
   // então espera (com teto de tentativas) até o status virar 'confirmado'.
+  // Faz fetch direto em /api/agendamentos/status (em vez de router.refresh()
+  // + re-render do Server Component) pra não depender de nenhuma camada de
+  // cache/RSC do Next — o resultado fica visível até no Network do devtools,
+  // o que facilita muito diagnosticar se o polling em si está rodando.
   useEffect(() => {
     if (!aindaProcessando) return
-    const id = setInterval(() => {
+    let cancelado = false
+
+    const id = setInterval(async () => {
       tentativasRef.current += 1
       if (tentativasRef.current > MAX_TENTATIVAS_POLL) {
         setPoolExpirado(true)
         clearInterval(id)
         return
       }
-      router.refresh()
+      try {
+        const res = await fetch(`/api/agendamentos/status?agendamentoId=${agendamentoId}`, { cache: 'no-store' })
+        if (!res.ok || cancelado) return
+        const data = await res.json() as { status?: Status }
+        if (data.status && data.status !== 'aguardando_pagamento') {
+          setStatus(data.status)
+          clearInterval(id)
+        }
+      } catch {
+        // Falha de rede pontual — só tenta de novo no próximo tick, até o teto de tentativas.
+      }
     }, INTERVALO_POLL_MS)
-    return () => clearInterval(id)
-  }, [aindaProcessando, router])
+
+    return () => { cancelado = true; clearInterval(id) }
+  }, [aindaProcessando, agendamentoId])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-pink-50 to-rose-50">

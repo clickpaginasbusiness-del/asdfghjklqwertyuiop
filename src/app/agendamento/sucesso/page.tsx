@@ -35,6 +35,7 @@ export default async function AgendamentoSucessoPage({
 
   return (
     <SucessoClient
+      agendamentoId={agendamentoId}
       status={agendamento.status}
       dataHora={agendamento.data_hora}
       duracaoMinutos={servico.duracao_minutos}

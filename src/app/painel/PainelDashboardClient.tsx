@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
-import { formatCurrency, formatDateShort, buildWhatsappUrl } from '@/lib/utils'
+import { formatCurrency, formatDateShort, formatDayMonth, formatTime, buildWhatsappUrl } from '@/lib/utils'
 import { Calendar, DollarSign, Clock, MessageCircle, CheckCheck, Cake } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { VoceBadge } from '@/components/painel/VoceBadge'
@@ -76,15 +76,21 @@ function AgendamentoItem({
   msgConfirmacao: string | null; msgCancelamento: string | null; msgLembrete: string | null
 }) {
   const passou = new Date(a.data_hora) < new Date()
+  // formatDayMonth/formatTime fixam o fuso em America/Sao_Paulo (ver lib/utils.ts)
+  // — usar date-fns `format()` direto aqui gerava mismatch de hidratação: o
+  // servidor (Vercel/Node roda em UTC) renderizava "12:00" pra um agendamento
+  // às 09:00 SP, e o valor ficava errado na tela até o componente re-renderizar
+  // por outro motivo (o suppressHydrationWarning que existia aqui impedia o
+  // React de corrigir sozinho no primeiro hidrate).
   const timeLabel = showDate
-    ? format(new Date(a.data_hora), 'dd/MM HH:mm')
-    : format(new Date(a.data_hora), 'HH:mm')
+    ? `${formatDayMonth(a.data_hora)} ${formatTime(a.data_hora)}`
+    : formatTime(a.data_hora)
   const amanha = startOfDay(addDays(new Date(), 1))
 
   return (
     <div className="flex flex-col sm:flex-row gap-3 p-3 hover:bg-gray-50/80 rounded-xl transition-colors">
       <div className="flex items-start gap-3 min-w-0">
-        <div className="shrink-0 bg-rose-100 text-rose-700 text-xs font-bold px-2.5 py-1.5 rounded-lg whitespace-nowrap" suppressHydrationWarning>
+        <div className="shrink-0 bg-rose-100 text-rose-700 text-xs font-bold px-2.5 py-1.5 rounded-lg whitespace-nowrap">
           {timeLabel}
         </div>
 
