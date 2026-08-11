@@ -73,8 +73,9 @@ export function aplicarDesconto(valor: number, cupom: { percentual: number | nul
   return Math.max(0, Math.round(final * 100) / 100)
 }
 
-/** Soma os descontos de missões pendentes (não expirados) de uma prestadora,
- * capado em 100% — mesmo critério que o antigo fluxo de coupon do Stripe. */
+/** Soma os descontos pendentes (não expirados, ex.: dias grátis de indicação/admin
+ * — ver darDiasGratis) de uma prestadora, capado em 100% — mesmo critério que
+ * o antigo fluxo de coupon do Stripe. */
 export async function somarDescontosMissoesPendentes(
   admin: SupabaseClient,
   prestadoraId: string
@@ -144,11 +145,11 @@ export interface ProximaCobranca {
 
 /**
  * Calcula o valor da próxima cobrança de uma prestadora já assinante,
- * combinando desconto de missão pendente (sempre 1 ciclo, consumido na hora)
- * com desconto de cupom ainda válido (por N cobranças, ver
- * buscarCupomAplicavel). Usado tanto pro cron gerar a cobrança avulsa
- * Pix/débito quanto pra ajustar o valor da próxima cobrança automática no
- * cartão — quem chama decide o que fazer com `missaoDescontoIds`/`cupomUsoId`
+ * combinando desconto de dias grátis pendente (sempre 1 ciclo, consumido na
+ * hora — ver darDiasGratis) com desconto de cupom ainda válido (por N
+ * cobranças, ver buscarCupomAplicavel). Usado tanto pro cron gerar a cobrança
+ * avulsa Pix/débito quanto pra ajustar o valor da próxima cobrança automática
+ * no cartão — quem chama decide o que fazer com `missaoDescontoIds`/`cupomUsoId`
  * depois (marcar aplicado / incrementar contagem).
  */
 export async function calcularProximaCobranca(
@@ -186,7 +187,7 @@ const MS_DIA = 24 * 60 * 60 * 1000
  * expõe `next_payment_date` no update de um preapproval (só
  * `transaction_amount`/`status`/etc — confirmado nos tipos do SDK), então
  * pra quem já paga por cartão o "dias grátis" vira um desconto proporcional
- * na próxima cobrança, aplicado pelo mesmo motor dos descontos de missão
+ * na próxima cobrança, registrado em missoes_descontos e aplicado pelo cron
  * (ver /api/cron/mp-renovacoes). Pra quem paga por Pix/débito mensal (onde
  * nós mesmos geramos cada cobrança) dá pra simplesmente adiar
  * `mp_periodo_fim` direto, sem limitação nenhuma do MP.

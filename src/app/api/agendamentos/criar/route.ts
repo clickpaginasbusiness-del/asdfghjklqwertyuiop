@@ -144,8 +144,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Cliente testando o próprio sistema (mesmo telefone da prestadora) — não
-  // bloqueia o agendamento, só sinaliza pra exibir "(Você)" no painel e,
-  // futuramente, excluir esse agendamento de missões/objetivos.
+  // bloqueia o agendamento, só sinaliza pra exibir "(Você)" no painel.
   if (mesmoTelefone(ag.clientes?.telefone, prestadora?.telefone)) {
     await supabaseAdmin.from('agendamentos').update({ cliente_e_prestadora: true }).eq('id', ag.id)
     ag.cliente_e_prestadora = true

@@ -1,0 +1,19 @@
+-- Remoção do sistema de missões/gamificação (código já removido do app).
+--
+-- As tabelas abaixo ficaram órfãs (nenhum código as lê/escreve mais) e podem
+-- ser DROPadas manualmente mais adiante, quando não houver mais necessidade
+-- de consultar o histórico:
+--   - missoes            (catálogo de missões)
+--   - missoes_progresso  (progresso mensal por prestadora)
+--   - missoes_eventos    (eventos de lembrete/confirmação usados pra contar progresso)
+--
+-- IMPORTANTE: missoes_descontos NÃO é órfã e não deve ser removida — ela
+-- continua em uso ativo como a fila de descontos aplicados na próxima fatura
+-- por darDiasGratis() (src/lib/mercadopago.ts), usada pelas recompensas de
+-- indicação (estágios 1 e 2, ver src/lib/indicacao.ts e
+-- src/app/api/mp/webhook/route.ts) e pelas ferramentas admin "dar mês
+-- grátis"/"dar mês Pro" (src/app/api/admin/dar-mes-gratis,
+-- src/app/api/admin/dar-mes-pro). O cron /api/cron/mp-renovacoes continua
+-- lendo e marcando linhas dessa tabela como aplicadas normalmente.
+--
+-- Nenhum DROP é executado por esta migration — é só documentação.

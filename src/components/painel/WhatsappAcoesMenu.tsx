@@ -2,7 +2,6 @@
 
 import { buildWhatsappUrl } from '@/lib/utils'
 import { renderTemplate, MSG_CONFIRMACAO_DEFAULT, MSG_CANCELAMENTO_DEFAULT, MSG_LEMBRETE_DEFAULT } from '@/lib/whatsappTemplates'
-import { logMissaoEvento } from '@/lib/missoesClient'
 
 /** Formato mínimo que renderTemplate precisa — mesmo raciocínio estrutural
  * de agendamentoAcoes.ts, pra servir tanto Agendamento (lista) quanto
@@ -43,7 +42,7 @@ export function WhatsappAcoesMenu({
         href={buildWhatsappUrl(telefone, renderTemplate(msgConfirmacao || MSG_CONFIRMACAO_DEFAULT, a, prestadoraNome))}
         target="_blank"
         rel="noopener noreferrer"
-        onClick={() => { onClose(); logMissaoEvento('confirmacao', a.cliente_id, a.id) }}
+        onClick={onClose}
         className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-green-50 rounded-lg transition-colors"
       >
         ✅ Enviar confirmação
@@ -62,7 +61,7 @@ export function WhatsappAcoesMenu({
           href={buildWhatsappUrl(telefone, renderTemplate(msgLembrete || MSG_LEMBRETE_DEFAULT, a, prestadoraNome))}
           target="_blank"
           rel="noopener noreferrer"
-          onClick={() => { onClose(); logMissaoEvento('lembrete', a.cliente_id) }}
+          onClick={onClose}
           className="flex items-center gap-2 px-3 py-2 text-xs text-gray-700 hover:bg-amber-50 rounded-lg transition-colors"
         >
           🔔 Enviar lembrete

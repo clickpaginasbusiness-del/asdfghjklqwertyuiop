@@ -7,8 +7,7 @@ import {
   LayoutDashboard, Calendar, CalendarDays, Scissors, ImageIcon,
   Clock, Users, LogOut, Menu, X, ExternalLink, UserCircle, UserCircle2, CreditCard, BarChart3, Headset, Bell, Sparkles, Wallet,
 } from 'lucide-react'
-import { demoToast, getDemoMissoes } from '@/lib/demoData'
-import { MissoesDrawerDemo } from '@/components/painel/MissoesDrawerDemo'
+import { demoToast } from '@/lib/demoData'
 import { cn } from '@/lib/utils'
 
 const BANNER_HEIGHT = 'h-11'
@@ -51,7 +50,6 @@ export default function PainelDemoLayoutClient({
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [notifBannerAberto, setNotifBannerAberto] = useState(true)
-  const { missoes, descontosPendentes } = getDemoMissoes(new Date())
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -154,7 +152,6 @@ export default function PainelDemoLayoutClient({
             </div>
 
             <div className="flex items-center gap-1">
-              <MissoesDrawerDemo missoes={missoes} descontosPendentes={descontosPendentes} />
               <button
                 onClick={demoToast}
                 aria-label="Notificações"

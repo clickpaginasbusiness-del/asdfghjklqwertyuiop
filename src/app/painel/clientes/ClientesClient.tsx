@@ -12,7 +12,6 @@ import { Users, MessageCircle, ChevronDown, Phone, Bell, Star, Pencil, Trash2, S
 import { cn } from '@/lib/utils'
 import { VoceBadge } from '@/components/painel/VoceBadge'
 import { ManualBadge } from '@/components/painel/ManualBadge'
-import { logMissaoEvento } from '@/lib/missoesClient'
 import toast from 'react-hot-toast'
 
 type AgItem = {
@@ -230,7 +229,6 @@ function ClienteCard({
                   href={buildWhatsappUrl(cliente.telefone, msgLembrete)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  onClick={() => logMissaoEvento('lembrete', cliente.id)}
                   className="flex items-center gap-1 bg-rose-50 hover:bg-rose-100 border border-rose-100 text-rose-600 rounded-full px-2.5 py-1 text-xs font-medium transition-colors"
                 >
                   <Bell className="w-3 h-3" />

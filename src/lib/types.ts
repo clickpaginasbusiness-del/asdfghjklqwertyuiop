@@ -273,48 +273,7 @@ export type Notificacao = {
   prestadora_id: string
   mensagem: string
   lida: boolean
-  tipo: 'agendamento' | 'cancelamento' | 'indicacao' | 'missao' | 'pagamento'
-  created_at: string
-}
-
-export type Missao = {
-  id: string
-  titulo: string
-  descricao: string
-  icone: string
-  desconto_percentual: number
-  tipo: string
-  meta_base: number
-  disponivel_basico: boolean
-  disponivel_pro: boolean
-  ativo: boolean
-  created_at: string
-}
-
-export type MissaoProgresso = {
-  id: string
-  prestadora_id: string
-  missao_id: string
-  mes: number
-  ano: number
-  meta_adaptada: number
-  progresso: number
-  concluida: boolean
-  concluida_em: string | null
-  desconto_aplicado: boolean
-  e_bonus: boolean
-  created_at: string
-  missoes?: Missao
-}
-
-export type MissaoDesconto = {
-  id: string
-  prestadora_id: string
-  percentual: number
-  origem: string
-  aplicado: boolean
-  aplicado_em: string | null
-  expira_em: string | null
+  tipo: 'agendamento' | 'cancelamento' | 'indicacao' | 'pagamento'
   created_at: string
 }
 

@@ -1,6 +1,5 @@
 import { preApproval, mpPayment, darDiasGratis, type Plano } from '@/lib/mercadopago'
 import { aplicarRestricoesDoPlano } from '@/lib/downgrade'
-import { concluirMissaoIndicacaoBonus } from '@/lib/missoes'
 import { criarComissaoSeAplicavel, cancelarComissaoPendente } from '@/lib/parceiras'
 import { criarEntradaCaixa, reembolsarEntradaCaixa } from '@/lib/caixa'
 import {
@@ -307,7 +306,7 @@ async function processarPagamentoAgendamento(
  * passar pelo nosso /api/mp/checkout — não tem external_reference nosso pra
  * correlacionar via mp_checkouts). plano/assinatura_ativa/mp_periodo_fim já
  * são mantidos por processarPreapproval a cada ping de status; o valor da
- * cobrança (com ou sem desconto de missão/cupom) já é ajustado com
+ * cobrança (com ou sem desconto de dias grátis/cupom) já é ajustado com
  * antecedência pelo cron, na véspera de cada ciclo (ver
  * /api/cron/mp-renovacoes — só ele sabe quando reverter pro preço cheio,
  * então não há nada reativo a fazer aqui). Só falta gerar a comissão de
@@ -614,15 +613,6 @@ async function processarRecompensaIndicacaoEComissao(
       .eq('id', prestadoraId)
 
     await darDiasGratis(supabaseAdmin, prestadoraAntes.indicado_por, 30, 'indicacao_estagio2')
-
-    // Missão "Indique uma amiga": a recompensa (30 dias grátis / desconto)
-    // já foi concedida acima, isso só marca a missão como concluída no
-    // drawer, se ela estiver ativa no mês corrente do referrer.
-    try {
-      await concluirMissaoIndicacaoBonus(supabaseAdmin, prestadoraAntes.indicado_por)
-    } catch (err) {
-      console.error('[mp webhook] erro ao concluir missão de indicação', prestadoraAntes.indicado_por, err)
-    }
   } catch (err) {
     console.error('[mp webhook] erro ao processar recompensa de indicação', prestadoraId, err)
   }

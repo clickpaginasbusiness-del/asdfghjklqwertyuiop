@@ -10,7 +10,6 @@ import {
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { NotificacoesSino } from '@/components/painel/NotificacoesSino'
-import { MissoesDrawer } from '@/components/painel/MissoesDrawer'
 import { WelcomeModal } from '@/components/painel/WelcomeModal'
 import { PushNotificationPrompt } from '@/components/painel/PushNotificationPrompt'
 import { InstallPwaModal } from '@/components/painel/InstallPwaModal'
@@ -262,7 +261,6 @@ export default function PainelLayoutClient({
           </div>
 
           <div className="flex items-center gap-1">
-            <MissoesDrawer />
             <NotificacoesSino prestadoraId={prestadora.id} />
           </div>
         </header>

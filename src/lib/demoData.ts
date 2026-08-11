@@ -2,7 +2,7 @@ import { addDays, setHours, setMinutes, setSeconds, startOfDay } from 'date-fns'
 import toast from 'react-hot-toast'
 import type {
   Prestadora, Profissional, Cliente, Servico, Agendamento, HorarioFuncionamento, Avaliacao,
-  CaixaPrestadora, CaixaSaque, Missao, MissaoProgresso, MissaoDesconto,
+  CaixaPrestadora, CaixaSaque,
 } from '@/lib/types'
 import type { LancamentoFinanceiro } from '@/app/painel/relatorios/RelatoriosClient'
 
@@ -330,44 +330,4 @@ export function getDemoCaixaResumo(agora: Date): {
   const pendente = historico.filter((h) => h.status === 'pendente').reduce((s, h) => s + h.valor, 0)
   const totalRecebidoHistorico = historico.filter((h) => h.status !== 'reembolsado').reduce((s, h) => s + h.valor, 0)
   return { disponivelParaSaque, pendente, totalRecebidoHistorico, historico, historicoSaques }
-}
-
-// ── Missões (drawer de objetivos do mês) ───────────────────────────────────
-export function getDemoMissoes(agora: Date): { missoes: (MissaoProgresso & { missoes: Missao })[]; descontosPendentes: MissaoDesconto[] } {
-  const base: Omit<Missao, 'id' | 'titulo' | 'descricao' | 'icone' | 'tipo' | 'meta_base'> = {
-    desconto_percentual: 10, disponivel_basico: true, disponivel_pro: true, ativo: true, created_at: '2025-01-01T00:00:00Z',
-  }
-  const missaoAgendamentos: Missao = { id: 'demo-missao-agendamentos', titulo: 'Conclua atendimentos', descricao: 'Conclua X atendimentos este mês', icone: 'CheckCircle', tipo: 'agendamentos', meta_base: 80, ...base }
-  const missaoAvaliacoes: Missao = { id: 'demo-missao-avaliacoes', titulo: 'Receba avaliações', descricao: 'Receba X avaliações este mês', icone: 'Star', tipo: 'avaliacoes', meta_base: 5, ...base }
-  const missaoClientesNovos: Missao = { id: 'demo-missao-clientes-novos', titulo: 'Atraia clientes novos', descricao: 'Atenda X clientes novos este mês', icone: 'UserPlus', tipo: 'clientes_novos', meta_base: 5, ...base }
-
-  const missoes: (MissaoProgresso & { missoes: Missao })[] = [
-    {
-      id: 'demo-missao-progresso-1', prestadora_id: 'demo-prestadora', missao_id: missaoAgendamentos.id,
-      mes: 8, ano: 2026, meta_adaptada: 80, progresso: 80, concluida: true,
-      concluida_em: dataRelativa(agora, -2, 18, 0), desconto_aplicado: true, e_bonus: false,
-      created_at: dataRelativa(agora, -25, 9, 0), missoes: missaoAgendamentos,
-    },
-    {
-      id: 'demo-missao-progresso-2', prestadora_id: 'demo-prestadora', missao_id: missaoAvaliacoes.id,
-      mes: 8, ano: 2026, meta_adaptada: 7, progresso: 5, concluida: false,
-      concluida_em: null, desconto_aplicado: false, e_bonus: false,
-      created_at: dataRelativa(agora, -25, 9, 0), missoes: missaoAvaliacoes,
-    },
-    {
-      id: 'demo-missao-progresso-3', prestadora_id: 'demo-prestadora', missao_id: missaoClientesNovos.id,
-      mes: 8, ano: 2026, meta_adaptada: 5, progresso: 3, concluida: false,
-      concluida_em: null, desconto_aplicado: false, e_bonus: false,
-      created_at: dataRelativa(agora, -25, 9, 0), missoes: missaoClientesNovos,
-    },
-  ]
-
-  const descontosPendentes: MissaoDesconto[] = [
-    {
-      id: 'demo-desconto-1', prestadora_id: 'demo-prestadora', percentual: 10, origem: 'Conclua atendimentos',
-      aplicado: false, aplicado_em: null, expira_em: dataRelativa(agora, 5, 0, 0), created_at: dataRelativa(agora, -2, 18, 0),
-    },
-  ]
-
-  return { missoes, descontosPendentes }
 }
