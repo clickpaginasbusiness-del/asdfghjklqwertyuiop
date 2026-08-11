@@ -22,10 +22,13 @@ type Retro = { mes: number; ano: number; dados: DadosRetrospectiva }
  * (mesmo padrão do WelcomeModal/checklist).
  */
 export function RetrospectivaAutoModal({
-  prestadoraId, mostrarProfissionalDestaque,
+  prestadoraId, mostrarProfissionalDestaque, prestadoraNome, fotoUrl, tema,
 }: {
   prestadoraId: string
   mostrarProfissionalDestaque: boolean
+  prestadoraNome: string
+  fotoUrl: string | null
+  tema: { hex: string; hexDark: string }
 }) {
   const [retro, setRetro] = useState<Retro | null>(null)
   const cardRef = useRef<HTMLDivElement>(null)
@@ -73,6 +76,9 @@ export function RetrospectivaAutoModal({
             ano={retro.ano}
             dados={retro.dados}
             mostrarProfissionalDestaque={mostrarProfissionalDestaque}
+            prestadoraNome={prestadoraNome}
+            fotoUrl={fotoUrl}
+            tema={tema}
           />
         </div>
 

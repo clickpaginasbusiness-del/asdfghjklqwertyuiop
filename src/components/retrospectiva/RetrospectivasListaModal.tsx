@@ -15,12 +15,15 @@ type Item = { id: string; mes: number; ano: number; dados: DadosRetrospectiva }
  * mesmo modal alterna entre a lista e o card selecionado, em vez de empilhar
  * um segundo modal por cima. */
 export function RetrospectivasListaModal({
-  open, onClose, prestadoraId, mostrarProfissionalDestaque,
+  open, onClose, prestadoraId, mostrarProfissionalDestaque, prestadoraNome, fotoUrl, tema,
 }: {
   open: boolean
   onClose: () => void
   prestadoraId: string
   mostrarProfissionalDestaque: boolean
+  prestadoraNome: string
+  fotoUrl: string | null
+  tema: { hex: string; hexDark: string }
 }) {
   const [carregando, setCarregando] = useState(true)
   const [lista, setLista] = useState<Item[]>([])
@@ -71,6 +74,9 @@ export function RetrospectivasListaModal({
               ano={selecionada.ano}
               dados={selecionada.dados}
               mostrarProfissionalDestaque={mostrarProfissionalDestaque}
+              prestadoraNome={prestadoraNome}
+              fotoUrl={fotoUrl}
+              tema={tema}
             />
           </div>
           <RetrospectivaAcoes cardRef={cardRef} mes={selecionada.mes} ano={selecionada.ano} />

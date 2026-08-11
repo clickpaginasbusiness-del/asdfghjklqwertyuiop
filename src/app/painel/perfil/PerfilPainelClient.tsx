@@ -21,6 +21,7 @@ import { CodigoIndicacaoCard } from '@/components/painel/CodigoIndicacaoCard'
 import { RetrospectivasListaModal } from '@/components/retrospectiva/RetrospectivasListaModal'
 import { ADMIN_EMAIL } from '@/lib/admin'
 import { planoEfetivo, ehStudio } from '@/lib/plano'
+import { getTema } from '@/lib/theme'
 import { validarArquivo } from '@/lib/uploadValidation'
 import toast from 'react-hot-toast'
 
@@ -557,6 +558,9 @@ export default function PerfilPainelClient({
         onClose={() => setRetrospectivasOpen(false)}
         prestadoraId={prestadora.id}
         mostrarProfissionalDestaque={ehStudio(planoAtual)}
+        prestadoraNome={prestadora.nome}
+        fotoUrl={prestadora.foto_url}
+        tema={getTema(prestadora.cor_tema)}
       />
     </div>
   )

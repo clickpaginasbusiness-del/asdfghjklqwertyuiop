@@ -18,6 +18,7 @@ import { FeedbackModal } from '@/components/painel/FeedbackModal'
 import { RetrospectivaAutoModal } from '@/components/retrospectiva/RetrospectivaAutoModal'
 import { cn } from '@/lib/utils'
 import { planoEfetivo, ehStudio } from '@/lib/plano'
+import { getTema } from '@/lib/theme'
 import type { Prestadora } from '@/lib/types'
 import type { ChecklistStatus } from '@/lib/checklist'
 
@@ -340,6 +341,9 @@ export default function PainelLayoutClient({
           <RetrospectivaAutoModal
             prestadoraId={prestadora.id}
             mostrarProfissionalDestaque={ehStudio(planoEfetivo(prestadora))}
+            prestadoraNome={prestadora.nome}
+            fotoUrl={prestadora.foto_url}
+            tema={getTema(prestadora.cor_tema)}
           />
         </>
       )}
