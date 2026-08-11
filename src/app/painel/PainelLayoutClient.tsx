@@ -12,6 +12,7 @@ import { createClient } from '@/lib/supabase/client'
 import { NotificacoesSino } from '@/components/painel/NotificacoesSino'
 import { WelcomeModal } from '@/components/painel/WelcomeModal'
 import { PushNotificationPrompt } from '@/components/painel/PushNotificationPrompt'
+import { PaymentSoundListener } from '@/components/painel/PaymentSoundListener'
 import { InstallPwaModal } from '@/components/painel/InstallPwaModal'
 import { FeedbackModal } from '@/components/painel/FeedbackModal'
 import { cn } from '@/lib/utils'
@@ -282,6 +283,7 @@ export default function PainelLayoutClient({
 
         {/* Ativar notificações push */}
         <PushNotificationPrompt prestadoraId={prestadora.id} />
+        <PaymentSoundListener />
 
         {/* Page content */}
         <main className="flex-1 p-4 lg:p-8">

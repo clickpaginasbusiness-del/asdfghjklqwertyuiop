@@ -2,7 +2,7 @@
 // único do deploy, garantindo que o navegador sempre detecte este arquivo como
 // "mudou" a cada novo deploy na Vercel — mesmo quando só o código do app mudou e
 // este arquivo em si ficaria byte-a-byte idêntico.
-const CACHE_VERSION = 'bellebook-mso0mezq'
+const CACHE_VERSION = 'bellebook-mso26e7j'
 const PRECACHE_URLS = ['/', '/painel', '/painel/login', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png']
 
 self.addEventListener('install', (event) => {
@@ -92,12 +92,25 @@ self.addEventListener('push', (event) => {
   const title = data.title || 'BelleBook'
   const options = {
     body: data.body || '',
-    icon: '/icon-192.png',
+    icon: data.icon || '/icon-192.png',
     badge: '/icon-192.png',
     data: { url: data.url || '/painel/agendamentos' },
   }
 
-  event.waitUntil(self.registration.showNotification(title, options))
+  event.waitUntil(
+    (async () => {
+      await self.registration.showNotification(title, options)
+
+      // Service worker não tem Audio() (só existe no contexto de página) —
+      // repassa pra qualquer aba/PWA aberta tocar o som via postMessage.
+      // Se não tiver nenhuma aba aberta, o som simplesmente não toca (a
+      // notificação em si já apareceu normalmente).
+      if (data.tipo === 'pagamento') {
+        const clientsArr = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+        clientsArr.forEach((client) => client.postMessage({ type: 'PLAY_PAYMENT_SOUND' }))
+      }
+    })()
+  )
 })
 
 self.addEventListener('notificationclick', (event) => {

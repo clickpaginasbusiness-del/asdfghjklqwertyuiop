@@ -298,7 +298,36 @@ async function processarPagamentoAgendamento(
     mensagem: `${cliente?.nome ?? 'Cliente'} pagou ${label} de ${formatCurrency(valorBruto)} e confirmou o agendamento${servico ? ` de ${servico.nome}` : ''}.`,
   })
 
+  await enviarPushPagamento(agendamento.id, valorBruto)
+
   return true
+}
+
+/**
+ * Notificação push de "sinal/pagamento recebido" — best-effort: se falhar,
+ * não desfaz nada do que já foi confirmado acima (agendamento, caixa,
+ * notificação em app), só fica sem o push nesse dispositivo.
+ */
+async function enviarPushPagamento(agendamentoId: string, valorPago: number): Promise<void> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  if (!appUrl) return
+
+  try {
+    const pushRes = await fetch(new URL('/api/push/send', appUrl), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-internal-secret': process.env.INTERNAL_API_SECRET ?? '',
+      },
+      body: JSON.stringify({ agendamentoId, tipo: 'pagamento', valorPago }),
+    })
+    if (!pushRes.ok) {
+      const pushErr = await pushRes.json().catch(() => ({}))
+      console.error('[mp webhook] push/send (pagamento) falhou — status:', pushRes.status, pushErr)
+    }
+  } catch (err) {
+    console.error('[mp webhook] erro de rede ao chamar push/send (pagamento):', err)
+  }
 }
 
 /**
@@ -388,6 +417,35 @@ async function processarPagamentoPlanoCliente(
     clienteNome: cliente?.nome ?? 'Uma cliente',
     planoNome: plano.nome,
   })
+
+  await enviarPushPlanoAssinado(assinatura.id, pago.transaction_amount ?? 0)
+}
+
+/**
+ * Notificação push de "novo assinante" — plano de cliente não tem agendamento
+ * nenhum por trás, então não dispara nenhum push de agendamento junto (só
+ * esse aviso). Best-effort, mesmo raciocínio de enviarPushPagamento.
+ */
+async function enviarPushPlanoAssinado(planoAssinaturaId: string, valorPago: number): Promise<void> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL
+  if (!appUrl) return
+
+  try {
+    const pushRes = await fetch(new URL('/api/push/send', appUrl), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-internal-secret': process.env.INTERNAL_API_SECRET ?? '',
+      },
+      body: JSON.stringify({ planoAssinaturaId, tipo: 'pagamento', valorPago }),
+    })
+    if (!pushRes.ok) {
+      const pushErr = await pushRes.json().catch(() => ({}))
+      console.error('[mp webhook] push/send (plano assinado) falhou — status:', pushRes.status, pushErr)
+    }
+  } catch (err) {
+    console.error('[mp webhook] erro de rede ao chamar push/send (plano assinado):', err)
+  }
 }
 
 async function processarPreapproval(preapprovalId: string) {
