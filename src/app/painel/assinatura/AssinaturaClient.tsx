@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import type { Plano } from '@/lib/mercadopago'
-import { ehStudioPro } from '@/lib/plano'
+import { ehStudio } from '@/lib/plano'
 import toast from 'react-hot-toast'
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -45,22 +45,13 @@ const PLANO_INFO: Record<Plano, { nome: string; precos: Record<Ciclo, string>; i
   },
   studio: {
     nome: 'Plano Studio',
-    precos: { mensal: 'R$199/mês', anual: 'R$1.910/ano · R$159/mês' },
+    precos: { mensal: 'R$119/mês', anual: 'R$1.142/ano · R$95/mês' },
     icon: Sparkles,
     features: [
       'Tudo do Plano Pro',
       'Profissionais ilimitadas',
       'Fotos ilimitadas',
       'Presets de página',
-    ],
-  },
-  studio_pro: {
-    nome: 'Plano Studio Pro',
-    precos: { mensal: 'R$299/mês', anual: 'R$2.870/ano · R$239/mês' },
-    icon: Sparkles,
-    features: [
-      'Tudo do Plano Studio',
-      'Maior limite de WhatsApp automático (em breve)',
     ],
   },
 }
@@ -96,10 +87,9 @@ const ESTADO_LABEL: Record<EstadoSimulado, string> = {
   start: 'Start',
   pro: 'Pro',
   studio: 'Studio',
-  studio_pro: 'Studio Pro',
 }
 
-const ESTADOS_SIMULADOS: EstadoSimulado[] = ['trial', 'start', 'pro', 'studio', 'studio_pro']
+const ESTADOS_SIMULADOS: EstadoSimulado[] = ['trial', 'start', 'pro', 'studio']
 
 function estadoSimuladoAtual(plano: Plano | null, eTrial: boolean): EstadoSimulado | null {
   if (eTrial && plano === 'start') return 'trial'
@@ -407,7 +397,7 @@ export default function AssinaturaClient({
       )}
 
       {/* Card de upgrade — qualquer plano abaixo do topo de linha */}
-      {!eParceira && plano && !ehStudioPro(plano) && assinaturaAtiva && !eTrial && !cancelamentoAgendado && (
+      {!eParceira && plano && !ehStudio(plano) && assinaturaAtiva && !eTrial && !cancelamentoAgendado && (
         <Card className="border-rose-100 bg-rose-50/30">
           <CardContent className="p-6">
             <div className="flex items-start gap-4">
@@ -419,7 +409,7 @@ export default function AssinaturaClient({
                   Quer mais recursos?
                 </h3>
                 <p className="text-sm text-gray-500 mb-4">
-                  Mais profissionais, mais fotos na página pública e relatórios completos nos planos Pro, Studio e Studio Pro.
+                  Mais profissionais, mais fotos na página pública e relatórios completos nos planos Pro e Studio.
                 </p>
                 <Link href="/planos">
                   <Button size="sm" className="gap-2">

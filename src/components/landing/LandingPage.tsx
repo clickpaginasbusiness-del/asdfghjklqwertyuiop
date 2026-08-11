@@ -1140,7 +1140,7 @@ export default function LandingPage() {
         id="precos"
         className="relative z-[2] bg-[#fdf5f8] min-h-screen flex flex-col items-center justify-center px-6 py-24"
       >
-        <div className="max-w-4xl mx-auto w-full">
+        <div className="max-w-5xl mx-auto w-full">
           <div className="text-center mb-16">
             <p data-animate className="text-rose-400 text-sm font-semibold uppercase tracking-widest mb-4">
               Planos e Recursos
@@ -1187,14 +1187,14 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Básico */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Start */}
             <div data-animate className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm flex flex-col">
               <div className="flex items-center gap-2 mb-5">
                 <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center">
                   <Zap className="w-4 h-4 text-gray-600" />
                 </div>
-                <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Básico</span>
+                <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Start</span>
               </div>
               <div className="mb-6">
                 {cicloPrecos === 'mensal' ? (
@@ -1299,11 +1299,11 @@ export default function LandingPage() {
                     <p className="text-xs text-white/50 mt-0.5">R$71/mês equivalente</p>
                   </div>
                 )}
-                <p className="text-sm text-white/75 mt-1">Para estúdios em crescimento</p>
+                <p className="text-sm text-white/75 mt-1">Para quem já tem uma agenda cheia</p>
               </div>
 
               <ul className="relative space-y-3 mb-8 flex-1">
-                {['Tudo do Plano Básico', 'Profissionais ilimitadas', 'Galeria de fotos e vídeos', 'Suporte prioritário', 'Novidades em primeira mão'].map((f) => (
+                {['Tudo do Plano Start', 'Até 3 profissionais', 'Galeria de fotos e vídeos', 'Relatórios completos', 'Suporte prioritário'].map((f) => (
                   <li key={f} className="flex items-center gap-2.5 text-sm text-white/90">
                     <div className="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center shrink-0">
                       <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />
@@ -1318,6 +1318,68 @@ export default function LandingPage() {
                 className="relative w-full text-center py-3.5 rounded-2xl bg-white text-rose-500 font-bold text-sm hover:bg-rose-50 transition-all shadow-lg"
               >
                 Assinar Pro
+              </Link>
+            </div>
+
+            {/* Studio */}
+            <div data-animate data-delay="300" className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm flex flex-col">
+              <div className="flex items-center gap-2 mb-5">
+                <div className="w-8 h-8 rounded-xl bg-gray-100 flex items-center justify-center">
+                  <Sparkles className="w-4 h-4 text-gray-600" />
+                </div>
+                <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Studio</span>
+              </div>
+              <div className="mb-6">
+                {cicloPrecos === 'mensal' ? (
+                  <div>
+                    <div className="flex items-baseline gap-1.5">
+                      {desconto ? (
+                        <>
+                          <span className="text-lg font-semibold text-gray-300 line-through">R$119</span>
+                          <span className="text-4xl font-bold text-emerald-600">{precoComDesconto('R$119', desconto)}</span>
+                        </>
+                      ) : (
+                        <span className="text-4xl font-bold text-gray-900">R$119</span>
+                      )}
+                      <span className="text-gray-400 text-sm">/mês</span>
+                    </div>
+                    <p className="text-sm text-gray-500 font-medium mt-1">Sem trial · R$119/mês</p>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="flex items-baseline gap-2">
+                      {desconto ? (
+                        <>
+                          <span className="text-lg font-semibold text-gray-300 line-through">R$1.142</span>
+                          <span className="text-4xl font-bold text-emerald-600">{precoComDesconto('R$1.142', desconto)}</span>
+                        </>
+                      ) : (
+                        <span className="text-4xl font-bold text-gray-900">R$1.142</span>
+                      )}
+                      <span className="text-gray-400 text-sm">/ano</span>
+                      <span className="text-[11px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">20% off</span>
+                    </div>
+                    <p className="text-sm text-gray-500 font-medium mt-1">Sem trial · R$1.142/ano</p>
+                    <p className="text-xs text-gray-400 mt-0.5">R$95/mês equivalente</p>
+                  </div>
+                )}
+                <p className="text-sm text-gray-500 mt-1">Para estúdios em crescimento, sem limites</p>
+              </div>
+              <ul className="space-y-3 mb-8 flex-1">
+                {['Tudo do Plano Pro', 'Profissionais ilimitadas', 'Fotos ilimitadas', 'Presets de página', 'WhatsApp automático (em breve)'].map((f) => (
+                  <li key={f} className="flex items-center gap-2.5 text-sm text-gray-700">
+                    <div className="w-4 h-4 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
+                      <Check className="w-2.5 h-2.5 text-emerald-500" strokeWidth={3} />
+                    </div>
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href={`/planos?ciclo=${cicloPrecos}&auto=studio`}
+                className="w-full text-center py-3.5 rounded-2xl border-2 border-gray-200 text-gray-700 font-semibold text-sm hover:border-gray-300 hover:bg-gray-50 transition-all"
+              >
+                Assinar Studio
               </Link>
             </div>
           </div>

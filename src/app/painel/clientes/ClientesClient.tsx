@@ -142,15 +142,15 @@ function ClienteCard({
       const res = await fetch(`/api/clientes/${cliente.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notas: notasEdit }),
+        body: JSON.stringify({ notas: notasEdit, data_nascimento: nascimentoEdit || null }),
       })
       const data = await res.json()
       if (!res.ok) {
-        toast.error(data.error ?? 'Erro ao salvar notas.')
+        toast.error(data.error ?? 'Erro ao salvar.')
         return
       }
-      onEdited(cliente.id, { notas: data.cliente.notas })
-      toast.success('Notas salvas!')
+      onEdited(cliente.id, { notas: data.cliente.notas, data_nascimento: data.cliente.data_nascimento })
+      toast.success('Dados salvos!')
       setNotasModalOpen(false)
     } catch {
       toast.error('Erro de conexão.')
@@ -201,7 +201,7 @@ function ClienteCard({
             </p>
             <button
               type="button"
-              onClick={() => { setNotasEdit(cliente.notas ?? ''); setNotasModalOpen(true) }}
+              onClick={() => { setNotasEdit(cliente.notas ?? ''); setNascimentoEdit(cliente.data_nascimento ?? ''); setNotasModalOpen(true) }}
               title={cliente.notas ? 'Ver/editar notas e preferências' : 'Adicionar notas e preferências'}
               className={cn(
                 'shrink-0 transition-colors',
@@ -381,6 +381,12 @@ function ClienteCard({
       {/* Notas e preferências */}
       <Modal open={notasModalOpen} onClose={() => setNotasModalOpen(false)} title="Notas e preferências">
         <div className="p-6 space-y-4">
+          <Input
+            label="Data de nascimento (opcional)"
+            type="date"
+            value={nascimentoEdit}
+            onChange={(e) => setNascimentoEdit(e.target.value)}
+          />
           <Textarea
             label={`Notas sobre ${cliente.nome}`}
             placeholder="Ex: Prefere esmalte fosco, alérgica a acetona, gosta de conversar sobre viagens..."
@@ -393,7 +399,7 @@ function ClienteCard({
               Cancelar
             </Button>
             <Button type="button" onClick={salvarNotas} loading={salvandoNotas} className="flex-1">
-              Salvar notas
+              Salvar
             </Button>
           </div>
         </div>

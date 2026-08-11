@@ -41,29 +41,22 @@ const FEATURES: Record<Plano, Feature[]> = {
     { texto: 'WhatsApp automático', incluido: true, emBreve: true },
     { texto: 'Assinaturas de clientes', incluido: true, emBreve: true },
   ],
-  studio_pro: [
-    { texto: 'Tudo do Studio', incluido: true },
-    { texto: 'WhatsApp automático (limite maior)', incluido: true, emBreve: true },
-    { texto: 'Assinaturas de clientes', incluido: true, emBreve: true },
-  ],
 }
 
 const PRECOS: Record<Plano, { mensal: string; anual: string; mensal_equiv: string }> = {
   start: { mensal: 'R$49', anual: 'R$470', mensal_equiv: 'R$39' },
   pro: { mensal: 'R$89', anual: 'R$855', mensal_equiv: 'R$71' },
-  studio: { mensal: 'R$199', anual: 'R$1.910', mensal_equiv: 'R$159' },
-  studio_pro: { mensal: 'R$299', anual: 'R$2.870', mensal_equiv: 'R$239' },
+  studio: { mensal: 'R$119', anual: 'R$1.142', mensal_equiv: 'R$95' },
 }
 
-const NOME_PLANO: Record<Plano, string> = { start: 'Start', pro: 'Pro', studio: 'Studio', studio_pro: 'Studio Pro' }
+const NOME_PLANO: Record<Plano, string> = { start: 'Start', pro: 'Pro', studio: 'Studio' }
 const SUBTITULO_PLANO: Record<Plano, string> = {
   start: 'Ideal para quem está começando',
   pro: 'Para quem já tem uma agenda cheia',
-  studio: 'Para estúdios em crescimento',
-  studio_pro: 'Para operações maiores, sem limites',
+  studio: 'Para estúdios em crescimento, sem limites',
 }
 
-const PLANOS_ORDEM: Plano[] = ['start', 'pro', 'studio', 'studio_pro']
+const PLANOS_ORDEM: Plano[] = ['start', 'pro', 'studio']
 
 function FeatureItem({ texto, incluido, emBreve, tema }: Feature & { tema: 'claro' | 'escuro' }) {
   return (
@@ -229,7 +222,7 @@ export default function PlanosClient({
 
       {/* Planos */}
       <div className="max-w-6xl mx-auto px-4 pb-20">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           {PLANOS_ORDEM.map((plano) => {
             const destaque = plano === 'pro'
             const preco = PRECOS[plano]
@@ -379,7 +372,7 @@ export default function PlanosClient({
         {/* Garantia */}
         <p className="text-center text-sm text-gray-400 mt-6">
           {trialExpirado
-            ? 'Planos Pro, Studio e Studio Pro cobram imediatamente · Cancele quando quiser'
+            ? 'Planos Pro e Studio cobram imediatamente · Cancele quando quiser'
             : '30 dias grátis exclusivos do Plano Start · Demais planos cobram imediatamente · Cancele quando quiser'}
         </p>
 

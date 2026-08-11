@@ -7,8 +7,8 @@ import { ehPro } from '@/lib/plano'
 import type { PlanoTier } from '@/lib/planoLimites'
 import { NextRequest, NextResponse } from 'next/server'
 
-type Estado = 'trial' | 'start' | 'pro' | 'studio' | 'studio_pro' | 'real'
-const ESTADOS_VALIDOS: Estado[] = ['trial', 'start', 'pro', 'studio', 'studio_pro', 'real']
+type Estado = 'trial' | 'start' | 'pro' | 'studio' | 'real'
+const ESTADOS_VALIDOS: Estado[] = ['trial', 'start', 'pro', 'studio', 'real']
 
 /**
  * Ferramenta de QA exclusiva da conta admin — simula os estados de plano
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
 
   const estado = body.estado as Estado
   if (!ESTADOS_VALIDOS.includes(estado)) {
-    return NextResponse.json({ error: 'estado inválido — use trial, start, pro, studio, studio_pro ou real' }, { status: 400 })
+    return NextResponse.json({ error: 'estado inválido — use trial, start, pro, studio ou real' }, { status: 400 })
   }
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -105,12 +105,6 @@ export async function POST(request: NextRequest) {
     studio: {
       e_trial: false,
       plano: 'studio',
-      assinatura_ativa: true,
-      trial_pro_fim: null,
-    },
-    studio_pro: {
-      e_trial: false,
-      plano: 'studio_pro',
       assinatura_ativa: true,
       trial_pro_fim: null,
     },

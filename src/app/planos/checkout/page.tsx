@@ -5,7 +5,7 @@ import CheckoutClient from './CheckoutClient'
 
 export const metadata = { title: 'Confirmar assinatura — BelleBook' }
 
-const PLANOS_VALIDOS: Plano[] = ['start', 'pro', 'studio', 'studio_pro']
+const PLANOS_VALIDOS: Plano[] = ['start', 'pro', 'studio']
 type Ciclo = 'mensal' | 'anual'
 
 export default async function PlanosCheckoutPage({

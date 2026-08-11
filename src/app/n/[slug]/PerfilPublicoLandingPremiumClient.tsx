@@ -766,7 +766,7 @@ export default function PerfilPublicoLandingPremiumClient({
     return valor
   }
 
-  // O gate de plano (Studio/Studio Pro) já é aplicado antes de chegar nesse
+  // O gate de plano (Studio) já é aplicado antes de chegar nesse
   // componente (ver src/app/n/[slug]/page.tsx), mas a galeria/avaliações
   // ainda respeitam os limites do plano ao exibir, pro caso de downgrade.
   const planoAtual = planoEfetivo({ plano: prestadora.plano, e_parceira: prestadora.e_parceira })

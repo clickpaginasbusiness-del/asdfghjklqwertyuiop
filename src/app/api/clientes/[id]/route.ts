@@ -47,13 +47,13 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
   const updates: Record<string, unknown> = {}
 
-  // Nome/telefone/data de nascimento fazem parte da identidade do cadastro
-  // manual — só editáveis pra clientes criadas manualmente pela prestadora,
-  // nunca pra contas reais (cliente_manual = false) que a própria cliente
-  // controla via o cadastro dela na página pública.
-  if (body.nome !== undefined || body.telefone !== undefined || body.data_nascimento !== undefined) {
+  // Nome/telefone fazem parte da identidade do cadastro manual — só
+  // editáveis pra clientes criadas manualmente pela prestadora, nunca pra
+  // contas reais (cliente_manual = false) que a própria cliente controla
+  // via o cadastro dela na página pública.
+  if (body.nome !== undefined || body.telefone !== undefined) {
     if (!cliente.cliente_manual) {
-      return NextResponse.json({ error: 'Só é possível editar nome, telefone e data de nascimento de clientes manuais.' }, { status: 403 })
+      return NextResponse.json({ error: 'Só é possível editar nome e telefone de clientes manuais.' }, { status: 403 })
     }
     if (body.nome !== undefined) {
       const nome = body.nome.trim()
@@ -64,14 +64,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       const telefoneLimpo = body.telefone ? cleanTelefone(body.telefone) : ''
       updates.telefone = telefoneLimpo.length > 0 ? telefoneLimpo : null
     }
-    if (body.data_nascimento !== undefined) {
-      updates.data_nascimento = body.data_nascimento || null
-    }
   }
 
-  // Notas e preferências: qualquer cliente com histórico com essa
-  // prestadora, manual ou não — é uma anotação da prestadora sobre a
-  // cliente, não um dado que a cliente controla.
+  // Data de nascimento e notas: qualquer cliente com histórico com essa
+  // prestadora, manual ou não — são anotações/dados de acompanhamento da
+  // prestadora sobre a cliente, não identidade que a cliente controla.
+  if (body.data_nascimento !== undefined) {
+    updates.data_nascimento = body.data_nascimento || null
+  }
   if (body.notas !== undefined) {
     updates.notas = body.notas?.trim() || null
   }

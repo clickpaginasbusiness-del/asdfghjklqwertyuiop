@@ -8,25 +8,23 @@ export const preApprovalPlan = new PreApprovalPlan(mpConfig)
 export const mpPayment = new Payment(mpConfig)
 export const preference = new Preference(mpConfig)
 
-export type Plano = 'start' | 'pro' | 'studio' | 'studio_pro'
+export type Plano = 'start' | 'pro' | 'studio'
 export type Ciclo = 'mensal' | 'anual'
 export type MetodoPagamento = 'cartao' | 'pix' | 'debito'
 
-/** Preços em reais — únicos "price IDs" que existem são os 4 preapproval_plan
+/** Preços em reais — únicos "price IDs" que existem são os 3 preapproval_plan
  * de cartão+mensal (ver getOrCreatePlanoMensal); anual é sempre pagamento
  * avulso via Preference, com o preço fixo lido daqui direto. */
 export const PRECOS: Record<Plano, Record<Ciclo, number>> = {
   start: { mensal: 49, anual: 470 },
   pro: { mensal: 89, anual: 855 },
-  studio: { mensal: 199, anual: 1910 },
-  studio_pro: { mensal: 299, anual: 2870 },
+  studio: { mensal: 119, anual: 1142 },
 }
 
 export const NOME_PLANO: Record<Plano, string> = {
   start: 'Start',
   pro: 'Pro',
   studio: 'Studio',
-  studio_pro: 'Studio Pro',
 }
 
 /**

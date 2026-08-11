@@ -11,7 +11,7 @@ export default async function PlanoSucessoPage({
   searchParams: Promise<{ plano?: string; ciclo?: string }>
 }) {
   const { plano, ciclo } = await searchParams
-  const PLANOS_VALIDOS: Plano[] = ['start', 'pro', 'studio', 'studio_pro']
+  const PLANOS_VALIDOS: Plano[] = ['start', 'pro', 'studio']
   const planoValido: Plano = PLANOS_VALIDOS.includes(plano as Plano) ? (plano as Plano) : 'start'
   const cicloValido: Ciclo = ciclo === 'anual' ? 'anual' : 'mensal'
 

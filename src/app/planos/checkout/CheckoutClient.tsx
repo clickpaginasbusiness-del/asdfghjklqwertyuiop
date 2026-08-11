@@ -19,11 +19,10 @@ type Metodo = 'cartao' | 'pix' | 'debito'
 const PRECOS: Record<Plano, Record<Ciclo, number>> = {
   start: { mensal: 49, anual: 470 },
   pro: { mensal: 89, anual: 855 },
-  studio: { mensal: 199, anual: 1910 },
-  studio_pro: { mensal: 299, anual: 2870 },
+  studio: { mensal: 119, anual: 1142 },
 }
 
-const NOME_PLANO: Record<Plano, string> = { start: 'Start', pro: 'Pro', studio: 'Studio', studio_pro: 'Studio Pro' }
+const NOME_PLANO: Record<Plano, string> = { start: 'Start', pro: 'Pro', studio: 'Studio' }
 
 const METODOS: {
   valor: Metodo

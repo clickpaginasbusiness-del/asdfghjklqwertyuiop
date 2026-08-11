@@ -1,4 +1,4 @@
-export type PlanoTier = 'start' | 'pro' | 'studio' | 'studio_pro'
+export type PlanoTier = 'start' | 'pro' | 'studio'
 
 export const PLANO_LIMITES = {
   start: {
@@ -25,15 +25,6 @@ export const PLANO_LIMITES = {
     fotos_estabelecimento: Infinity,
     whatsapp_utilidade: 650,
     whatsapp_marketing: 50,
-    presets: true,
-    assinaturas_clientes: true,
-  },
-  studio_pro: {
-    profissionais: Infinity,
-    fotos_trabalhos: Infinity,
-    fotos_estabelecimento: Infinity,
-    whatsapp_utilidade: 1420,
-    whatsapp_marketing: 80,
     presets: true,
     assinaturas_clientes: true,
   },

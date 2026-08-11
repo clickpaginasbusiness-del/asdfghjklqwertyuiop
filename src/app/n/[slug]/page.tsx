@@ -53,7 +53,7 @@ export default async function PerfilPage({ params }: { params: Promise<{ slug: s
 
   if (!prestadora) notFound()
 
-  // Presets "landing" e "premium" são exclusivos do Studio/Studio Pro — se a
+  // Presets "landing" e "premium" são exclusivos do Studio — se a
   // prestadora escolheu um deles e depois caiu pra um plano sem acesso (ex.:
   // downgrade), volta pro clássico automaticamente. A escolha continua salva
   // no banco (pagina_preset), só a renderização é que respeita o plano atual.
@@ -63,7 +63,7 @@ export default async function PerfilPage({ params }: { params: Promise<{ slug: s
     ? prestadora.pagina_preset
     : 'classico'
 
-  // Planos de assinatura pra clientes são exclusivos do Studio/Studio Pro
+  // Planos de assinatura pra clientes são exclusivos do Studio
   // (mesmo gate de `assinaturas_clientes` em planoLimites.ts) — se a
   // prestadora caiu pra um plano sem acesso, a seção simplesmente some da
   // página pública (os planos continuam salvos no banco, só não aparecem).

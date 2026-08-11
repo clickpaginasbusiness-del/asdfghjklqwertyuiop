@@ -4,7 +4,7 @@ import { preApprovalPlan, preference, getOrCreatePlanoMensal, registrarUsoCupomI
 import { NextRequest, NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 
-const PLANOS_VALIDOS = new Set<Plano>(['start', 'pro', 'studio', 'studio_pro'])
+const PLANOS_VALIDOS = new Set<Plano>(['start', 'pro', 'studio'])
 const CICLOS_VALIDOS = new Set<Ciclo>(['mensal', 'anual'])
 const METODOS_VALIDOS = new Set<MetodoPagamento>(['cartao', 'pix', 'debito'])
 

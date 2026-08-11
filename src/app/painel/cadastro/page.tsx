@@ -200,7 +200,7 @@ export default function CadastroPage() {
 
       toast.success('Conta criada! Bem-vinda ao BelleBook 🎉')
       const planIntent = new URLSearchParams(window.location.search).get('plano')
-      const planosComCheckoutImediato = ['pro', 'studio', 'studio_pro']
+      const planosComCheckoutImediato = ['pro', 'studio']
       window.location.href = planIntent && planosComCheckoutImediato.includes(planIntent)
         ? `/planos?auto=${planIntent}`
         : '/painel'

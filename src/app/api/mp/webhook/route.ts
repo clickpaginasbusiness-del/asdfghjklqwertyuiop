@@ -23,7 +23,7 @@ const MS_365_DIAS = 365 * MS_DIA
 
 // Ordem dos planos, do mais pro menos restrito — decide se uma troca de plano
 // é upgrade (reativa profissionais) ou downgrade (aplica restrições).
-const RANK_PLANO: Record<Plano, number> = { start: 0, pro: 1, studio: 2, studio_pro: 3 }
+const RANK_PLANO: Record<Plano, number> = { start: 0, pro: 1, studio: 2 }
 
 type PrestadoraIndicacao = {
   plano: Plano | null
@@ -474,13 +474,12 @@ async function processarPreapproval(preapprovalId: string) {
       const { data: configs } = await supabaseAdmin
         .from('app_config')
         .select('chave, valor')
-        .in('chave', ['mp_plan_start_mensal', 'mp_plan_pro_mensal', 'mp_plan_studio_mensal', 'mp_plan_studio_pro_mensal'])
+        .in('chave', ['mp_plan_start_mensal', 'mp_plan_pro_mensal', 'mp_plan_studio_mensal'])
 
       const planoPorChave: Record<string, Plano> = {
         mp_plan_start_mensal: 'start',
         mp_plan_pro_mensal: 'pro',
         mp_plan_studio_mensal: 'studio',
-        mp_plan_studio_pro_mensal: 'studio_pro',
       }
       const config = (configs ?? []).find((c) => c.valor === preapprovalPlanId)
       if (config) plano = planoPorChave[config.chave]

@@ -36,7 +36,6 @@ type Metrics = {
   pagasStart: number
   pagasPro: number
   pagasStudio: number
-  pagasStudioPro: number
   semPlanOuExpirado: number
   receitaEstimada: number
 }
@@ -206,10 +205,10 @@ export default function AdminClient({
                 <div>
                   <p className="text-sm text-gray-500">Pagas (todos os planos)</p>
                   <p className="text-3xl font-bold text-emerald-600 mt-1">
-                    {metrics.pagasStart + metrics.pagasPro + metrics.pagasStudio + metrics.pagasStudioPro}
+                    {metrics.pagasStart + metrics.pagasPro + metrics.pagasStudio}
                   </p>
                   <p className="text-xs text-gray-400 mt-0.5">
-                    {metrics.pagasStart} start · {metrics.pagasPro} pro · {metrics.pagasStudio} studio · {metrics.pagasStudioPro} studio pro
+                    {metrics.pagasStart} start · {metrics.pagasPro} pro · {metrics.pagasStudio} studio
                   </p>
                 </div>
                 <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center">

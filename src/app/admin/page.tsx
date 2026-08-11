@@ -40,13 +40,9 @@ export default async function AdminPage() {
     !p.e_trial && p.assinatura_ativa && p.plano === 'studio'
   ).length
 
-  const pagasStudioPro = all.filter(p =>
-    !p.e_trial && p.assinatura_ativa && p.plano === 'studio_pro'
-  ).length
-
-  const semPlanOuExpirado = all.length - emTrialAtivo - pagasStart - pagasPro - pagasStudio - pagasStudioPro
+  const semPlanOuExpirado = all.length - emTrialAtivo - pagasStart - pagasPro - pagasStudio
   const receitaEstimada = pagasStart * PRECOS.start.mensal + pagasPro * PRECOS.pro.mensal
-    + pagasStudio * PRECOS.studio.mensal + pagasStudioPro * PRECOS.studio_pro.mensal
+    + pagasStudio * PRECOS.studio.mensal
 
   // Gráfico: últimos 30 dias
   const last30 = Array.from({ length: 30 }, (_, i) => {
@@ -65,7 +61,7 @@ export default async function AdminPage() {
   return (
     <AdminClient
       prestadoras={all}
-      metrics={{ total: all.length, emTrialAtivo, pagasStart, pagasPro, pagasStudio, pagasStudioPro, semPlanOuExpirado, receitaEstimada }}
+      metrics={{ total: all.length, emTrialAtivo, pagasStart, pagasPro, pagasStudio, semPlanOuExpirado, receitaEstimada }}
       chartData={chartData}
       feedbacks={feedbacks ?? []}
     />

@@ -5,7 +5,7 @@ import PlanosClient from './PlanosClient'
 import { SITE_URL } from '@/lib/seo'
 import type { Plano } from '@/lib/mercadopago'
 
-const PLANOS_VALIDOS: Plano[] = ['start', 'pro', 'studio', 'studio_pro']
+const PLANOS_VALIDOS: Plano[] = ['start', 'pro', 'studio']
 
 const TITLE = 'Planos — BelleBook'
 const DESCRIPTION = 'Escolha o plano ideal para o seu negócio de beleza'
