@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import {
   User, Link2, Upload, Phone, AtSign, MapPin,
   CheckCircle2, XCircle, Loader2, Palette, MessageCircle,
-  Gift, Shield, CalendarClock,
+  Gift, Shield, CalendarClock, Sparkles,
 } from 'lucide-react'
 import Image from 'next/image'
 import type { Prestadora, GaleriaItem } from '@/lib/types'
@@ -18,8 +18,9 @@ import { maskTelefone, cleanTelefone, slugify, formatDate } from '@/lib/utils'
 import { TEMPLATE_VARS, MSG_CONFIRMACAO_DEFAULT, MSG_CANCELAMENTO_DEFAULT, MSG_LEMBRETE_DEFAULT } from '@/lib/whatsappTemplates'
 import { PersonalizarPaginaModal } from './PersonalizarPaginaModal'
 import { CodigoIndicacaoCard } from '@/components/painel/CodigoIndicacaoCard'
+import { RetrospectivasListaModal } from '@/components/retrospectiva/RetrospectivasListaModal'
 import { ADMIN_EMAIL } from '@/lib/admin'
-import { planoEfetivo } from '@/lib/plano'
+import { planoEfetivo, ehStudio } from '@/lib/plano'
 import { validarArquivo } from '@/lib/uploadValidation'
 import toast from 'react-hot-toast'
 
@@ -64,6 +65,7 @@ export default function PerfilPainelClient({
 
   const planoAtual = planoEfetivo({ plano: prestadora.plano, e_parceira: prestadora.e_parceira })
   const [personalizarOpen, setPersonalizarOpen] = useState(false)
+  const [retrospectivasOpen, setRetrospectivasOpen] = useState(false)
 
   const [msgConfirmacao, setMsgConfirmacao] = useState(initial.mensagem_confirmacao ?? MSG_CONFIRMACAO_DEFAULT)
   const [msgCancelamento, setMsgCancelamento] = useState(initial.mensagem_cancelamento ?? MSG_CANCELAMENTO_DEFAULT)
@@ -513,6 +515,25 @@ export default function PerfilPainelClient({
         </CardContent>
       </Card>
 
+      {/* Minhas Retrospectivas */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-rose-400" />
+            Minhas Retrospectivas
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-gray-500 mb-4">
+            Todo início de mês, um resumo automático do seu negócio no mês anterior — no estilo Stories, pra baixar e compartilhar.
+          </p>
+          <Button variant="outline" onClick={() => setRetrospectivasOpen(true)}>
+            <Sparkles className="w-4 h-4" />
+            Ver Retrospectivas
+          </Button>
+        </CardContent>
+      </Card>
+
       <p className="text-xs text-gray-400 text-center">
         Para excluir sua conta, acesse{' '}
         <Link href="/painel/configuracoes" className="underline underline-offset-2 hover:text-gray-600">
@@ -529,6 +550,13 @@ export default function PerfilPainelClient({
         avaliacoes={avaliacoes}
         plano={planoAtual}
         onSaved={(patch) => setPrestadora((p) => ({ ...p, ...patch }))}
+      />
+
+      <RetrospectivasListaModal
+        open={retrospectivasOpen}
+        onClose={() => setRetrospectivasOpen(false)}
+        prestadoraId={prestadora.id}
+        mostrarProfissionalDestaque={ehStudio(planoAtual)}
       />
     </div>
   )

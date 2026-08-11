@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   Lock, AlertTriangle, Smartphone, Download, Share, MoreVertical,
-  Bell, BellOff, CheckCircle2, FileText, ShieldCheck, FileDown, MessageCircle,
+  Bell, BellOff, CheckCircle2, FileText, ShieldCheck, FileDown,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -253,29 +253,6 @@ export default function ConfiguracoesClient({ email }: { email: string }) {
             {pushStatus === 'unsupported' && (
               <p className="text-xs text-gray-400 mt-3">Seu navegador não tem suporte a notificações.</p>
             )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* WhatsApp Automático — prévia da funcionalidade, ainda não existe */}
-      <Card className="bg-green-50 border-green-200 opacity-75">
-        <CardContent className="pt-6">
-          <div className="flex items-start gap-3">
-            <MessageCircle className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <p className="text-sm font-semibold text-green-800">WhatsApp Automático</p>
-                <span className="shrink-0 text-[10px] font-bold text-white bg-green-800 px-2 py-0.5 rounded-full tracking-wide">
-                  EM BREVE
-                </span>
-              </div>
-              <p className="text-xs text-green-700 mt-2 leading-relaxed">
-                Em breve você poderá conectar seu WhatsApp ao BelleBook e enviar mensagens automáticas para suas clientes — confirmações de agendamento, lembretes, mensagens de aniversário e muito mais.
-              </p>
-              <p className="text-xs text-green-700 mt-2 leading-relaxed">
-                Estamos desenvolvendo essa funcionalidade para os planos Pro e Studio. Fique de olho nas novidades!
-              </p>
-            </div>
           </div>
         </CardContent>
       </Card>

@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Calendar, CalendarDays, Scissors, ImageIcon,
-  Clock, Users, LogOut, Menu, X, ExternalLink, UserCircle, UserCircle2, CreditCard, AlertCircle, BarChart3, Headset, Settings, Wallet, CheckCircle2,
+  Clock, Users, LogOut, Menu, X, ExternalLink, UserCircle, UserCircle2, CreditCard, AlertCircle, BarChart3, Headset, Settings, Wallet, CheckCircle2, MessageCircle,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { NotificacoesSino } from '@/components/painel/NotificacoesSino'
@@ -15,7 +15,9 @@ import { PushNotificationPrompt } from '@/components/painel/PushNotificationProm
 import { PaymentSoundListener } from '@/components/painel/PaymentSoundListener'
 import { InstallPwaModal } from '@/components/painel/InstallPwaModal'
 import { FeedbackModal } from '@/components/painel/FeedbackModal'
+import { RetrospectivaAutoModal } from '@/components/retrospectiva/RetrospectivaAutoModal'
 import { cn } from '@/lib/utils'
+import { planoEfetivo, ehStudio } from '@/lib/plano'
 import type { Prestadora } from '@/lib/types'
 import type { ChecklistStatus } from '@/lib/checklist'
 
@@ -125,7 +127,7 @@ const TOUR_NAV_KEYS: Record<string, string> = {
 }
 
 type NavEntry =
-  | { href: string; label: string; icon: typeof LayoutDashboard; accent?: 'green' }
+  | { href: string; label: string; icon: typeof LayoutDashboard; accent?: 'green'; badge?: string }
   | { section: string }
   | { divider: true }
 
@@ -142,6 +144,7 @@ const navItems: NavEntry[] = [
   { href: '/painel/galeria', label: 'Galeria', icon: ImageIcon },
   { href: '/painel/horarios', label: 'Horários', icon: Clock },
   { href: '/painel/profissionais', label: 'Profissionais', icon: UserCircle2 },
+  { href: '/painel/whatsapp', label: 'WhatsApp Auto.', icon: MessageCircle, accent: 'green', badge: 'EM BREVE' },
 
   { section: 'Controle' },
   { href: '/painel/clientes', label: 'Clientes', icon: Users },
@@ -240,7 +243,12 @@ export default function PainelLayoutClient({
                 )}
               >
                 <item.icon className="w-4 h-4 shrink-0" />
-                {item.label}
+                <span className="flex-1 truncate">{item.label}</span>
+                {item.badge && (
+                  <span className="shrink-0 text-[9px] font-bold text-white bg-green-800 px-1.5 py-0.5 rounded-full tracking-wide">
+                    {item.badge}
+                  </span>
+                )}
               </Link>
             )
           })}
@@ -328,6 +336,10 @@ export default function PainelLayoutClient({
             prestadoraId={prestadora.id}
             onOpenSidebar={() => setSidebarOpen(true)}
             onCloseSidebar={() => setSidebarOpen(false)}
+          />
+          <RetrospectivaAutoModal
+            prestadoraId={prestadora.id}
+            mostrarProfissionalDestaque={ehStudio(planoEfetivo(prestadora))}
           />
         </>
       )}

@@ -130,6 +130,11 @@ export function limitesDoMesSP(mes: number, ano: number): { inicio: Date; fim: D
   return { inicio, fim }
 }
 
+/** Mês/ano imediatamente anterior a um mês/ano de referência (com virada de ano). */
+export function mesAnteriorSP(mes: number, ano: number): { mes: number; ano: number } {
+  return mes === 1 ? { mes: 12, ano: ano - 1 } : { mes: mes - 1, ano }
+}
+
 /**
  * Quando a prestadora nunca salvou horarios_funcionamento para um dia (sem linha
  * no banco), esse é o padrão assumido — precisa bater com o DEFAULTS mostrado em
