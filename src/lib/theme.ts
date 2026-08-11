@@ -80,3 +80,16 @@ export function getTema(cor: string | null | undefined) {
   }
   return TEMAS[TEMA_DEFAULT]
 }
+
+/** Deriva um "rgba(...)" a partir de um hex — usado em fundos/bordas com
+ * opacidade reduzida sobre o tema dinâmico da prestadora (estilo inline não
+ * tem variante de opacidade do Tailwind, então calcula na mão). */
+export function hexComOpacidade(hex: string, alpha: number): string {
+  const limpo = hex.replace('#', '')
+  const cheio = limpo.length === 3 ? limpo.split('').map((c) => c + c).join('') : limpo
+  const num = parseInt(cheio, 16)
+  const r = (num >> 16) & 255
+  const g = (num >> 8) & 255
+  const b = num & 255
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}

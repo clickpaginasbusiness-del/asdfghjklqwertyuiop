@@ -29,8 +29,9 @@ import { PlanosSection, type PlanoPublico } from '@/components/perfil-publico/Pl
 import { usePlanoCredito, calcularValorComDesconto } from '@/components/perfil-publico/usePlanoCredito'
 import { CreditoPlanoCard } from '@/components/perfil-publico/CreditoPlanoCard'
 import { MeusPlanosModal } from '@/components/perfil-publico/MeusPlanosModal'
+import { HorarioHojeDropdown } from '@/components/perfil-publico/HorarioHojeDropdown'
 import {
-  buildGoogleCalendarUrl, formatHora,
+  buildGoogleCalendarUrl,
   type Step, type ServicoComProfissionais,
 } from './PerfilPublicoClient'
 import toast from 'react-hot-toast'
@@ -327,8 +328,6 @@ export default function PerfilPublicoLandingClient({
 
   const diaHoje = getDay(new Date())
   const horarioHoje = horariosFuncionamento.find((h) => h.dia_semana === diaHoje)
-  const aberturaHoje = horarioHoje?.hora_abertura ?? prestadora.hora_abertura
-  const fechamentoHoje = horarioHoje?.hora_fechamento ?? prestadora.hora_fechamento
   const abertoHoje = horarioHoje ? horarioHoje.ativo : diaAtivoPadrao(diaHoje)
 
   function isDiaDesativado(d: Date): boolean {
@@ -1015,10 +1014,13 @@ export default function PerfilPublicoLandingClient({
                 </span>
               )}
               {abertoHoje && (
-                <span className="inline-flex items-center gap-1.5 text-xs text-gray-500">
-                  <Clock className="w-3.5 h-3.5" style={{ color: tema.hex }} />
-                  Hoje: {formatHora(aberturaHoje)} – {formatHora(fechamentoHoje)}
-                </span>
+                <HorarioHojeDropdown
+                  horariosFuncionamento={horariosFuncionamento}
+                  horaAberturaPadrao={prestadora.hora_abertura}
+                  horaFechamentoPadrao={prestadora.hora_fechamento}
+                  diaAtual={diaHoje}
+                  tema={tema}
+                />
               )}
             </div>
 

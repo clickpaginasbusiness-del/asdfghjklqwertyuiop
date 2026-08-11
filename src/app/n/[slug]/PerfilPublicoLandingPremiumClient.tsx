@@ -22,33 +22,21 @@ import {
 import { getServicoIcone } from '@/lib/servicoIcones'
 import { calcularValorSinal } from '@/lib/sinal'
 import type { PrestadoraPublica, Servico, GaleriaItem, Agendamento, Profissional, HorarioFuncionamento, Avaliacao } from '@/lib/types'
-import { getTema } from '@/lib/theme'
+import { getTema, hexComOpacidade } from '@/lib/theme'
 import { planoEfetivo, ehPro } from '@/lib/plano'
 import { limitesPlano } from '@/lib/planoLimites'
 import { PlanosSection, type PlanoPublico } from '@/components/perfil-publico/PlanosSection'
 import { usePlanoCredito, calcularValorComDesconto } from '@/components/perfil-publico/usePlanoCredito'
 import { CreditoPlanoCard } from '@/components/perfil-publico/CreditoPlanoCard'
 import { MeusPlanosModal } from '@/components/perfil-publico/MeusPlanosModal'
+import { HorarioHojeDropdown } from '@/components/perfil-publico/HorarioHojeDropdown'
 import {
-  buildGoogleCalendarUrl, formatHora,
+  buildGoogleCalendarUrl,
   type Step, type ServicoComProfissionais,
 } from './PerfilPublicoClient'
 import toast from 'react-hot-toast'
 import { format, addDays, startOfDay, isSameDay, isToday, isBefore, getDay, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-
-/** Deriva um "rgba(...)" a partir do hex da cor_tema — usado nos lugares que
- * antes eram amber-300/NN (borda ou fundo com opacidade reduzida). Estilo
- * inline não tem variante de opacidade do Tailwind, então calcula na mão. */
-function hexComOpacidade(hex: string, alpha: number): string {
-  const limpo = hex.replace('#', '')
-  const cheio = limpo.length === 3 ? limpo.split('').map((c) => c + c).join('') : limpo
-  const num = parseInt(cheio, 16)
-  const r = (num >> 16) & 255
-  const g = (num >> 8) & 255
-  const b = num & 255
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`
-}
 
 interface Props {
   prestadora: PrestadoraPublica
@@ -301,8 +289,6 @@ export default function PerfilPublicoLandingPremiumClient({
 
   const diaHoje = getDay(new Date())
   const horarioHoje = horariosFuncionamento.find((h) => h.dia_semana === diaHoje)
-  const aberturaHoje = horarioHoje?.hora_abertura ?? prestadora.hora_abertura
-  const fechamentoHoje = horarioHoje?.hora_fechamento ?? prestadora.hora_fechamento
   const abertoHoje = horarioHoje ? horarioHoje.ativo : diaAtivoPadrao(diaHoje)
 
   function isDiaDesativado(d: Date): boolean {
@@ -997,10 +983,14 @@ export default function PerfilPublicoLandingPremiumClient({
                 </span>
               )}
               {abertoHoje && (
-                <span className="inline-flex items-center gap-1.5 text-xs text-gray-400">
-                  <Clock className="w-3.5 h-3.5" style={{ color: tema.hex }} />
-                  Hoje: {formatHora(aberturaHoje)} – {formatHora(fechamentoHoje)}
-                </span>
+                <HorarioHojeDropdown
+                  horariosFuncionamento={horariosFuncionamento}
+                  horaAberturaPadrao={prestadora.hora_abertura}
+                  horaFechamentoPadrao={prestadora.hora_fechamento}
+                  diaAtual={diaHoje}
+                  tema={tema}
+                  dark
+                />
               )}
             </div>
 

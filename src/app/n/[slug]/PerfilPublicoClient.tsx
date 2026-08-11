@@ -29,6 +29,7 @@ import { PlanosSection, type PlanoPublico } from '@/components/perfil-publico/Pl
 import { usePlanoCredito, calcularValorComDesconto } from '@/components/perfil-publico/usePlanoCredito'
 import { CreditoPlanoCard } from '@/components/perfil-publico/CreditoPlanoCard'
 import { MeusPlanosModal } from '@/components/perfil-publico/MeusPlanosModal'
+import { HorarioHojeDropdown } from '@/components/perfil-publico/HorarioHojeDropdown'
 import toast from 'react-hot-toast'
 import { format, addDays, startOfDay, isSameDay, isToday, isBefore, getDay, subDays } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -64,11 +65,6 @@ export function buildGoogleCalendarUrl(a: Agendamento, prestadoraNome: string): 
 }
 
 export type Step = 'servico' | 'profissional' | 'data' | 'horario' | 'cliente' | 'confirmado'
-
-export function formatHora(h: string): string {
-  const [hora, min] = h.split(':')
-  return min === '00' ? `${parseInt(hora)}h` : `${parseInt(hora)}h${min}`
-}
 
 export function GaleriaGrid({
   itens, modo, altPrefixo, nomePrestadora, onItemClick,
@@ -354,8 +350,6 @@ export default function PerfilPublicoClient({
   /* Today's opening hours */
   const diaHoje = getDay(new Date())
   const horarioHoje = horariosFuncionamento.find((h) => h.dia_semana === diaHoje)
-  const aberturaHoje = horarioHoje?.hora_abertura ?? prestadora.hora_abertura
-  const fechamentoHoje = horarioHoje?.hora_fechamento ?? prestadora.hora_fechamento
   // Sem linha salva pra esse dia (prestadora nunca configurou Horários), assume
   // o mesmo padrão mostrado no painel — domingo fechado, resto aberto — em vez
   // de tratar "sem configuração" como "sempre aberto".
@@ -1050,13 +1044,13 @@ export default function PerfilPublicoClient({
 
               {/* Opening hours */}
               {abertoHoje && (
-                <div className="flex items-center justify-center gap-1.5 text-xs text-gray-500">
-                  <Clock className="w-3.5 h-3.5" style={{ color: tema.hex }} />
-                  Hoje: {formatHora(aberturaHoje)} – {formatHora(fechamentoHoje)}
-                  {horarioHoje?.turno2_inicio && horarioHoje?.turno2_fim && (
-                    <>, {formatHora(horarioHoje.turno2_inicio)} – {formatHora(horarioHoje.turno2_fim)}</>
-                  )}
-                </div>
+                <HorarioHojeDropdown
+                  horariosFuncionamento={horariosFuncionamento}
+                  horaAberturaPadrao={prestadora.hora_abertura}
+                  horaFechamentoPadrao={prestadora.hora_fechamento}
+                  diaAtual={diaHoje}
+                  tema={tema}
+                />
               )}
 
               {/* Professionals count */}

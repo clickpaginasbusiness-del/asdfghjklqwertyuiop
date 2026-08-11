@@ -77,6 +77,16 @@ export function formatTime(date: string | Date | null | undefined): string {
   return `${HH}:${mm}`
 }
 
+/** Formata um horário-de-dia bruto ('HH:mm' ou 'HH:mm:ss', ex.: de
+ * horarios_funcionamento) pro formato compacto usado na página pública —
+ * "9h" quando os minutos são zero, "9h30" caso contrário. Diferente de
+ * formatTime/formatDateShort acima: opera direto na string, sem Date/fuso,
+ * porque o valor já é só um horário-de-dia (sem data associada). */
+export function formatHora(h: string): string {
+  const [hora, min] = h.split(':')
+  return min === '00' ? `${parseInt(hora)}h` : `${parseInt(hora)}h${min}`
+}
+
 /** Chave 'yyyy-MM-dd' do dia calendário em São Paulo (para agrupar/comparar dias sem depender do fuso do runtime). */
 export function formatDateKey(date: string | Date | null | undefined): string {
   const d = parseDate(date)
