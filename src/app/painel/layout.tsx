@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { differenceInCalendarDays } from 'date-fns'
 import { createClient } from '@/lib/supabase/server'
+import { checklistEstaCompleto } from '@/lib/checklist'
 import PainelLayoutClient from './PainelLayoutClient'
 
 const PUBLIC_PATHS = ['/painel/login', '/painel/cadastro', '/painel/recuperar-senha', '/painel/nova-senha', '/painel/completar-cadastro-google']
@@ -48,10 +49,13 @@ export default async function PainelLayout({ children }: { children: React.React
     ? Math.max(0, differenceInCalendarDays(new Date(prestadora.trial_fim), new Date()))
     : null
 
+  const checklistCompleto = await checklistEstaCompleto(supabase, prestadora)
+
   return (
     <PainelLayoutClient
       prestadora={prestadora}
       trialDiasRestantes={trialDiasRestantes}
+      checklistCompleto={checklistCompleto}
     >
       {children}
     </PainelLayoutClient>

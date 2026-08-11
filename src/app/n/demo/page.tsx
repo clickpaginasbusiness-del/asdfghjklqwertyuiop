@@ -58,6 +58,7 @@ const DEMO_PRESTADORA: Prestadora = {
   pagina_estabelecimento_titulo: 'Nosso espaço',
   pagina_preset: 'classico',
   pagina_banner_foto_id: null,
+  link_compartilhado_em: null,
   created_at: new Date().toISOString(),
 }
 

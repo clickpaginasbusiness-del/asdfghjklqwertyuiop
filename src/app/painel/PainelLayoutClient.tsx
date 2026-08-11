@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard, Calendar, CalendarDays, Scissors, ImageIcon,
-  Clock, Users, LogOut, Menu, X, ExternalLink, UserCircle, UserCircle2, CreditCard, AlertCircle, BarChart3, Headset, Settings, Wallet,
+  Clock, Users, LogOut, Menu, X, ExternalLink, UserCircle, UserCircle2, CreditCard, AlertCircle, BarChart3, Headset, Settings, Wallet, CheckCircle2,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { NotificacoesSino } from '@/components/painel/NotificacoesSino'
@@ -99,9 +99,11 @@ const TOUR_NAV_KEYS: Record<string, string> = {
 }
 
 type NavEntry =
-  | { href: string; label: string; icon: typeof LayoutDashboard }
+  | { href: string; label: string; icon: typeof LayoutDashboard; accent?: 'green' }
   | { section: string }
   | { divider: true }
+
+const CHECKLIST_NAV_ITEM: NavEntry = { href: '/painel/checklist', label: 'Checklist', icon: CheckCircle2, accent: 'green' }
 
 const navItems: NavEntry[] = [
   { section: 'Operação' },
@@ -131,13 +133,16 @@ export default function PainelLayoutClient({
   children,
   prestadora,
   trialDiasRestantes,
+  checklistCompleto,
 }: {
   children: React.ReactNode
   prestadora: Prestadora
   trialDiasRestantes: number | null
+  checklistCompleto: boolean
 }) {
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const items = checklistCompleto ? navItems : [CHECKLIST_NAV_ITEM, ...navItems]
 
   // Marca a prestadora como "online" pro indicador em tempo real do painel
   // admin — dispara uma vez quando o painel é aberto (o layout não remonta
@@ -183,7 +188,7 @@ export default function PainelLayoutClient({
         </div>
 
         <nav className="flex-1 min-h-0 overflow-y-auto p-4 space-y-1">
-          {navItems.map((item, i) => {
+          {items.map((item, i) => {
             if ('divider' in item) {
               return <div key={`divider-${i}`} className="my-2 border-t border-gray-100" />
             }
@@ -203,9 +208,9 @@ export default function PainelLayoutClient({
                 onClick={() => setSidebarOpen(false)}
                 className={cn(
                   'flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all min-h-11',
-                  active
-                    ? 'bg-rose-50 text-rose-600'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  item.accent === 'green'
+                    ? (active ? 'bg-green-50 text-green-600' : 'text-green-600 hover:bg-green-50')
+                    : (active ? 'bg-rose-50 text-rose-600' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900')
                 )}
               >
                 <item.icon className="w-4 h-4 shrink-0" />

@@ -58,6 +58,7 @@ export type Prestadora = {
   pagina_estabelecimento_titulo: string | null
   pagina_preset: PresetPagina
   pagina_banner_foto_id: string | null
+  link_compartilhado_em: string | null
   created_at: string
 }
 
