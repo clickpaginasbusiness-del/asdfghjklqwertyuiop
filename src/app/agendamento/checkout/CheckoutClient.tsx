@@ -80,6 +80,11 @@ export default function CheckoutClient({
   }, [status, agendamentoId, router])
 
   async function pagar(metodo: Metodo) {
+    // Abre a aba ANTES do fetch (síncrono, dentro do próprio clique) — depois
+    // de um await, o navegador não reconhece mais o clique original como o
+    // gesto que autoriza abrir aba nova, e o Safari em especial bloqueia. Só
+    // troca a URL da aba já aberta quando a Preference volta do servidor.
+    const novaAba = window.open('', '_blank')
     setPagando(metodo)
     try {
       const res = await fetch('/api/agendamentos/pagar', {
@@ -89,12 +94,19 @@ export default function CheckoutClient({
       })
       const data = await res.json()
       if (!res.ok) {
+        novaAba?.close()
         toast.error(data.error ?? 'Erro ao iniciar pagamento')
         setPagando(null)
         return
       }
-      window.location.assign(data.url)
+      if (novaAba) novaAba.location.href = data.url
+      else window.open(data.url, '_blank', 'noopener,noreferrer')
+      // Fica na página do BelleBook (não na do MP) — o Mercado Pago paga na
+      // aba nova, e aqui o polling de /agendamento/sucesso já cobre tanto
+      // aprovação instantânea (cartão) quanto Pix pendente.
+      router.replace(`/agendamento/sucesso?agendamento_id=${agendamentoId}`)
     } catch {
+      novaAba?.close()
       toast.error('Erro de conexão. Tente novamente.')
       setPagando(null)
     }

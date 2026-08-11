@@ -73,6 +73,11 @@ export default function CheckoutClient({ plano, ciclo }: { plano: Plano; ciclo: 
   const temDesconto = cupomStatus === 'ok' && precoFinal < precoBase
 
   async function pagar(metodo: Metodo) {
+    // Abre a aba ANTES do fetch (síncrono, dentro do próprio clique) — depois
+    // de um await, o navegador não reconhece mais o clique original como o
+    // gesto que autoriza abrir aba nova, e o Safari em especial bloqueia. Só
+    // troca a URL da aba já aberta quando a Preference volta do servidor.
+    const novaAba = window.open('', '_blank')
     setPagando(metodo)
     try {
       const res = await fetch('/api/mp/checkout', {
@@ -83,6 +88,7 @@ export default function CheckoutClient({ plano, ciclo }: { plano: Plano; ciclo: 
       const data = await res.json()
 
       if (!res.ok) {
+        novaAba?.close()
         if (data.tipo === 'cupom') {
           marcarCupomInvalido()
           toast.error('Cupom inválido ou expirado')
@@ -93,8 +99,14 @@ export default function CheckoutClient({ plano, ciclo }: { plano: Plano; ciclo: 
         return
       }
 
-      window.location.assign(data.url)
+      if (novaAba) novaAba.location.href = data.url
+      else window.open(data.url, '_blank', 'noopener,noreferrer')
+      // Fica na página do BelleBook (não na do MP) — o pagamento acontece na
+      // aba nova, e /planos/sucesso já tem o polling que espera o webhook
+      // confirmar a assinatura.
+      router.replace(`/planos/sucesso?plano=${plano}&ciclo=${ciclo}`)
     } catch {
+      novaAba?.close()
       toast.error('Erro de conexão. Tente novamente.')
       setPagando(null)
     }

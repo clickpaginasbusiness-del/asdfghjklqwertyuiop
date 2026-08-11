@@ -88,6 +88,11 @@ export function PlanosSection({ planos, corTema, dark, clienteLogado, onRequireL
     if (!modalPlano) return
     const token = localStorage.getItem('clienteToken')
     if (!token) { onRequireLogin(); return }
+    // Abre a aba ANTES do fetch (síncrono, dentro do próprio clique) — depois
+    // de um await, o navegador não reconhece mais o clique original como o
+    // gesto que autoriza abrir aba nova, e o Safari em especial bloqueia. Só
+    // troca a URL da aba já aberta quando a Preference volta do servidor.
+    const novaAba = window.open('', '_blank')
     setEnviando(true)
     try {
       const res = await fetch(`/api/planos/${modalPlano.id}/assinar`, {
@@ -96,9 +101,17 @@ export function PlanosSection({ planos, corTema, dark, clienteLogado, onRequireL
         body: JSON.stringify({ token, metodo }),
       })
       const data = await res.json()
-      if (!res.ok) { toast.error(data.error ?? 'Erro ao assinar plano'); return }
-      window.location.href = data.url
+      if (!res.ok) {
+        novaAba?.close()
+        toast.error(data.error ?? 'Erro ao assinar plano')
+        return
+      }
+      if (novaAba) novaAba.location.href = data.url
+      else window.open(data.url, '_blank', 'noopener,noreferrer')
+      setModalPlano(null)
+      toast.success('Pagamento aberto em outra aba — assim que confirmar, sua assinatura já aparece aqui.')
     } catch {
+      novaAba?.close()
       toast.error('Erro ao assinar plano')
     } finally {
       setEnviando(false)
