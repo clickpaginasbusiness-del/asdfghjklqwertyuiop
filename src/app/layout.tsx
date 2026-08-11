@@ -5,6 +5,7 @@ import './globals.css'
 import { Toaster } from 'react-hot-toast'
 import { ServiceWorkerRegister } from '@/components/pwa/ServiceWorkerRegister'
 import { InstallPrompt } from '@/components/pwa/InstallPrompt'
+import { OnboardingRedirect } from '@/components/pwa/OnboardingRedirect'
 import { SITE_URL } from '@/lib/seo'
 
 // next/font self-hospeda os arquivos de fonte (baixados em build time) e
@@ -104,6 +105,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {children}
         <ServiceWorkerRegister />
         <InstallPrompt />
+        <OnboardingRedirect />
         <Toaster
           position="top-right"
           toastOptions={{

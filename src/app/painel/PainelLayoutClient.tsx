@@ -93,18 +93,20 @@ function TrialBanner({ dias }: { dias: number }) {
   )
 }
 
-/** Compacto de propósito — some sozinho quando o checklist chega em 100%. */
+/** Compacto de propósito — some sozinho quando o checklist chega em 100%. Verde
+ * (progresso positivo) contrastando com o "Ver mais" em rosa (cor de ação
+ * padrão do app), pra não parecer um aviso/alerta como os outros banners. */
 function ChecklistBanner({ status }: { status: ChecklistStatus }) {
   return (
-    <div className="px-4 lg:px-8 py-2 flex flex-wrap items-center gap-x-3 gap-y-1 bg-rose-50 border-b border-rose-100">
-      <span className="text-xs font-semibold text-rose-700 shrink-0">Complete seu perfil</span>
-      <div className="flex-1 min-w-16 max-w-xs h-1.5 rounded-full bg-rose-100 overflow-hidden">
+    <div className="px-4 lg:px-8 py-2 flex flex-wrap items-center gap-x-3 gap-y-1 bg-green-50 border-b border-green-200">
+      <span className="text-xs font-semibold text-green-700 shrink-0">Complete seu perfil</span>
+      <div className="flex-1 min-w-16 max-w-xs h-1.5 rounded-full bg-green-100 overflow-hidden">
         <div
-          className="h-full rounded-full bg-rose-400 transition-all duration-500"
+          className="h-full rounded-full bg-green-500 transition-all duration-500"
           style={{ width: `${status.percentual}%` }}
         />
       </div>
-      <span className="text-xs font-bold text-rose-600 shrink-0">{status.percentual}%</span>
+      <span className="text-xs font-bold text-green-700 shrink-0">{status.percentual}%</span>
       <Link
         href="/painel/checklist"
         className="shrink-0 text-xs font-semibold text-rose-500 hover:text-rose-600 underline underline-offset-2 whitespace-nowrap"
