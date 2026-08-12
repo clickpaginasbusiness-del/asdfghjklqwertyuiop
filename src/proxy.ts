@@ -94,6 +94,11 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // .well-known de propósito fora do middleware: o verificador de Digital
+    // Asset Links do Android (e o próprio serviço da Google) faz um GET
+    // simples, sem cookies — passar por updateSession() aqui só adiciona uma
+    // dependência desnecessária do Supabase pra servir um JSON estático que
+    // precisa ser o mais simples e confiável possível pro TWA validar.
+    '/((?!_next/static|_next/image|favicon.ico|\\.well-known|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
