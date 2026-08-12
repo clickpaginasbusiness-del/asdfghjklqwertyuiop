@@ -8,7 +8,7 @@ export async function GET() {
         namespace: 'android_app',
         package_name: 'com.ymcsystems.bellebook',
         sha256_cert_fingerprints: [
-          'C1:96:F6:5C:64:20:82:86:B3:5C:D2:E5:93:AE:06:69:50:31:D6:49:1B:0F:94:70:DA:F2:27:3A:08:FE:1D:E5'
+          '1D:29:19:1F:42:8A:75:0A:74:64:C6:0E:D7:A1:4A:FA:E1:99:29:BF:56:0B:3F:1D:72:0D:7A:95:F4:C3:A4:9A'
         ]
       }
     }
