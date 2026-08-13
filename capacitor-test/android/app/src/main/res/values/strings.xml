@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">BelleBook Painel (teste)</string>
+    <string name="title_activity_main">BelleBook Painel (teste)</string>
+    <string name="package_name">com.bellebook.painel.capacitortest</string>
+    <string name="custom_url_scheme">com.bellebook.painel.capacitortest</string>
+</resources>

@@ -1,0 +1,19 @@
+{
+  "name": "bellebook-painel-shell-test",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Projeto Capacitor isolado, só para testar empacotar https://www.bellebook.com.br/painel como app Android. Não faz parte do site Next.js.",
+  "scripts": {
+    "sync": "cap sync",
+    "open:android": "cap open android",
+    "run:android": "cap run android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.4.4",
+    "@capacitor/browser": "^7.0.5",
+    "@capacitor/core": "^7.4.4"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.4.4"
+  }
+}

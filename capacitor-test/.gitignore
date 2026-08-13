@@ -1,0 +1,11 @@
+node_modules/
+
+# Android build outputs / local machine config — não faz sentido versionar
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+android/*.iml
+android/app/*.iml
+android/captures/
