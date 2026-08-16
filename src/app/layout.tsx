@@ -73,6 +73,11 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   themeColor: '#f9a8c9',
+  // Sem isso, env(safe-area-inset-*) sempre resolve pra 0 — mesmo com o CSS
+  // certo — porque o navegador/WebView nunca desenha o conteúdo por baixo da
+  // status bar/gesture bar pra começar. Necessário pro Android edge-to-edge
+  // (SDK 35+, default no target do capacitor-test) e pro notch do iOS.
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
