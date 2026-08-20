@@ -48,6 +48,22 @@ export function OnboardingTour({ prestadoraId, onOpenSidebar, onCloseSidebar }: 
           skipBtn.addEventListener('click', () => driverObj.destroy())
           popover.footer.prepend(skipBtn)
         },
+        // O scroll automático do driver.js pro elemento (quando ele está
+        // dentro de um pai com scroll próprio — caso da <nav> da sidebar,
+        // ver overflow-y-auto em PainelLayoutClient) não estava completando
+        // a tempo do highlight ser desenhado: itens mais pro fim da lista
+        // (Meu Perfil, Assinatura) ficavam fora da área visível e o popover
+        // caía numa posição de fallback, sem nenhuma caixa de destaque.
+        // Forçamos o scroll aqui e só depois chamamos refresh() — dois
+        // requestAnimationFrame pra garantir que o scroll já foi aplicado e
+        // pintado antes do driver.js recalcular a posição do destaque.
+        onHighlightStarted: (element, _step, { driver: driverInstance }) => {
+          if (!(element instanceof HTMLElement)) return
+          element.scrollIntoView({ behavior: 'auto', block: 'center' })
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => driverInstance.refresh())
+          })
+        },
         onDestroyed: () => {
           localStorage.setItem(tourKey(prestadoraId), '1')
           onCloseSidebar()
