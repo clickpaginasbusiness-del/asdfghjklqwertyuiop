@@ -151,7 +151,7 @@ export default function GaleriaClient({
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
               <button
                 onClick={(e) => { e.stopPropagation(); setDeleteId(item.id) }}
-                className="absolute top-2 right-2 bg-white/90 text-red-500 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white"
+                className="absolute top-2 right-2 bg-white/90 text-red-500 p-1.5 rounded-lg opacity-100 transition-opacity [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 hover:bg-white"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
