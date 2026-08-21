@@ -143,13 +143,6 @@ export default function OnboardingClient() {
   const pausadoRef = useRef(false)
   const touchStartXRef = useRef<number | null>(null)
 
-  // Chegar na tela final (CTA) — por auto-play, dot, "Pular" ou swipe — já
-  // conta como "viu o onboarding", então os botões dessa tela (que saem do
-  // app pra /painel/cadastro etc.) não voltam a mostrar o onboarding de novo.
-  useEffect(() => {
-    if (index === TOTAL_TELAS - 1) marcarVisto()
-  }, [index])
-
   useEffect(() => {
     if (pausadoRef.current || index === TOTAL_TELAS - 1) return
     const id = setTimeout(() => setIndex((i) => Math.min(i + 1, TOTAL_TELAS - 1)), AUTOPLAY_MS)
@@ -263,10 +256,15 @@ export default function OnboardingClient() {
         </div>
       </div>
 
-      {/* Pular — direto pra tela final */}
+      {/* Pular — direto pra tela final. Skip explícito: já conta como "viu o
+          onboarding" mesmo que a prestadora feche o app sem tocar nos links
+          da tela final. Chegar na tela final por autoplay/dot/swipe sozinho
+          NÃO conta — só ações explícitas (este botão ou os links do CTA)
+          marcam a flag, senão quem fecha o app no meio nunca mais vê o
+          onboarding. */}
       {!naUltimaTela && (
         <button
-          onClick={() => irPara(TOTAL_TELAS - 1)}
+          onClick={() => { marcarVisto(); irPara(TOTAL_TELAS - 1) }}
           className="absolute top-5 right-5 z-20 flex items-center gap-1 bg-black/10 backdrop-blur-sm text-gray-700 text-xs font-semibold rounded-full pl-3 pr-2 py-1.5 hover:bg-black/15 transition-colors"
         >
           Pular

@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { Capacitor } from '@capacitor/core'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,6 +26,12 @@ export default function LoginPage() {
   const [senha, setSenha] = useState('')
   const [loading, setLoading] = useState(false)
   const [loadingGoogle, setLoadingGoogle] = useState(false)
+  const [nativo, setNativo] = useState(false)
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- detecção de app nativo só é possível após montar (Capacitor)
+    setNativo(Capacitor.isNativePlatform())
+  }, [])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -58,7 +65,13 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gradient-to-br from-white via-pink-50 to-rose-50 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <Link href="/" className="font-serif text-3xl font-bold text-rose-400">BelleBook</Link>
+          {/* Dentro do app nativo (Capacitor) ir pra landing de marketing não
+              tem utilidade e só confunde — some o link, mantém só o texto. */}
+          {nativo ? (
+            <span className="font-serif text-3xl font-bold text-rose-400">BelleBook</span>
+          ) : (
+            <Link href="/" className="font-serif text-3xl font-bold text-rose-400">BelleBook</Link>
+          )}
           <p className="text-gray-500 mt-2 text-sm">Acesse seu painel</p>
         </div>
 
