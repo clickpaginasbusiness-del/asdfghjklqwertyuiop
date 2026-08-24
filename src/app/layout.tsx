@@ -7,6 +7,7 @@ import { ServiceWorkerRegister } from '@/components/pwa/ServiceWorkerRegister'
 import { InstallPrompt } from '@/components/pwa/InstallPrompt'
 import { OnboardingRedirect } from '@/components/pwa/OnboardingRedirect'
 import { AndroidBackButton } from '@/components/pwa/AndroidBackButton'
+import { FcmPushRegister } from '@/components/pwa/FcmPushRegister'
 import { SITE_URL } from '@/lib/seo'
 
 // next/font self-hospeda os arquivos de fonte (baixados em build time) e
@@ -113,6 +114,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <InstallPrompt />
         <OnboardingRedirect />
         <AndroidBackButton />
+        <FcmPushRegister />
         <Toaster
           position="top-right"
           toastOptions={{
