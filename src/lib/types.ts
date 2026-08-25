@@ -250,7 +250,7 @@ export type Agendamento = {
   created_at: string
   servicos?: Servico
   clientes?: Cliente
-  planos_assinaturas?: { planos_prestadora: { nome: string } | null } | null
+  planos_assinaturas?: { planos_prestadora: { nome: string; desconto_tipo?: 'percentual' | 'fixo'; desconto_valor?: number } | null } | null
   prestadoras?: Prestadora
   profissionais?: Profissional
   caixa_prestadora?: { valor_bruto: number; status: string }[]

@@ -2,6 +2,7 @@ import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 import { parseISO, isValid } from 'date-fns'
 import type { HorarioFuncionamento } from '@/lib/types'
+import { calcularPrecoComDesconto } from '@/lib/sinal'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -14,33 +15,45 @@ export function formatCurrency(value: number): string {
   }).format(value)
 }
 
-/** Valor de fato cobrado da cliente por um agendamento — vem de
- * caixa_prestadora.valor_bruto (gravado pelo webhook do MP quando o
- * pagamento é confirmado), não do preço de tabela do serviço. Sinal e
- * pagamento completo, com ou sem desconto de plano, nunca coincidem
- * necessariamente com servico.preco — só cai de volta pro preço de tabela
- * quando não há nenhuma entrada de caixa (agendamento sem pagamento online,
- * "paga na hora"), onde aquele número é a informação correta a mostrar. */
-export function valorCobrado(
-  caixaPrestadora: { valor_bruto: number; status: string }[] | null | undefined,
-  precoServico: number
-): number {
-  const entrada = (caixaPrestadora ?? []).find((c) => c.status !== 'reembolsado')
-  return entrada?.valor_bruto ?? precoServico
-}
+export type ValorExibicaoAgendamento =
+  /** Valor de fato cobrado (caixa_prestadora.valor_bruto) ou, sem nenhuma
+   * cobrança/plano envolvido, o preço de tabela do serviço mesmo. */
+  | { tipo: 'valor'; valor: number }
+  /** Coberto 100% por crédito de plano sem desconto nenhum configurado
+   * (plano "N atendimentos inclusos") — não há nada a cobrar. */
+  | { tipo: 'incluido_no_plano' }
+  /** Usou crédito de um plano COM desconto, mas foi/será pago
+   * presencialmente (sem cobrança online) — a prestadora precisa cobrar
+   * esse valor já descontado na hora, não o preço cheio. */
+  | { tipo: 'com_desconto_plano'; valor: number }
 
-/** true quando o agendamento usou crédito de plano E não teve nenhuma
- * cobrança online de verdade (ex.: "Pagar na hora do atendimento" com
- * crédito disponível — reserva 100% coberta pelo plano, sem sinal nem
- * valor completo). Nesse caso não existe "valor cobrado" nenhum — mostrar
- * o preço de tabela do serviço induziria a prestadora a achar que vai
- * receber esse valor, quando na verdade a cobrança nem aconteceu. */
-export function estaIncluidoNoPlano(
+/**
+ * Decide o que mostrar como "valor" de um agendamento em Agendamentos e
+ * Calendário. Nunca é simplesmente `servico.preco`: o valor de fato
+ * cobrado (`caixa_prestadora.valor_bruto`, gravado pelo webhook do MP)
+ * manda sempre que existir; sem cobrança online, um agendamento que usou
+ * crédito de plano ou é "incluído" (desconto 0 — nada a cobrar) ou precisa
+ * mostrar o preço já com desconto (a prestadora vai cobrar isso na mão) —
+ * só cai pro preço de tabela puro quando não há plano nem cobrança
+ * nenhuma envolvida.
+ */
+export function valorParaExibirAgendamento(
   caixaPrestadora: { valor_bruto: number; status: string }[] | null | undefined,
-  usouCreditoDePlano: boolean
-): boolean {
-  if (!usouCreditoDePlano) return false
-  return !(caixaPrestadora ?? []).some((c) => c.status !== 'reembolsado')
+  planoAssinatura: { desconto_tipo?: 'percentual' | 'fixo'; desconto_valor?: number } | null | undefined,
+  precoServico: number
+): ValorExibicaoAgendamento {
+  const entradaCaixa = (caixaPrestadora ?? []).find((c) => c.status !== 'reembolsado')
+  if (entradaCaixa) return { tipo: 'valor', valor: entradaCaixa.valor_bruto }
+
+  if (planoAssinatura) {
+    if (!planoAssinatura.desconto_valor) return { tipo: 'incluido_no_plano' }
+    return {
+      tipo: 'com_desconto_plano',
+      valor: calcularPrecoComDesconto(precoServico, { tipo: planoAssinatura.desconto_tipo ?? 'percentual', valor: planoAssinatura.desconto_valor }),
+    }
+  }
+
+  return { tipo: 'valor', valor: precoServico }
 }
 
 function parseDate(date: string | Date | null | undefined): Date | null {
