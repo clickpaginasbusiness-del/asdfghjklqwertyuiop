@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
-import { formatCurrency, formatDateTime, maskTelefone, buildWhatsappUrl, valorCobrado } from '@/lib/utils'
+import { formatCurrency, formatDateTime, maskTelefone, buildWhatsappUrl, valorCobrado, estaIncluidoNoPlano } from '@/lib/utils'
 import { cancelarAgendamento, concluirAgendamento } from '@/lib/agendamentoAcoes'
 import { Calendar, Phone, Search, MessageCircle, ArrowDownAZ, ArrowUpAZ, Clock4, CheckCheck, Trash2, Star } from 'lucide-react'
 import { Input } from '@/components/ui/input'
@@ -473,7 +473,13 @@ export default function AgendamentosClient({
 
                     {/* Preço + ações */}
                     <div className="flex items-center justify-between sm:shrink-0 sm:flex-col sm:items-end sm:justify-start gap-1 sm:ml-auto pt-2 mt-1 border-t border-gray-100 sm:pt-0 sm:mt-0 sm:border-0">
-                      <p className="text-sm font-medium text-gray-900">{formatCurrency(valorCobrado(a.caixa_prestadora, a.servicos?.preco ?? 0))}</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {estaIncluidoNoPlano(a.caixa_prestadora, !!a.plano_assinatura_id) ? (
+                          <span className="text-emerald-600">Incluído no plano</span>
+                        ) : (
+                          formatCurrency(valorCobrado(a.caixa_prestadora, a.servicos?.preco ?? 0))
+                        )}
+                      </p>
 
                       {/* Ações para confirmados */}
                       {a.status === 'confirmado' && (

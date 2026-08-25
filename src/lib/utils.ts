@@ -29,6 +29,20 @@ export function valorCobrado(
   return entrada?.valor_bruto ?? precoServico
 }
 
+/** true quando o agendamento usou crédito de plano E não teve nenhuma
+ * cobrança online de verdade (ex.: "Pagar na hora do atendimento" com
+ * crédito disponível — reserva 100% coberta pelo plano, sem sinal nem
+ * valor completo). Nesse caso não existe "valor cobrado" nenhum — mostrar
+ * o preço de tabela do serviço induziria a prestadora a achar que vai
+ * receber esse valor, quando na verdade a cobrança nem aconteceu. */
+export function estaIncluidoNoPlano(
+  caixaPrestadora: { valor_bruto: number; status: string }[] | null | undefined,
+  usouCreditoDePlano: boolean
+): boolean {
+  if (!usouCreditoDePlano) return false
+  return !(caixaPrestadora ?? []).some((c) => c.status !== 'reembolsado')
+}
+
 function parseDate(date: string | Date | null | undefined): Date | null {
   if (!date) return null
   const d = typeof date === 'string' ? parseISO(date) : date
