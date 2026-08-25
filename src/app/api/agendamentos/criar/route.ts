@@ -138,6 +138,7 @@ export async function POST(request: NextRequest) {
     await aplicarUsoCredito(supabaseAdmin, {
       assinaturaId: assinaturaComCredito.id,
       agendamentoId: ag.id,
+      servicoId,
       creditosRestantes: assinaturaComCredito.creditos_restantes,
     })
     creditosRestantesApos = Math.max(0, assinaturaComCredito.creditos_restantes - 1)

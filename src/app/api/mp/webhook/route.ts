@@ -251,7 +251,7 @@ async function processarPagamentoAgendamento(
 
   const { data: agendamento } = await supabaseAdmin
     .from('agendamentos')
-    .select('id, data_hora, prestadora_id, plano_assinatura_id, servicos(nome, preco), clientes(nome), profissionais(nome)')
+    .select('id, data_hora, prestadora_id, plano_assinatura_id, servico_id, servicos(nome, preco), clientes(nome), profissionais(nome)')
     .eq('id', agendamentoId)
     .eq('status', 'aguardando_pagamento')
     .maybeSingle()
@@ -283,6 +283,7 @@ async function processarPagamentoAgendamento(
       await aplicarUsoCredito(supabaseAdmin, {
         assinaturaId: assinatura.id,
         agendamentoId: agendamento.id,
+        servicoId: agendamento.servico_id,
         creditosRestantes: assinatura.creditos_restantes,
       })
     }

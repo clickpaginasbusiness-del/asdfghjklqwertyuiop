@@ -91,7 +91,12 @@ export async function buscarAssinaturaComCredito(
 /** Consome 1 crédito da assinatura pro agendamento que acabou de ser criado. */
 export async function aplicarUsoCredito(
   admin: Admin,
-  { assinaturaId, agendamentoId, creditosRestantes }: { assinaturaId: string; agendamentoId: string; creditosRestantes: number }
+  { assinaturaId, agendamentoId, servicoId, creditosRestantes }: {
+    assinaturaId: string
+    agendamentoId: string
+    servicoId: string
+    creditosRestantes: number
+  }
 ): Promise<void> {
   await admin
     .from('planos_assinaturas')
@@ -101,16 +106,20 @@ export async function aplicarUsoCredito(
   await admin.from('planos_usos').insert({
     assinatura_id: assinaturaId,
     agendamento_id: agendamentoId,
+    servico_id: servicoId,
     tipo: 'automatico',
   })
 }
 
 /** Desconto manual de 1 crédito pela prestadora (ex.: atendimento combinado
  * fora do app) — mesmo efeito de um uso automático, mas sem agendamento
- * vinculado e com descrição livre. */
+ * vinculado e com descrição livre. `servicoId` precisa ser um serviço do
+ * próprio plano (validado por quem chama) — sem isso o detalhamento de
+ * crédito por serviço (getCreditosPorServico) não sabe de qual serviço
+ * descontar. */
 export async function descontarUsoManual(
   admin: Admin,
-  { assinaturaId, descricao }: { assinaturaId: string; descricao: string }
+  { assinaturaId, descricao, servicoId }: { assinaturaId: string; descricao: string; servicoId: string }
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const { data: assinatura } = await admin
     .from('planos_assinaturas')
@@ -128,11 +137,69 @@ export async function descontarUsoManual(
 
   await admin.from('planos_usos').insert({
     assinatura_id: assinaturaId,
+    servico_id: servicoId,
     tipo: 'manual',
     descricao,
   })
 
   return { ok: true }
+}
+
+export interface CreditoServico {
+  servicoId: string
+  servicoNome: string
+  quantidadeTotal: number
+  usados: number
+  restantes: number
+}
+
+/** Detalhamento de crédito por serviço de uma assinatura — quantidade total
+ * vem de planos_servicos (congelada no momento da assinatura/renovação via
+ * creditos_totais, mas por serviço em vez de agregada); usados conta
+ * planos_usos do ciclo atual (>= periodo_inicio, pra não misturar com o
+ * ciclo anterior numa assinatura que não acumula). Usado tanto no relatório
+ * da prestadora quanto em "meus créditos" da cliente. */
+export async function getCreditosPorServico(admin: Admin, assinaturaId: string): Promise<CreditoServico[]> {
+  const { data: assinatura } = await admin
+    .from('planos_assinaturas')
+    .select('plano_id, periodo_inicio')
+    .eq('id', assinaturaId)
+    .maybeSingle()
+  if (!assinatura) return []
+
+  const { data: planoServicos } = await admin
+    .from('planos_servicos')
+    .select('quantidade, servicos(id, nome)')
+    .eq('plano_id', assinatura.plano_id)
+
+  const servicos = (planoServicos ?? []) as unknown as { quantidade: number; servicos: { id: string; nome: string } | null }[]
+  if (servicos.length === 0) return []
+
+  const { data: usos } = await admin
+    .from('planos_usos')
+    .select('servico_id')
+    .eq('assinatura_id', assinaturaId)
+    .gte('created_at', assinatura.periodo_inicio)
+
+  const usosPorServico = new Map<string, number>()
+  for (const u of usos ?? []) {
+    if (!u.servico_id) continue
+    usosPorServico.set(u.servico_id, (usosPorServico.get(u.servico_id) ?? 0) + 1)
+  }
+
+  return servicos
+    .filter((ps) => ps.servicos)
+    .map((ps) => {
+      const servico = ps.servicos!
+      const usados = usosPorServico.get(servico.id) ?? 0
+      return {
+        servicoId: servico.id,
+        servicoNome: servico.nome,
+        quantidadeTotal: ps.quantidade,
+        usados,
+        restantes: Math.max(0, ps.quantidade - usados),
+      }
+    })
 }
 
 /** Soma das quantidades dos serviços de um plano — vira creditos_totais de

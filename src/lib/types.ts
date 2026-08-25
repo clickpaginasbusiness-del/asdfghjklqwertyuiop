@@ -191,6 +191,7 @@ export type PlanoUso = {
   id: string
   assinatura_id: string
   agendamento_id: string | null
+  servico_id: string | null
   tipo: 'automatico' | 'manual'
   descricao: string | null
   created_at: string
