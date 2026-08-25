@@ -251,7 +251,7 @@ async function processarPagamentoAgendamento(
 
   const { data: agendamento } = await supabaseAdmin
     .from('agendamentos')
-    .select('id, data_hora, prestadora_id, plano_assinatura_id, servico_id, servicos(nome, preco), clientes(nome), profissionais(nome)')
+    .select('id, data_hora, prestadora_id, plano_assinatura_id, servico_id, tipo_pagamento, servicos(nome, preco), clientes(nome), profissionais(nome)')
     .eq('id', agendamentoId)
     .eq('status', 'aguardando_pagamento')
     .maybeSingle()
@@ -292,9 +292,12 @@ async function processarPagamentoAgendamento(
     }
   }
 
-  // Cobrou menos que o preço cheio do serviço → foi sinal; senão foi o
-  // valor total (cenário de pagamento online opcional).
-  const tipo = servico && valorBruto < servico.preco - 0.01 ? 'sinal' : 'pagamento_servico'
+  // tipo_pagamento (persistido em criar-pendente) é a fonte de verdade — só
+  // cai pra heurística de valor (quebra quando o pagamento completo sai
+  // descontado por plano) se vier null, agendamento criado antes da Fase 5.
+  const tipo = agendamento.tipo_pagamento
+    ? (agendamento.tipo_pagamento === 'sinal' ? 'sinal' : 'pagamento_servico')
+    : (servico && valorBruto < servico.preco - 0.01 ? 'sinal' : 'pagamento_servico')
 
   await criarEntradaCaixa(supabaseAdmin, {
     prestadoraId: agendamento.prestadora_id,

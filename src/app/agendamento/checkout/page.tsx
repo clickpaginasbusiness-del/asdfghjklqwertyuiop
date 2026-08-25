@@ -18,7 +18,7 @@ export default async function AgendamentoCheckoutPage({
   const { data: agendamento } = await admin
     .from('agendamentos')
     .select(`
-      id, status, data_hora, plano_assinatura_id,
+      id, status, data_hora, plano_assinatura_id, tipo_pagamento,
       servicos(nome, preco, sinal_tipo, sinal_valor, sinal_obrigatorio, aceitar_pagamento_online),
       profissionais(nome),
       prestadoras(nome, slug),
@@ -44,12 +44,18 @@ export default async function AgendamentoCheckoutPage({
     ? { tipo: planoAssinatura.plano.desconto_tipo, valor: planoAssinatura.plano.desconto_valor }
     : null
 
+  // tipo_pagamento é a fonte de verdade da escolha da cliente; só cai pra
+  // sinal_obrigatorio quando vem null (agendamento criado antes da Fase 5).
+  const cobrarSinal = agendamento.tipo_pagamento
+    ? agendamento.tipo_pagamento === 'sinal'
+    : servico.sinal_obrigatorio
+
   // Mesma fórmula de /api/agendamentos/pagar — desconto sempre sobre o preço
   // cheio; sinal nunca é afetado por desconto (o desconto do plano existe
   // pra reduzir o valor do SERVIÇO, não a reserva de compromisso do sinal —
   // só se realiza quando o valor cobrado é o completo).
   const { valorACobrar } = calcularValorFinalAgendamento(
-    servico.preco, servico.sinal_tipo, servico.sinal_valor, servico.sinal_obrigatorio, desconto
+    servico.preco, servico.sinal_tipo, servico.sinal_valor, cobrarSinal, desconto
   )
 
   return (
@@ -61,7 +67,7 @@ export default async function AgendamentoCheckoutPage({
       profissionalNome={profissional?.nome ?? null}
       prestadoraNome={prestadora.nome}
       prestadoraSlug={prestadora.slug}
-      ehSinal={servico.sinal_obrigatorio}
+      ehSinal={cobrarSinal}
       valor={valorACobrar}
       mostrarAguardandoConfirmacao={pendente === 'true'}
       mostrarErroPagamento={erro === 'pagamento'}

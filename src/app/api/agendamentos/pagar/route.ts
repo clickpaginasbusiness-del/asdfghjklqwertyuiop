@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
 
   const { data: agendamento } = await admin
     .from('agendamentos')
-    .select('id, status, plano_assinatura_id, servicos(nome, preco, sinal_tipo, sinal_valor, sinal_obrigatorio, aceitar_pagamento_online), clientes(nome, telefone)')
+    .select('id, status, plano_assinatura_id, tipo_pagamento, servicos(nome, preco, sinal_tipo, sinal_valor, sinal_obrigatorio, aceitar_pagamento_online), clientes(nome, telefone)')
     .eq('id', agendamentoId)
     .eq('status', 'aguardando_pagamento')
     .maybeSingle()
@@ -68,15 +68,22 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // tipo_pagamento é a fonte de verdade da escolha da cliente (persistida em
+  // criar-pendente); só cai pra sinal_obrigatorio quando vem null — agendamento
+  // criado antes da Fase 5 entrar no ar.
+  const cobrarSinal = agendamento.tipo_pagamento
+    ? agendamento.tipo_pagamento === 'sinal'
+    : servico.sinal_obrigatorio
+
   const { valorACobrar } = calcularValorFinalAgendamento(
-    servico.preco, servico.sinal_tipo, servico.sinal_valor, servico.sinal_obrigatorio, desconto
+    servico.preco, servico.sinal_tipo, servico.sinal_valor, cobrarSinal, desconto
   )
   const valor = valorACobrar
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
   if (!appUrl) throw new Error('NEXT_PUBLIC_APP_URL not set')
 
-  const titulo = servico.sinal_obrigatorio ? `Sinal — ${servico.nome}` : servico.nome
+  const titulo = cobrarSinal ? `Sinal — ${servico.nome}` : servico.nome
 
   // Cliente não tem email no sistema (só telefone) — manda nome/telefone
   // como payer mesmo assim. Sem isso a Preference ia sem nenhum dado de
