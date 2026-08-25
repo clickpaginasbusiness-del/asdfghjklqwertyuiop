@@ -2,17 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { Download, MoreVertical, Share, Smartphone } from 'lucide-react'
+import { isInstalledApp } from '@/lib/platform'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
-}
-
-function isStandalone() {
-  return (
-    window.matchMedia('(display-mode: standalone)').matches ||
-    (window.navigator as Navigator & { standalone?: boolean }).standalone === true
-  )
 }
 
 export function InstallAppSection() {
@@ -22,7 +16,7 @@ export function InstallAppSection() {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- detecção do modo de exibição só é possível após montar (matchMedia/navigator)
-    setStandalone(isStandalone())
+    setStandalone(isInstalledApp())
 
     function handleBeforeInstall(e: Event) {
       e.preventDefault()

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { isInstalledApp } from '@/lib/platform'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -13,13 +14,6 @@ function isIos() {
 
 function isAndroid() {
   return /android/i.test(window.navigator.userAgent)
-}
-
-function isStandalone() {
-  return (
-    window.matchMedia('(display-mode: standalone)').matches ||
-    (window.navigator as Navigator & { standalone?: boolean }).standalone === true
-  )
 }
 
 function isDismissed(key: string) {
@@ -38,7 +32,7 @@ export function useInstallPrompt(dismissKey: string, dismissDays = 7) {
 
   useEffect(() => {
     if (isDismissed(dismissKey)) return
-    if (isStandalone()) return
+    if (isInstalledApp()) return
     if (!isAndroid() && !isIos()) return
 
     function handleBeforeInstall(e: Event) {

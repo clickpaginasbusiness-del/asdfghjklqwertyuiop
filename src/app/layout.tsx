@@ -6,6 +6,8 @@ import { Toaster } from 'react-hot-toast'
 import { ServiceWorkerRegister } from '@/components/pwa/ServiceWorkerRegister'
 import { InstallPrompt } from '@/components/pwa/InstallPrompt'
 import { OnboardingRedirect } from '@/components/pwa/OnboardingRedirect'
+import { AndroidBackButton } from '@/components/pwa/AndroidBackButton'
+import { FcmPushRegister } from '@/components/pwa/FcmPushRegister'
 import { SITE_URL } from '@/lib/seo'
 
 // next/font self-hospeda os arquivos de fonte (baixados em build time) e
@@ -73,6 +75,11 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   themeColor: '#f9a8c9',
+  // Sem isso, env(safe-area-inset-*) sempre resolve pra 0 — mesmo com o CSS
+  // certo — porque o navegador/WebView nunca desenha o conteúdo por baixo da
+  // status bar/gesture bar pra começar. Necessário pro Android edge-to-edge
+  // (SDK 35+, default no target do capacitor-test) e pro notch do iOS.
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -106,6 +113,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ServiceWorkerRegister />
         <InstallPrompt />
         <OnboardingRedirect />
+        <AndroidBackButton />
+        <FcmPushRegister />
         <Toaster
           position="top-right"
           toastOptions={{

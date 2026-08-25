@@ -138,7 +138,7 @@ export default function ProfissionaisDemoClient({
                     </div>
                     <button
                       onClick={demoToast}
-                      className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                      className="absolute inset-0 bg-black/40 rounded-2xl opacity-100 transition-opacity [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 flex items-center justify-center"
                     >
                       <Upload className="w-4 h-4 text-white" />
                     </button>

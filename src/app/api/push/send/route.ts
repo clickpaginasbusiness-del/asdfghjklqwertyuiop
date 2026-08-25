@@ -2,6 +2,7 @@ import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import webpush from 'web-push'
 import { formatDateShort, formatCurrency } from '@/lib/utils'
+import { getFcmMessaging } from '@/lib/firebaseAdmin'
 
 const supabaseAdmin = createAdminClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -249,8 +250,110 @@ export async function POST(request: NextRequest) {
     await supabaseAdmin.from('push_subscriptions').delete().in('id', expiredIds)
   }
 
-  const sentCount = results.filter((r) => r.status === 'fulfilled').length
-  console.log(`[push/send] concluído — ${sentCount}/${subscriptions.length} enviado(s) com sucesso`)
+  const sentWebPush = results.filter((r) => r.status === 'fulfilled').length
+  console.log(`[push/send] web push concluído — ${sentWebPush}/${subscriptions.length} enviado(s) com sucesso`)
 
-  return NextResponse.json({ ok: true, sent: sentCount })
+  const sentFcm = await enviarViaFcm(prestadoraId, payload)
+
+  return NextResponse.json({ ok: true, sent: { webpush: sentWebPush, fcm: sentFcm } })
+}
+
+/**
+ * Envio via FCM (app nativo Capacitor) em paralelo ao Web Push acima — mesmo
+ * payload, mesma prestadora, canal independente. Retorna 0 sem erro se o FCM
+ * não estiver configurado (Service Account ausente) ou a prestadora não tiver
+ * nenhum token salvo — best-effort, mesmo espírito do resto desta rota.
+ */
+async function enviarViaFcm(prestadoraId: string, payload: string): Promise<number> {
+  const messaging = getFcmMessaging()
+  if (!messaging) {
+    console.warn('[push/send][fcm] Service Account do Firebase não configurada — pulando envio nativo')
+    return 0
+  }
+
+  const { data: tokensRaw, error: tokensError } = await supabaseAdmin
+    .from('fcm_tokens')
+    .select('id, token, user_agent, created_at')
+    .eq('prestadora_id', prestadoraId) as { data: {
+      id: string
+      token: string
+      user_agent: string | null
+      created_at: string
+    }[] | null, error: { message: string } | null }
+
+  if (tokensError) {
+    console.error('[push/send][fcm] erro ao buscar fcm_tokens:', tokensError.message)
+    return 0
+  }
+
+  if (!tokensRaw?.length) {
+    console.log(`[push/send][fcm] nenhum token FCM registrado para prestadora ${prestadoraId}`)
+    return 0
+  }
+
+  // Mesmo dedup por dispositivo usado pra push_subscriptions logo acima — o
+  // token do FCM também rotaciona, então o mesmo celular pode acumular vários.
+  const porDispositivo = new Map<string, typeof tokensRaw>()
+  const semDispositivoIdentificado: typeof tokensRaw = []
+  for (const t of tokensRaw) {
+    if (!t.user_agent) {
+      semDispositivoIdentificado.push(t)
+      continue
+    }
+    const grupo = porDispositivo.get(t.user_agent) ?? []
+    grupo.push(t)
+    porDispositivo.set(t.user_agent, grupo)
+  }
+
+  const tokens = [...semDispositivoIdentificado]
+  const tokensObsoletos: typeof tokensRaw = []
+  for (const grupo of porDispositivo.values()) {
+    const ordenado = [...grupo].sort((a, b) => b.created_at.localeCompare(a.created_at))
+    tokens.push(ordenado[0])
+    tokensObsoletos.push(...ordenado.slice(1))
+  }
+
+  if (tokensObsoletos.length) {
+    console.log(`[push/send][fcm] removendo ${tokensObsoletos.length} token(s) duplicado(s) do mesmo dispositivo`)
+    await supabaseAdmin.from('fcm_tokens').delete().in('id', tokensObsoletos.map((t) => t.id))
+  }
+
+  const payloadObj = JSON.parse(payload) as { title?: string; body?: string; url?: string; tipo?: string }
+
+  const response = await messaging.sendEachForMulticast({
+    tokens: tokens.map((t) => t.token),
+    notification: {
+      title: payloadObj.title ?? 'BelleBook',
+      body: payloadObj.body ?? '',
+    },
+    data: {
+      url: payloadObj.url ?? '/painel/agendamentos',
+      tipo: payloadObj.tipo ?? 'agendamento',
+    },
+  })
+
+  const tokensInvalidos: string[] = []
+  response.responses.forEach((r, i) => {
+    if (r.success) {
+      console.log(`[push/send][fcm] enviado com sucesso -> token ${tokens[i].id}`)
+      return
+    }
+    const code = r.error?.code
+    console.error(`[push/send][fcm] falha ao enviar -> token ${tokens[i].id}: ${code ?? r.error?.message}`)
+    if (
+      code === 'messaging/registration-token-not-registered' ||
+      code === 'messaging/invalid-registration-token' ||
+      code === 'messaging/invalid-argument'
+    ) {
+      tokensInvalidos.push(tokens[i].id)
+    }
+  })
+
+  if (tokensInvalidos.length) {
+    console.log(`[push/send][fcm] removendo ${tokensInvalidos.length} token(s) inválido(s)/expirado(s)`)
+    await supabaseAdmin.from('fcm_tokens').delete().in('id', tokensInvalidos)
+  }
+
+  console.log(`[push/send][fcm] concluído — ${response.successCount}/${tokens.length} enviado(s) com sucesso`)
+  return response.successCount
 }

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Download, MoreVertical, Share, Smartphone, X } from 'lucide-react'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
+import { isInstalledApp } from '@/lib/platform'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -22,13 +23,6 @@ function isMobileDevice() {
   return window.innerWidth < 768 || uaMobile
 }
 
-function isStandalone() {
-  return (
-    window.matchMedia('(display-mode: standalone)').matches ||
-    (window.navigator as Navigator & { standalone?: boolean }).standalone === true
-  )
-}
-
 export function InstallPwaModal() {
   const [open, setOpen] = useState(false)
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
@@ -37,7 +31,7 @@ export function InstallPwaModal() {
   useEffect(() => {
     if (localStorage.getItem(NEVER_KEY)) return
     if (sessionStorage.getItem(SESSION_DISMISS_KEY)) return
-    if (isStandalone()) return
+    if (isInstalledApp()) return
     if (!isMobileDevice()) return
 
     // eslint-disable-next-line react-hooks/set-state-in-effect -- detecção de mobile/PWA só é possível após montar (window/navigator)

@@ -1,6 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { Capacitor } from '@capacitor/core'
+import { Browser } from '@capacitor/browser'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -88,11 +90,19 @@ export function PlanosSection({ planos, corTema, dark, clienteLogado, onRequireL
     if (!modalPlano) return
     const token = localStorage.getItem('clienteToken')
     if (!token) { onRequireLogin(); return }
-    // Abre a aba ANTES do fetch (síncrono, dentro do próprio clique) — depois
-    // de um await, o navegador não reconhece mais o clique original como o
-    // gesto que autoriza abrir aba nova, e o Safari em especial bloqueia. Só
-    // troca a URL da aba já aberta quando a Preference volta do servidor.
-    const novaAba = window.open('', '_blank')
+    // Dentro do app (Capacitor), window.open() não abre nada — a WebView não
+    // implementa multi-window por padrão. Nesse caso usamos Browser.open() do
+    // @capacitor/browser (Custom Tabs/SFSafariViewController) depois que a
+    // Preference já voltou do servidor, sem precisar do truque da aba em
+    // branco abaixo (Browser.open() é uma chamada nativa, não sofre o
+    // bloqueio de popup que depende do gesto síncrono do clique).
+    const nativo = Capacitor.isNativePlatform()
+    // No navegador comum, abre a aba ANTES do fetch (síncrono, dentro do
+    // próprio clique) — depois de um await, o navegador não reconhece mais o
+    // clique original como o gesto que autoriza abrir aba nova, e o Safari em
+    // especial bloqueia. Só troca a URL da aba já aberta quando a Preference
+    // volta do servidor.
+    const novaAba = nativo ? null : window.open('', '_blank')
     setEnviando(true)
     try {
       const res = await fetch(`/api/planos/${modalPlano.id}/assinar`, {
@@ -106,7 +116,8 @@ export function PlanosSection({ planos, corTema, dark, clienteLogado, onRequireL
         toast.error(data.error ?? 'Erro ao assinar plano')
         return
       }
-      if (novaAba) novaAba.location.href = data.url
+      if (nativo) await Browser.open({ url: data.url })
+      else if (novaAba) novaAba.location.href = data.url
       else window.open(data.url, '_blank', 'noopener,noreferrer')
       setModalPlano(null)
       toast.success('Pagamento aberto em outra aba — assim que confirmar, sua assinatura já aparece aqui.')

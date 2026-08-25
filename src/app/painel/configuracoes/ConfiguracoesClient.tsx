@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Modal } from '@/components/ui/modal'
 import { isPushSupported, subscribeToPush } from '@/lib/push'
+import { isInstalledApp } from '@/lib/platform'
 import toast from 'react-hot-toast'
 
 interface BeforeInstallPromptEvent extends Event {
@@ -22,13 +23,6 @@ interface BeforeInstallPromptEvent extends Event {
 
 function isIos() {
   return /iphone|ipad|ipod/i.test(window.navigator.userAgent)
-}
-
-function isStandalone() {
-  return (
-    window.matchMedia('(display-mode: standalone)').matches ||
-    (window.navigator as Navigator & { standalone?: boolean }).standalone === true
-  )
 }
 
 type PushStatus = 'default' | 'granted' | 'denied' | 'unsupported'
@@ -52,7 +46,7 @@ export default function ConfiguracoesClient({ email }: { email: string }) {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- detecção de modo standalone/permissão só é possível após montar (window/Notification)
-    setStandalone(isStandalone())
+    setStandalone(isInstalledApp())
     setPushStatus(isPushSupported() ? Notification.permission : 'unsupported')
 
     function handleBeforeInstall(e: Event) {

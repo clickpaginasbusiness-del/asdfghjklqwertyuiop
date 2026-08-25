@@ -23,17 +23,22 @@ async function getPrestadoraDoPlano(supabase: Awaited<ReturnType<typeof createCl
   const { data: prestadora } = await supabase.from('prestadoras').select('id').eq('user_id', user.id).single()
   if (!prestadora) return null
 
-  const { data: plano } = await supabase.from('planos_prestadora').select('id, prestadora_id').eq('id', planoId).maybeSingle()
+  const { data: plano } = await supabase
+    .from('planos_prestadora')
+    .select('id, prestadora_id, preco, intervalo')
+    .eq('id', planoId)
+    .maybeSingle()
   if (!plano || plano.prestadora_id !== prestadora.id) return null
 
-  return prestadora
+  return { prestadora, plano }
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
-  const prestadora = await getPrestadoraDoPlano(supabase, id)
-  if (!prestadora) return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
+  const contexto = await getPrestadoraDoPlano(supabase, id)
+  if (!contexto) return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
+  const { plano: planoAtual } = contexto
 
   let body: Body
   try { body = await request.json() } catch { return NextResponse.json({ error: 'JSON inválido' }, { status: 400 }) }
@@ -48,6 +53,19 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   if (body.creditosAcumulam !== undefined) patch.creditos_acumulam = body.creditosAcumulam
   if (body.limiteVagas !== undefined) patch.limite_vagas = body.limiteVagas
   if (body.ativo !== undefined) patch.ativo = body.ativo
+
+  // O preapproval_plan do Mercado Pago trava transaction_amount/frequency no
+  // momento da criação — se preço ou intervalo mudam aqui, o id cacheado em
+  // mp_preapproval_plan_id fica apontando pro plano com os termos antigos, e
+  // getOrCreatePreapprovalPlanoCliente (src/lib/mercadopago.ts) só recria
+  // quando esse campo está nulo. Invalida o cache pra próxima assinatura no
+  // cartão recriar o plano no MP com os termos atuais — assinantes que já
+  // têm preapproval ativo não são afetadas, cada uma já travou seu próprio
+  // valor no momento em que assinou.
+  const mudouTermos =
+    (body.preco !== undefined && body.preco !== planoAtual.preco) ||
+    (body.intervalo !== undefined && body.intervalo !== planoAtual.intervalo)
+  if (mudouTermos) patch.mp_preapproval_plan_id = null
 
   const { error } = await supabase.from('planos_prestadora').update(patch).eq('id', id)
   if (error) {
@@ -71,8 +89,8 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
-  const prestadora = await getPrestadoraDoPlano(supabase, id)
-  if (!prestadora) return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
+  const contexto = await getPrestadoraDoPlano(supabase, id)
+  if (!contexto) return NextResponse.json({ error: 'Não autorizado' }, { status: 403 })
 
   const { count } = await supabase
     .from('planos_assinaturas')

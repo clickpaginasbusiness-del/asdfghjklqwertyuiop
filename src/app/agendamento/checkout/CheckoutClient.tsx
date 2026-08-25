@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { AlertTriangle, CreditCard, QrCode, Landmark, ChevronRight, Loader2, CheckCircle2, Clock } from 'lucide-react'
+import { Capacitor } from '@capacitor/core'
+import { Browser } from '@capacitor/browser'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { TAXA_PLATAFORMA_PERCENTUAL } from '@/lib/sinal'
 import toast from 'react-hot-toast'
@@ -80,11 +82,19 @@ export default function CheckoutClient({
   }, [status, agendamentoId, router])
 
   async function pagar(metodo: Metodo) {
-    // Abre a aba ANTES do fetch (síncrono, dentro do próprio clique) — depois
-    // de um await, o navegador não reconhece mais o clique original como o
-    // gesto que autoriza abrir aba nova, e o Safari em especial bloqueia. Só
-    // troca a URL da aba já aberta quando a Preference volta do servidor.
-    const novaAba = window.open('', '_blank')
+    // Dentro do app (Capacitor), window.open() não abre nada — a WebView não
+    // implementa multi-window por padrão. Nesse caso usamos Browser.open() do
+    // @capacitor/browser (Custom Tabs/SFSafariViewController) depois que a
+    // Preference já voltou do servidor, sem precisar do truque da aba em
+    // branco abaixo (Browser.open() é uma chamada nativa, não sofre o
+    // bloqueio de popup que depende do gesto síncrono do clique).
+    const nativo = Capacitor.isNativePlatform()
+    // No navegador comum, abre a aba ANTES do fetch (síncrono, dentro do
+    // próprio clique) — depois de um await, o navegador não reconhece mais o
+    // clique original como o gesto que autoriza abrir aba nova, e o Safari em
+    // especial bloqueia. Só troca a URL da aba já aberta quando a Preference
+    // volta do servidor.
+    const novaAba = nativo ? null : window.open('', '_blank')
     setPagando(metodo)
     try {
       const res = await fetch('/api/agendamentos/pagar', {
@@ -99,7 +109,8 @@ export default function CheckoutClient({
         setPagando(null)
         return
       }
-      if (novaAba) novaAba.location.href = data.url
+      if (nativo) await Browser.open({ url: data.url })
+      else if (novaAba) novaAba.location.href = data.url
       else window.open(data.url, '_blank', 'noopener,noreferrer')
       // Fica na página do BelleBook (não na do MP) — o Mercado Pago paga na
       // aba nova, e aqui o polling de /agendamento/sucesso já cobre tanto
