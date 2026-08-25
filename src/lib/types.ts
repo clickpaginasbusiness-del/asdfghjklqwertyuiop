@@ -253,6 +253,7 @@ export type Agendamento = {
   planos_assinaturas?: { planos_prestadora: { nome: string } | null } | null
   prestadoras?: Prestadora
   profissionais?: Profissional
+  caixa_prestadora?: { valor_bruto: number; status: string }[]
 }
 
 export type GaleriaItem = {

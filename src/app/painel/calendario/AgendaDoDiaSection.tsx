@@ -24,6 +24,7 @@ import {
   startOfTodaySP,
   dateKeyToDate,
   computeHorasDoDia,
+  valorCobrado,
 } from '@/lib/utils'
 import type { Prestadora, HorarioFuncionamento } from '@/lib/types'
 import type { AgendaSlotAg, ProfissionalCalendario } from './page'
@@ -308,7 +309,7 @@ export function AgendaDoDiaSection({
               </p>
               <p className="flex items-center gap-2">
                 <DollarSign className="w-4 h-4 text-gray-400 shrink-0" />
-                {formatCurrency(modalAg.servicos?.preco ?? 0)}
+                {formatCurrency(valorCobrado(modalAg.caixa_prestadora, modalAg.servicos?.preco ?? 0))}
               </p>
               <p className="flex items-center gap-2">
                 <CalendarDays className="w-4 h-4 text-gray-400 shrink-0" />

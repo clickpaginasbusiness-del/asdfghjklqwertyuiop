@@ -14,6 +14,21 @@ export function formatCurrency(value: number): string {
   }).format(value)
 }
 
+/** Valor de fato cobrado da cliente por um agendamento — vem de
+ * caixa_prestadora.valor_bruto (gravado pelo webhook do MP quando o
+ * pagamento é confirmado), não do preço de tabela do serviço. Sinal e
+ * pagamento completo, com ou sem desconto de plano, nunca coincidem
+ * necessariamente com servico.preco — só cai de volta pro preço de tabela
+ * quando não há nenhuma entrada de caixa (agendamento sem pagamento online,
+ * "paga na hora"), onde aquele número é a informação correta a mostrar. */
+export function valorCobrado(
+  caixaPrestadora: { valor_bruto: number; status: string }[] | null | undefined,
+  precoServico: number
+): number {
+  const entrada = (caixaPrestadora ?? []).find((c) => c.status !== 'reembolsado')
+  return entrada?.valor_bruto ?? precoServico
+}
+
 function parseDate(date: string | Date | null | undefined): Date | null {
   if (!date) return null
   const d = typeof date === 'string' ? parseISO(date) : date
