@@ -7,6 +7,14 @@ import { formatDateShort } from '@/lib/utils'
 import { Sparkles } from 'lucide-react'
 import toast from 'react-hot-toast'
 
+interface CreditoServico {
+  servicoId: string
+  servicoNome: string
+  quantidadeTotal: number
+  usados: number
+  restantes: number
+}
+
 interface AssinaturaPlano {
   id: string
   status: 'ativa' | 'cancelada' | 'suspensa'
@@ -14,6 +22,7 @@ interface AssinaturaPlano {
   creditos_totais: number
   periodo_fim: string | null
   plano: { nome: string; preco: number; intervalo: string } | null
+  creditosPorServico: CreditoServico[]
 }
 
 interface Props {
@@ -80,10 +89,18 @@ export function MeusPlanosModal({ open, onClose, prestadoraId, corTema }: Props)
                 <Sparkles className="w-3.5 h-3.5" />
                 {a.plano?.nome ?? 'Plano'}
               </div>
-              <p className="text-xs text-gray-500">
-                {a.creditos_restantes}/{a.creditos_totais} créditos restantes
-                {a.periodo_fim && ` · Renova em ${formatDateShort(a.periodo_fim)}`}
-              </p>
+              {a.creditosPorServico.length > 0 ? (
+                <ul className="text-xs text-gray-500 space-y-0.5">
+                  {a.creditosPorServico.map((cs) => (
+                    <li key={cs.servicoId}>{cs.restantes}/{cs.quantidadeTotal} {cs.servicoNome}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-xs text-gray-500">{a.creditos_restantes}/{a.creditos_totais} créditos restantes</p>
+              )}
+              {a.periodo_fim && (
+                <p className="text-xs text-gray-500">Renova em {formatDateShort(a.periodo_fim)}</p>
+              )}
               <Button
                 variant="outline"
                 size="sm"

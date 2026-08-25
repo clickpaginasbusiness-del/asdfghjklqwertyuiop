@@ -1189,6 +1189,8 @@ export default function PerfilPublicoClient({
             corTema={tema.hex}
             clienteLogado={clienteLogado}
             onRequireLogin={() => { if (isDemo) { loginDemoInstantaneo() } else { setLoginModal(true) } }}
+            prestadoraId={prestadora.id}
+            onVerCreditos={() => setMeusPlanosModal(true)}
           />
         </div>
 

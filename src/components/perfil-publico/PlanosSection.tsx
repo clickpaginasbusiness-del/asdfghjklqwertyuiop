@@ -50,6 +50,10 @@ interface Props {
   dark?: boolean
   clienteLogado: { id: string; nome: string; telefone: string } | null
   onRequireLogin: () => void
+  prestadoraId: string
+  /** Abre a tela "Meus planos" (créditos por serviço) — chamado pelo botão
+   * de um plano que a cliente já assina, em vez do modal de assinatura. */
+  onVerCreditos: () => void
 }
 
 /** Seção "Planos e assinaturas" + fluxo de assinar, compartilhada pelas 3
@@ -57,11 +61,12 @@ interface Props {
  * delegado ao modal de login que cada página já tem (via onRequireLogin) —
  * ao detectar que clienteLogado passou de null pra preenchido enquanto
  * havia uma assinatura pendente, reabre o modal de assinatura sozinha. */
-export function PlanosSection({ planos, corTema, dark, clienteLogado, onRequireLogin }: Props) {
+export function PlanosSection({ planos, corTema, dark, clienteLogado, onRequireLogin, prestadoraId, onVerCreditos }: Props) {
   const [modalPlano, setModalPlano] = useState<PlanoPublico | null>(null)
   const [metodo, setMetodo] = useState<'cartao' | 'pix'>('cartao')
   const [enviando, setEnviando] = useState(false)
   const [aguardandoLoginId, setAguardandoLoginId] = useState<string | null>(null)
+  const [planosAssinadosIds, setPlanosAssinadosIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     if (!clienteLogado || !aguardandoLoginId) return
@@ -73,6 +78,31 @@ export function PlanosSection({ planos, corTema, dark, clienteLogado, onRequireL
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- só reage à transição de login, não a mudanças na lista de planos
   }, [clienteLogado])
+
+  // Marca quais planos dessa lista a cliente logada já assina (status ativa)
+  // com essa prestadora, pra trocar "Assinar" por "Ver meus créditos".
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reseta ao deslogar, mesmo padrão do efeito de aguardandoLoginId acima
+    if (!clienteLogado) { setPlanosAssinadosIds(new Set()); return }
+    const token = localStorage.getItem('clienteToken')
+    if (!token) return
+
+    let cancelado = false
+    fetch('/api/planos/meus', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, prestadoraId }),
+    })
+      .then((r) => (r.ok ? r.json() : { assinaturas: [] }))
+      .then((data: { assinaturas: { plano_id: string; status: string }[] }) => {
+        if (cancelado) return
+        const ativos = (data.assinaturas ?? []).filter((a) => a.status === 'ativa').map((a) => a.plano_id)
+        setPlanosAssinadosIds(new Set(ativos))
+      })
+      .catch(() => {})
+
+    return () => { cancelado = true }
+  }, [clienteLogado, prestadoraId])
 
   if (planos.length === 0) return null
 
@@ -151,6 +181,7 @@ export function PlanosSection({ planos, corTema, dark, clienteLogado, onRequireL
             {planos.map((plano) => {
               const vagasRestantes = plano.limite_vagas != null ? Math.max(0, plano.limite_vagas - plano.vagasOcupadas) : null
               const esgotado = vagasRestantes === 0
+              const jaAssina = planosAssinadosIds.has(plano.id)
               return (
                 <div
                   key={plano.id}
@@ -165,6 +196,10 @@ export function PlanosSection({ planos, corTema, dark, clienteLogado, onRequireL
                       </Badge>
                     )}
                   </div>
+
+                  {jaAssina && (
+                    <Badge variant="success" className="mb-3">Você já assina este plano</Badge>
+                  )}
 
                   {plano.descricao && (
                     <p className={dark ? 'text-sm text-gray-400 mb-3' : 'text-sm text-gray-500 mb-3'}>{plano.descricao}</p>
@@ -193,12 +228,12 @@ export function PlanosSection({ planos, corTema, dark, clienteLogado, onRequireL
                   )}
 
                   <Button
-                    onClick={() => abrirAssinar(plano)}
-                    disabled={esgotado}
+                    onClick={() => { if (jaAssina) onVerCreditos(); else abrirAssinar(plano) }}
+                    disabled={esgotado && !jaAssina}
                     className="w-full hover:brightness-95"
-                    style={esgotado ? undefined : { backgroundColor: corTema }}
+                    style={esgotado && !jaAssina ? undefined : { backgroundColor: corTema }}
                   >
-                    {esgotado ? 'Esgotado' : 'Assinar'}
+                    {jaAssina ? 'Ver meus créditos' : esgotado ? 'Esgotado' : 'Assinar'}
                   </Button>
                 </div>
               )

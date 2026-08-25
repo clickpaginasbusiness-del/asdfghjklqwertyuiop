@@ -1184,6 +1184,8 @@ export default function PerfilPublicoLandingPremiumClient({
         dark
         clienteLogado={clienteLogado}
         onRequireLogin={() => { if (isDemo) { loginDemoInstantaneo() } else { setLoginModal(true) } }}
+        prestadoraId={prestadora.id}
+        onVerCreditos={() => setMeusPlanosModal(true)}
       />
 
       {/* ── AGENDAMENTO INLINE ─────────────────── */}
