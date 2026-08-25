@@ -88,7 +88,15 @@ export async function buscarAssinaturaComCredito(
   return null
 }
 
-/** Consome 1 crédito da assinatura pro agendamento que acabou de ser criado. */
+/** Consome 1 crédito da assinatura pro agendamento que acabou de ser criado.
+ * Trava otimista: o UPDATE só grava se `creditos_restantes` ainda for
+ * exatamente o valor lido por quem chama — se outra requisição já consumiu
+ * um crédito nesse meio-tempo (duas reservas quase simultâneas, por
+ * exemplo), a atualização não encontra a linha e retorna `false` sem
+ * inserir o uso. Sem essa trava, "ler, calcular -1 em JS, escrever" perde
+ * decrementos quando duas chamadas leem o mesmo valor antes de qualquer
+ * uma escrever — o log de planos_usos fica certo, mas o saldo fica maior
+ * do que deveria. */
 export async function aplicarUsoCredito(
   admin: Admin,
   { assinaturaId, agendamentoId, servicoId, creditosRestantes }: {
@@ -97,11 +105,16 @@ export async function aplicarUsoCredito(
     servicoId: string
     creditosRestantes: number
   }
-): Promise<void> {
-  await admin
+): Promise<boolean> {
+  const { data } = await admin
     .from('planos_assinaturas')
     .update({ creditos_restantes: Math.max(0, creditosRestantes - 1) })
     .eq('id', assinaturaId)
+    .eq('creditos_restantes', creditosRestantes)
+    .select('id')
+    .maybeSingle()
+
+  if (!data) return false
 
   await admin.from('planos_usos').insert({
     assinatura_id: assinaturaId,
@@ -109,6 +122,7 @@ export async function aplicarUsoCredito(
     servico_id: servicoId,
     tipo: 'automatico',
   })
+  return true
 }
 
 /** Desconto manual de 1 crédito pela prestadora (ex.: atendimento combinado
@@ -116,7 +130,7 @@ export async function aplicarUsoCredito(
  * vinculado e com descrição livre. `servicoId` precisa ser um serviço do
  * próprio plano (validado por quem chama) — sem isso o detalhamento de
  * crédito por serviço (getCreditosPorServico) não sabe de qual serviço
- * descontar. */
+ * descontar. Mesma trava otimista de `aplicarUsoCredito`. */
 export async function descontarUsoManual(
   admin: Admin,
   { assinaturaId, descricao, servicoId }: { assinaturaId: string; descricao: string; servicoId: string }
@@ -130,10 +144,15 @@ export async function descontarUsoManual(
   if (!assinatura) return { ok: false, error: 'Assinatura não encontrada' }
   if (assinatura.creditos_restantes <= 0) return { ok: false, error: 'Assinatura sem créditos restantes' }
 
-  await admin
+  const { data } = await admin
     .from('planos_assinaturas')
     .update({ creditos_restantes: assinatura.creditos_restantes - 1 })
     .eq('id', assinaturaId)
+    .eq('creditos_restantes', assinatura.creditos_restantes)
+    .select('id')
+    .maybeSingle()
+
+  if (!data) return { ok: false, error: 'O saldo mudou nesse meio-tempo — tente novamente' }
 
   await admin.from('planos_usos').insert({
     assinatura_id: assinaturaId,

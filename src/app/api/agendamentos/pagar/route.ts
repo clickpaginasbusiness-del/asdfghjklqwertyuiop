@@ -48,15 +48,24 @@ export async function POST(request: NextRequest) {
   // calculado sobre o preço cheio do serviço (nunca sobre o sinal), nunca
   // sobre a mensalidade do plano em si (essa já foi cobrada à parte na
   // assinatura do plano). Ver calcularValorFinalAgendamento em lib/sinal.ts.
+  //
+  // Reconfere status/saldo AGORA, não só a existência do vínculo: o
+  // agendamento pode ter ficado pendente por um tempo, e nesse meio-tempo a
+  // assinatura pode ter sido cancelada ou o crédito esgotado por outro
+  // agendamento — sem essa reconferência, o desconto continuaria valendo
+  // pra sempre a partir do momento em que o vínculo foi criado, mesmo sem
+  // crédito nenhum sobrando.
   let desconto: DescontoPlano | null = null
   if (agendamento.plano_assinatura_id) {
     const { data: assinatura } = await admin
       .from('planos_assinaturas')
-      .select('plano:planos_prestadora(desconto_tipo, desconto_valor)')
+      .select('status, creditos_restantes, plano:planos_prestadora(desconto_tipo, desconto_valor)')
       .eq('id', agendamento.plano_assinatura_id)
       .maybeSingle()
     const plano = assinatura?.plano as unknown as { desconto_tipo: 'percentual' | 'fixo'; desconto_valor: number } | null
-    if (plano) desconto = { tipo: plano.desconto_tipo, valor: plano.desconto_valor }
+    if (plano && assinatura?.status === 'ativa' && assinatura.creditos_restantes > 0) {
+      desconto = { tipo: plano.desconto_tipo, valor: plano.desconto_valor }
+    }
   }
 
   const { valorACobrar } = calcularValorFinalAgendamento(

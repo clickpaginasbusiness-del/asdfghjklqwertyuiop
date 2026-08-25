@@ -280,12 +280,15 @@ async function processarPagamentoAgendamento(
       .eq('id', agendamento.plano_assinatura_id)
       .maybeSingle()
     if (assinatura && assinatura.creditos_restantes > 0) {
-      await aplicarUsoCredito(supabaseAdmin, {
+      const consumiu = await aplicarUsoCredito(supabaseAdmin, {
         assinaturaId: assinatura.id,
         agendamentoId: agendamento.id,
         servicoId: agendamento.servico_id,
         creditosRestantes: assinatura.creditos_restantes,
       })
+      if (!consumiu) {
+        console.warn('[mp webhook][payment] aplicarUsoCredito perdeu a corrida (saldo mudou) —', assinatura.id)
+      }
     }
   }
 
