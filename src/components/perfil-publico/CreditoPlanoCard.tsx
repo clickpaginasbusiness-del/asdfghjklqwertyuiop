@@ -9,6 +9,13 @@ interface Props {
   usarCredito: boolean
   onChange: (usar: boolean) => void
   dark?: boolean
+  /** O desconto do plano só se realiza quando o valor cobrado é o completo
+   * — a reserva de compromisso (sinal) nunca reflete desconto, seja fixo ou
+   * percentual. Quando false (agendamento com sinal obrigatório, sem opção
+   * de pagar completo ainda), esconde a linha de desconto pra não prometer
+   * um benefício que essa transação não realiza — mas mantém o texto de
+   * crédito, que continua valendo igual. */
+  descontoAplicavel: boolean
 }
 
 /** Badge + checkbox "Usar crédito do plano" no passo de confirmação do
@@ -16,7 +23,7 @@ interface Props {
  * significa "pagar normalmente dessa vez", sem consumir crédito. O preset
  * Premium (fundo escuro) usa cores diferentes pra manter contraste — as
  * outras duas variantes já são claras, então o verde-claro padrão serve. */
-export function CreditoPlanoCard({ assinatura, usarCredito, onChange, dark }: Props) {
+export function CreditoPlanoCard({ assinatura, usarCredito, onChange, dark, descontoAplicavel }: Props) {
   const creditosApos = Math.max(0, assinatura.creditosRestantes - 1)
 
   return (
@@ -37,7 +44,7 @@ export function CreditoPlanoCard({ assinatura, usarCredito, onChange, dark }: Pr
           <Sparkles className="w-3.5 h-3.5" />
           Plano {assinatura.planoNome}
         </div>
-        {assinatura.descontoValor > 0 && (
+        {descontoAplicavel && assinatura.descontoValor > 0 && (
           <p className={`text-xs mt-0.5 ${dark ? 'text-emerald-500' : 'text-emerald-600'}`}>
             Desconto de {assinatura.descontoTipo === 'percentual' ? `${assinatura.descontoValor}%` : formatCurrency(assinatura.descontoValor)} aplicado
           </p>

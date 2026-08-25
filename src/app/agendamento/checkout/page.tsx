@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { calcularValorSinal } from '@/lib/sinal'
+import { calcularValorFinalAgendamento, type DescontoPlano } from '@/lib/sinal'
 import CheckoutClient from './CheckoutClient'
 
 export const metadata = { title: 'Confirmar pagamento — BelleBook' }
@@ -18,10 +18,11 @@ export default async function AgendamentoCheckoutPage({
   const { data: agendamento } = await admin
     .from('agendamentos')
     .select(`
-      id, status, data_hora,
+      id, status, data_hora, plano_assinatura_id,
       servicos(nome, preco, sinal_tipo, sinal_valor, sinal_obrigatorio, aceitar_pagamento_online),
       profissionais(nome),
-      prestadoras(nome, slug)
+      prestadoras(nome, slug),
+      planos_assinaturas(plano:planos_prestadora(desconto_tipo, desconto_valor))
     `)
     .eq('id', agendamentoId)
     .maybeSingle()
@@ -34,12 +35,22 @@ export default async function AgendamentoCheckoutPage({
   } | null
   const profissional = agendamento.profissionais as unknown as { nome: string } | null
   const prestadora = agendamento.prestadoras as unknown as { nome: string; slug: string } | null
+  const planoAssinatura = agendamento.planos_assinaturas as unknown as
+    { plano: { desconto_tipo: 'percentual' | 'fixo'; desconto_valor: number } | null } | null
 
   if (!servico?.aceitar_pagamento_online || !prestadora) redirect('/')
 
-  const valor = servico.sinal_obrigatorio
-    ? calcularValorSinal(servico.preco, servico.sinal_tipo, servico.sinal_valor)
-    : servico.preco
+  const desconto: DescontoPlano | null = planoAssinatura?.plano
+    ? { tipo: planoAssinatura.plano.desconto_tipo, valor: planoAssinatura.plano.desconto_valor }
+    : null
+
+  // Mesma fórmula de /api/agendamentos/pagar — desconto sempre sobre o preço
+  // cheio; sinal nunca é afetado por desconto (o desconto do plano existe
+  // pra reduzir o valor do SERVIÇO, não a reserva de compromisso do sinal —
+  // só se realiza quando o valor cobrado é o completo).
+  const { valorACobrar } = calcularValorFinalAgendamento(
+    servico.preco, servico.sinal_tipo, servico.sinal_valor, servico.sinal_obrigatorio, desconto
+  )
 
   return (
     <CheckoutClient
@@ -51,7 +62,7 @@ export default async function AgendamentoCheckoutPage({
       prestadoraNome={prestadora.nome}
       prestadoraSlug={prestadora.slug}
       ehSinal={servico.sinal_obrigatorio}
-      valor={valor}
+      valor={valorACobrar}
       mostrarAguardandoConfirmacao={pendente === 'true'}
       mostrarErroPagamento={erro === 'pagamento'}
     />

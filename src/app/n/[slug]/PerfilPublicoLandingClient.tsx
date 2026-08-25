@@ -20,13 +20,13 @@ import {
   CalendarPlus, Share2, Quote, Trash2, Home, Eye, Sparkles, ArrowRight,
 } from 'lucide-react'
 import { getServicoIcone } from '@/lib/servicoIcones'
-import { calcularValorSinal } from '@/lib/sinal'
-import type { PrestadoraPublica, Servico, GaleriaItem, Agendamento, Profissional, HorarioFuncionamento, Avaliacao } from '@/lib/types'
+import { calcularValorSinal, calcularPrecoComDesconto } from '@/lib/sinal'
+import type { PrestadoraPublica, GaleriaItem, Agendamento, Profissional, HorarioFuncionamento, Avaliacao } from '@/lib/types'
 import { getTema } from '@/lib/theme'
 import { planoEfetivo, ehPro } from '@/lib/plano'
 import { limitesPlano } from '@/lib/planoLimites'
 import { PlanosSection, type PlanoPublico } from '@/components/perfil-publico/PlanosSection'
-import { usePlanoCredito, calcularValorComDesconto } from '@/components/perfil-publico/usePlanoCredito'
+import { usePlanoCredito } from '@/components/perfil-publico/usePlanoCredito'
 import { CreditoPlanoCard } from '@/components/perfil-publico/CreditoPlanoCard'
 import { MeusPlanosModal } from '@/components/perfil-publico/MeusPlanosModal'
 import { HorarioHojeDropdown } from '@/components/perfil-publico/HorarioHojeDropdown'
@@ -767,7 +767,7 @@ export default function PerfilPublicoLandingClient({
    * servidor (ver /api/agendamentos/pagar) a partir de plano_assinatura_id. */
   function valorComDescontoDoPlano(valor: number): number {
     if (assinaturaComCredito && usarCredito) {
-      return calcularValorComDesconto(valor, assinaturaComCredito.descontoTipo, assinaturaComCredito.descontoValor)
+      return calcularPrecoComDesconto(valor, { tipo: assinaturaComCredito.descontoTipo, valor: assinaturaComCredito.descontoValor })
     }
     return valor
   }
@@ -1495,6 +1495,7 @@ export default function PerfilPublicoLandingClient({
                               assinatura={assinaturaComCredito}
                               usarCredito={usarCredito}
                               onChange={setUsarCredito}
+                              descontoAplicavel={!(servicoSelecionado.aceitar_pagamento_online && servicoSelecionado.sinal_obrigatorio)}
                             />
                           )}
 
@@ -1503,7 +1504,7 @@ export default function PerfilPublicoLandingClient({
                               <div className="space-y-3">
                                 <div className="rounded-xl bg-amber-50 border border-amber-100 px-3 py-2.5">
                                   <p className="text-sm font-semibold text-amber-800">
-                                    Sinal: {formatCurrency(valorComDescontoDoPlano(calcularValorSinal(servicoSelecionado.preco, servicoSelecionado.sinal_tipo, servicoSelecionado.sinal_valor)))}
+                                    Sinal: {formatCurrency(calcularValorSinal(servicoSelecionado.preco, servicoSelecionado.sinal_tipo, servicoSelecionado.sinal_valor))}
                                   </p>
                                   <p className="text-xs text-amber-700 mt-1">
                                     Este pagamento é não reembolsável. Em caso de cancelamento, o valor não será devolvido.

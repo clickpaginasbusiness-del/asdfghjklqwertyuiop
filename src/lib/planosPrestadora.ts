@@ -57,20 +57,6 @@ export function calcularPeriodoFim(intervalo: PlanoPrestadora['intervalo'], base
   return fim
 }
 
-/** Preço já com desconto aplicado — usado só pra exibição (o valor cobrado
- * de verdade no MP é sempre o preco cheio do plano; o desconto do plano é
- * sobre o VALOR DO SERVIÇO quando a cliente usa o crédito, não sobre a
- * mensalidade do plano em si). */
-export function calcularValorComDesconto(
-  valor: number,
-  descontoTipo: PlanoPrestadora['desconto_tipo'],
-  descontoValor: number
-): number {
-  if (!descontoValor) return valor
-  const final = descontoTipo === 'percentual' ? valor * (1 - descontoValor / 100) : valor - descontoValor
-  return Math.max(0, round2(final))
-}
-
 /**
  * Assinatura ativa da cliente que cobre o serviço informado (o plano precisa
  * ter esse serviço em planos_servicos) e ainda tem crédito sobrando. `null`
