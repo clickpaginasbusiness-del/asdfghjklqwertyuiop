@@ -273,22 +273,17 @@ async function processarPagamentoAgendamento(
 
   // Reservado com crédito de plano — debita agora que o pagamento (sinal ou
   // valor total, já com desconto do plano aplicado) foi de fato confirmado.
+  // aplicarUsoCredito reconfere o saldo (linha por serviço ou agregado,
+  // conforme o plano) por conta própria — nunca a partir de um valor lido
+  // antes aqui.
   if (agendamento.plano_assinatura_id) {
-    const { data: assinatura } = await supabaseAdmin
-      .from('planos_assinaturas')
-      .select('id, creditos_restantes')
-      .eq('id', agendamento.plano_assinatura_id)
-      .maybeSingle()
-    if (assinatura && assinatura.creditos_restantes > 0) {
-      const consumiu = await aplicarUsoCredito(supabaseAdmin, {
-        assinaturaId: assinatura.id,
-        agendamentoId: agendamento.id,
-        servicoId: agendamento.servico_id,
-        creditosRestantes: assinatura.creditos_restantes,
-      })
-      if (!consumiu) {
-        console.warn('[mp webhook][payment] aplicarUsoCredito perdeu a corrida (saldo mudou) —', assinatura.id)
-      }
+    const consumiu = await aplicarUsoCredito(supabaseAdmin, {
+      assinaturaId: agendamento.plano_assinatura_id,
+      agendamentoId: agendamento.id,
+      servicoId: agendamento.servico_id,
+    })
+    if (!consumiu) {
+      console.warn('[mp webhook][payment] aplicarUsoCredito não debitou (sem crédito ou corrida) —', agendamento.plano_assinatura_id)
     }
   }
 

@@ -139,7 +139,6 @@ export async function POST(request: NextRequest) {
       assinaturaId: assinaturaComCredito.id,
       agendamentoId: ag.id,
       servicoId,
-      creditosRestantes: assinaturaComCredito.creditos_restantes,
     })
     if (!consumiu) {
       // Outra requisição consumiu o crédito nesse meio-tempo (trava
@@ -148,8 +147,8 @@ export async function POST(request: NextRequest) {
       console.warn('[agendamentos/criar] aplicarUsoCredito perdeu a corrida (saldo mudou) —', assinaturaComCredito.id)
     }
     creditosRestantesApos = consumiu
-      ? Math.max(0, assinaturaComCredito.creditos_restantes - 1)
-      : assinaturaComCredito.creditos_restantes
+      ? Math.max(0, assinaturaComCredito.creditoDisponivel - 1)
+      : assinaturaComCredito.creditoDisponivel
   }
 
   // Cliente testando o próprio sistema (mesmo telefone da prestadora) — não

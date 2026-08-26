@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { preference } from '@/lib/mercadopago'
 import { calcularValorFinalAgendamento, type DescontoPlano } from '@/lib/sinal'
+import { temCreditoDisponivel } from '@/lib/planosPrestadora'
 
 type MetodoPagamento = 'cartao' | 'pix' | 'debito'
 const METODOS_VALIDOS = new Set<MetodoPagamento>(['cartao', 'pix', 'debito'])
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
 
   const { data: agendamento } = await admin
     .from('agendamentos')
-    .select('id, status, plano_assinatura_id, tipo_pagamento, servicos(nome, preco, sinal_tipo, sinal_valor, sinal_obrigatorio, aceitar_pagamento_online), clientes(nome, telefone)')
+    .select('id, status, plano_assinatura_id, tipo_pagamento, servico_id, servicos(nome, preco, sinal_tipo, sinal_valor, sinal_obrigatorio, aceitar_pagamento_online), clientes(nome, telefone)')
     .eq('id', agendamentoId)
     .eq('status', 'aguardando_pagamento')
     .maybeSingle()
@@ -54,17 +55,26 @@ export async function POST(request: NextRequest) {
   // assinatura pode ter sido cancelada ou o crédito esgotado por outro
   // agendamento — sem essa reconferência, o desconto continuaria valendo
   // pra sempre a partir do momento em que o vínculo foi criado, mesmo sem
-  // crédito nenhum sobrando.
+  // crédito nenhum sobrando. temCreditoDisponivel olha a linha por serviço
+  // quando o plano tem planos_servicos configurado (não o agregado — um
+  // serviço nunca usado não pode ser bloqueado só porque outro serviço do
+  // mesmo plano esgotou o próprio saldo).
   let desconto: DescontoPlano | null = null
   if (agendamento.plano_assinatura_id) {
     const { data: assinatura } = await admin
       .from('planos_assinaturas')
-      .select('status, creditos_restantes, plano:planos_prestadora(desconto_tipo, desconto_valor)')
+      .select('status, plano:planos_prestadora(desconto_tipo, desconto_valor)')
       .eq('id', agendamento.plano_assinatura_id)
       .maybeSingle()
     const plano = assinatura?.plano as unknown as { desconto_tipo: 'percentual' | 'fixo'; desconto_valor: number } | null
-    if (plano && assinatura?.status === 'ativa' && assinatura.creditos_restantes > 0) {
-      desconto = { tipo: plano.desconto_tipo, valor: plano.desconto_valor }
+    if (plano && assinatura?.status === 'ativa') {
+      const temCredito = await temCreditoDisponivel(admin, {
+        assinaturaId: agendamento.plano_assinatura_id,
+        servicoId: agendamento.servico_id,
+      })
+      if (temCredito) {
+        desconto = { tipo: plano.desconto_tipo, valor: plano.desconto_valor }
+      }
     }
   }
 

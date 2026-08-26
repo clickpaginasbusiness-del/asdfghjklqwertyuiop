@@ -57,64 +57,146 @@ export function calcularPeriodoFim(intervalo: PlanoPrestadora['intervalo'], base
   return fim
 }
 
+/** Lê a linha de crédito por (assinatura, serviço) — `null` quando o plano é
+ * genérico (sem planos_servicos vinculado) ou, em tese, quando o backfill
+ * ainda não rodou pra essa assinatura; nos dois casos quem chama cai pro
+ * agregado antigo. */
+async function buscarCreditoServico(
+  admin: Admin, assinaturaId: string, servicoId: string
+): Promise<{ quantidade: number; creditos_restantes: number } | null> {
+  const { data } = await admin
+    .from('planos_assinaturas_servicos')
+    .select('quantidade, creditos_restantes')
+    .eq('assinatura_id', assinaturaId)
+    .eq('servico_id', servicoId)
+    .maybeSingle()
+  return data ?? null
+}
+
+/** Checa se uma assinatura já existente ainda tem crédito disponível pro
+ * serviço informado — usado antes de conceder desconto de plano num
+ * pagamento (nunca confia num valor lido antes; reconfere aqui mesmo, igual
+ * ao padrão de aplicarUsoCredito/buscarAssinaturaComCredito). Planos com
+ * planos_servicos configurado usam a linha por serviço; planos genéricos
+ * (sem nenhum serviço vinculado) continuam no agregado da assinatura. */
+export async function temCreditoDisponivel(
+  admin: Admin, { assinaturaId, servicoId }: { assinaturaId: string; servicoId: string }
+): Promise<boolean> {
+  const creditoServico = await buscarCreditoServico(admin, assinaturaId, servicoId)
+  if (creditoServico) return creditoServico.creditos_restantes > 0
+
+  const { data: assinatura } = await admin
+    .from('planos_assinaturas')
+    .select('creditos_restantes')
+    .eq('id', assinaturaId)
+    .maybeSingle()
+  return !!assinatura && assinatura.creditos_restantes > 0
+}
+
 /**
  * Assinatura ativa da cliente que cobre o serviço informado (o plano precisa
  * ter esse serviço em planos_servicos) e ainda tem crédito sobrando. `null`
  * se não houver nenhuma — quem chama trata como "sem plano aplicável".
+ *
+ * Planos com planos_servicos configurado (ex.: "3 manutenções + 1
+ * alongamento") usam o crédito POR SERVIÇO como fonte de verdade — um
+ * serviço nunca usado continua elegível mesmo que outro serviço do mesmo
+ * plano já tenha esgotado seu próprio saldo. Planos genéricos (sem nenhum
+ * planos_servicos, ex. "5 créditos pra qualquer coisa") continuam 100% no
+ * agregado da assinatura, sem granularidade nenhuma — não force isso.
  */
 export async function buscarAssinaturaComCredito(
   admin: Admin,
   { clienteId, prestadoraId, servicoId }: { clienteId: string; prestadoraId: string; servicoId: string }
-): Promise<(PlanoAssinatura & { plano: PlanoPrestadora }) | null> {
+): Promise<(PlanoAssinatura & { plano: PlanoPrestadora; creditoDisponivel: number }) | null> {
   const { data: assinaturas } = await admin
     .from('planos_assinaturas')
     .select('*, plano:planos_prestadora(*)')
     .eq('cliente_id', clienteId)
     .eq('prestadora_id', prestadoraId)
     .eq('status', 'ativa')
-    .gt('creditos_restantes', 0)
 
   if (!assinaturas || assinaturas.length === 0) return null
 
   for (const a of assinaturas as unknown as (PlanoAssinatura & { plano: PlanoPrestadora })[]) {
-    const { data: incluiServico } = await admin
+    const { data: planoServicos } = await admin
       .from('planos_servicos')
-      .select('id')
+      .select('servico_id')
       .eq('plano_id', a.plano_id)
-      .eq('servico_id', servicoId)
-      .maybeSingle()
-    if (incluiServico) return a
+
+    const servicosDoPlano = planoServicos ?? []
+    const planoGenerico = servicosDoPlano.length === 0
+    const incluiServico = servicosDoPlano.some((ps) => ps.servico_id === servicoId)
+
+    if (planoGenerico) {
+      if (a.creditos_restantes > 0) return { ...a, creditoDisponivel: a.creditos_restantes }
+      continue
+    }
+
+    if (!incluiServico) continue
+
+    const creditoServico = await buscarCreditoServico(admin, a.id, servicoId)
+    if (creditoServico && creditoServico.creditos_restantes > 0) {
+      return { ...a, creditoDisponivel: creditoServico.creditos_restantes }
+    }
   }
   return null
 }
 
 /** Consome 1 crédito da assinatura pro agendamento que acabou de ser criado.
  * Trava otimista: o UPDATE só grava se `creditos_restantes` ainda for
- * exatamente o valor lido por quem chama — se outra requisição já consumiu
- * um crédito nesse meio-tempo (duas reservas quase simultâneas, por
- * exemplo), a atualização não encontra a linha e retorna `false` sem
- * inserir o uso. Sem essa trava, "ler, calcular -1 em JS, escrever" perde
- * decrementos quando duas chamadas leem o mesmo valor antes de qualquer
- * uma escrever — o log de planos_usos fica certo, mas o saldo fica maior
- * do que deveria. */
+ * exatamente o valor lido aqui dentro (nunca um valor passado por quem
+ * chama — reconfere sempre, pra não confiar num saldo que pode ter mudado
+ * entre a hora em que o caller leu e a hora em que consome de fato) — se
+ * outra requisição já consumiu um crédito nesse meio-tempo (duas reservas
+ * quase simultâneas, por exemplo), a atualização não encontra a linha e
+ * retorna `false` sem inserir o uso. Sem essa trava, "ler, calcular -1 em
+ * JS, escrever" perde decrementos quando duas chamadas leem o mesmo valor
+ * antes de qualquer uma escrever — o log de planos_usos fica certo, mas o
+ * saldo fica maior do que deveria.
+ *
+ * Planos com planos_servicos configurado consomem a linha de
+ * planos_assinaturas_servicos do serviço específico; planos genéricos (sem
+ * nenhum serviço vinculado) continuam consumindo o agregado da assinatura,
+ * exatamente como antes. */
 export async function aplicarUsoCredito(
   admin: Admin,
-  { assinaturaId, agendamentoId, servicoId, creditosRestantes }: {
+  { assinaturaId, agendamentoId, servicoId }: {
     assinaturaId: string
     agendamentoId: string
     servicoId: string
-    creditosRestantes: number
   }
 ): Promise<boolean> {
-  const { data } = await admin
-    .from('planos_assinaturas')
-    .update({ creditos_restantes: Math.max(0, creditosRestantes - 1) })
-    .eq('id', assinaturaId)
-    .eq('creditos_restantes', creditosRestantes)
-    .select('id')
-    .maybeSingle()
+  const creditoServico = await buscarCreditoServico(admin, assinaturaId, servicoId)
 
-  if (!data) return false
+  if (creditoServico) {
+    if (creditoServico.creditos_restantes <= 0) return false
+    const { data } = await admin
+      .from('planos_assinaturas_servicos')
+      .update({ creditos_restantes: creditoServico.creditos_restantes - 1 })
+      .eq('assinatura_id', assinaturaId)
+      .eq('servico_id', servicoId)
+      .eq('creditos_restantes', creditoServico.creditos_restantes)
+      .select('id')
+      .maybeSingle()
+    if (!data) return false
+  } else {
+    const { data: assinatura } = await admin
+      .from('planos_assinaturas')
+      .select('creditos_restantes')
+      .eq('id', assinaturaId)
+      .maybeSingle()
+    if (!assinatura || assinatura.creditos_restantes <= 0) return false
+
+    const { data } = await admin
+      .from('planos_assinaturas')
+      .update({ creditos_restantes: Math.max(0, assinatura.creditos_restantes - 1) })
+      .eq('id', assinaturaId)
+      .eq('creditos_restantes', assinatura.creditos_restantes)
+      .select('id')
+      .maybeSingle()
+    if (!data) return false
+  }
 
   await admin.from('planos_usos').insert({
     assinatura_id: assinaturaId,
@@ -130,29 +212,45 @@ export async function aplicarUsoCredito(
  * vinculado e com descrição livre. `servicoId` precisa ser um serviço do
  * próprio plano (validado por quem chama) — sem isso o detalhamento de
  * crédito por serviço (getCreditosPorServico) não sabe de qual serviço
- * descontar. Mesma trava otimista de `aplicarUsoCredito`. */
+ * descontar. Mesma trava otimista de `aplicarUsoCredito`, com o mesmo
+ * caminho duplo (linha por serviço vs. agregado do plano genérico). */
 export async function descontarUsoManual(
   admin: Admin,
   { assinaturaId, descricao, servicoId }: { assinaturaId: string; descricao: string; servicoId: string }
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const { data: assinatura } = await admin
-    .from('planos_assinaturas')
-    .select('creditos_restantes')
-    .eq('id', assinaturaId)
-    .maybeSingle()
+  const creditoServico = await buscarCreditoServico(admin, assinaturaId, servicoId)
 
-  if (!assinatura) return { ok: false, error: 'Assinatura não encontrada' }
-  if (assinatura.creditos_restantes <= 0) return { ok: false, error: 'Assinatura sem créditos restantes' }
+  if (creditoServico) {
+    if (creditoServico.creditos_restantes <= 0) return { ok: false, error: 'Esse serviço não tem créditos restantes' }
+    const { data } = await admin
+      .from('planos_assinaturas_servicos')
+      .update({ creditos_restantes: creditoServico.creditos_restantes - 1 })
+      .eq('assinatura_id', assinaturaId)
+      .eq('servico_id', servicoId)
+      .eq('creditos_restantes', creditoServico.creditos_restantes)
+      .select('id')
+      .maybeSingle()
+    if (!data) return { ok: false, error: 'O saldo mudou nesse meio-tempo — tente novamente' }
+  } else {
+    const { data: assinatura } = await admin
+      .from('planos_assinaturas')
+      .select('creditos_restantes')
+      .eq('id', assinaturaId)
+      .maybeSingle()
 
-  const { data } = await admin
-    .from('planos_assinaturas')
-    .update({ creditos_restantes: assinatura.creditos_restantes - 1 })
-    .eq('id', assinaturaId)
-    .eq('creditos_restantes', assinatura.creditos_restantes)
-    .select('id')
-    .maybeSingle()
+    if (!assinatura) return { ok: false, error: 'Assinatura não encontrada' }
+    if (assinatura.creditos_restantes <= 0) return { ok: false, error: 'Assinatura sem créditos restantes' }
 
-  if (!data) return { ok: false, error: 'O saldo mudou nesse meio-tempo — tente novamente' }
+    const { data } = await admin
+      .from('planos_assinaturas')
+      .update({ creditos_restantes: assinatura.creditos_restantes - 1 })
+      .eq('id', assinaturaId)
+      .eq('creditos_restantes', assinatura.creditos_restantes)
+      .select('id')
+      .maybeSingle()
+
+    if (!data) return { ok: false, error: 'O saldo mudou nesse meio-tempo — tente novamente' }
+  }
 
   await admin.from('planos_usos').insert({
     assinatura_id: assinaturaId,
@@ -172,62 +270,31 @@ export interface CreditoServico {
   restantes: number
 }
 
-/** Detalhamento de crédito por serviço de uma assinatura — quantidade total
- * vem de planos_servicos (congelada no momento da assinatura/renovação via
- * creditos_totais, mas por serviço em vez de agregada); usados conta
- * planos_usos do ciclo atual (>= periodo_inicio, pra não misturar com o
- * ciclo anterior numa assinatura que não acumula). Usado tanto no relatório
- * da prestadora quanto em "meus créditos" da cliente. */
+/** Detalhamento de crédito por serviço de uma assinatura — lê direto de
+ * planos_assinaturas_servicos, a mesma tabela que aplicarUsoCredito e
+ * descontarUsoManual decrementam, então nunca diverge do que é de fato
+ * gasto (antes disso era recalculado contando planos_usos a cada leitura;
+ * agora é uma leitura simples). Assinatura de plano genérico (sem
+ * planos_servicos) não tem linha nenhuma aqui, retorna lista vazia — quem
+ * chama já trata isso caindo pro agregado da assinatura. Usado tanto no
+ * relatório da prestadora quanto em "meus créditos" da cliente. */
 export async function getCreditosPorServico(admin: Admin, assinaturaId: string): Promise<CreditoServico[]> {
-  const { data: assinatura } = await admin
-    .from('planos_assinaturas')
-    .select('plano_id, periodo_inicio')
-    .eq('id', assinaturaId)
-    .maybeSingle()
-  if (!assinatura) return []
-
-  const { data: planoServicos } = await admin
-    .from('planos_servicos')
-    .select('quantidade, servicos(id, nome)')
-    .eq('plano_id', assinatura.plano_id)
-
-  const servicos = (planoServicos ?? []) as unknown as { quantidade: number; servicos: { id: string; nome: string } | null }[]
-  if (servicos.length === 0) return []
-
-  const { data: usos } = await admin
-    .from('planos_usos')
-    .select('servico_id')
+  const { data } = await admin
+    .from('planos_assinaturas_servicos')
+    .select('servico_id, quantidade, creditos_restantes, servicos(nome)')
     .eq('assinatura_id', assinaturaId)
-    .gte('created_at', assinatura.periodo_inicio)
 
-  const usosPorServico = new Map<string, number>()
-  for (const u of usos ?? []) {
-    if (!u.servico_id) continue
-    usosPorServico.set(u.servico_id, (usosPorServico.get(u.servico_id) ?? 0) + 1)
-  }
+  const linhas = (data ?? []) as unknown as { servico_id: string; quantidade: number; creditos_restantes: number; servicos: { nome: string } | null }[]
 
-  return servicos
-    .filter((ps) => ps.servicos)
-    .map((ps) => {
-      const servico = ps.servicos!
-      const usados = usosPorServico.get(servico.id) ?? 0
-      return {
-        servicoId: servico.id,
-        servicoNome: servico.nome,
-        quantidadeTotal: ps.quantidade,
-        usados,
-        restantes: Math.max(0, ps.quantidade - usados),
-      }
-    })
-}
-
-/** Soma das quantidades dos serviços de um plano — vira creditos_totais de
- * uma assinatura nova (ver criarOuRenovarAssinatura). Plano sem nenhum
- * serviço vinculado (genérico) usa 1 crédito por padrão. */
-async function somarQuantidadesDoPlano(admin: Admin, planoId: string): Promise<number> {
-  const { data } = await admin.from('planos_servicos').select('quantidade').eq('plano_id', planoId)
-  if (!data || data.length === 0) return 1
-  return data.reduce((soma, s) => soma + s.quantidade, 0)
+  return linhas
+    .filter((l) => l.servicos)
+    .map((l) => ({
+      servicoId: l.servico_id,
+      servicoNome: l.servicos!.nome,
+      quantidadeTotal: l.quantidade,
+      usados: l.quantidade - l.creditos_restantes,
+      restantes: l.creditos_restantes,
+    }))
 }
 
 /**
@@ -253,7 +320,15 @@ export async function criarOuRenovarAssinatura(
   const { data: plano } = await admin.from('planos_prestadora').select('*').eq('id', planoId).single()
   if (!plano) throw new Error(`Plano ${planoId} não encontrado`)
 
-  const quantidadeCreditos = await somarQuantidadesDoPlano(admin, planoId)
+  const { data: planoServicosData } = await admin.from('planos_servicos').select('servico_id, quantidade').eq('plano_id', planoId)
+  const servicosDoPlano = planoServicosData ?? []
+  // Plano sem nenhum serviço vinculado (genérico) usa 1 crédito por padrão,
+  // igual sempre foi — só não ganha linha nenhuma em
+  // planos_assinaturas_servicos, continua puramente no agregado abaixo.
+  const quantidadeCreditos = servicosDoPlano.length > 0
+    ? servicosDoPlano.reduce((soma, s) => soma + s.quantidade, 0)
+    : 1
+
   const periodoFim = calcularPeriodoFim(plano.intervalo).toISOString()
 
   const { data: existente } = await admin
@@ -286,6 +361,27 @@ export async function criarOuRenovarAssinatura(
     : await admin.from('planos_assinaturas').insert(patch).select().single()
 
   if (error || !assinatura) throw new Error(`Erro ao criar/renovar assinatura: ${error?.message}`)
+
+  // Espelha o mesmo cálculo (soma se acumula, reseta se não) por serviço —
+  // plano genérico não entra aqui, não ganha linha nenhuma.
+  for (const ps of servicosDoPlano) {
+    const { data: linhaExistente } = await admin
+      .from('planos_assinaturas_servicos')
+      .select('creditos_restantes')
+      .eq('assinatura_id', assinatura.id)
+      .eq('servico_id', ps.servico_id)
+      .maybeSingle()
+
+    const restantes = linhaExistente && plano.creditos_acumulam
+      ? linhaExistente.creditos_restantes + ps.quantidade
+      : ps.quantidade
+
+    await admin.from('planos_assinaturas_servicos').upsert(
+      { assinatura_id: assinatura.id, servico_id: ps.servico_id, quantidade: ps.quantidade, creditos_restantes: restantes },
+      { onConflict: 'assinatura_id,servico_id' }
+    )
+  }
+
   return assinatura as PlanoAssinatura
 }
 
