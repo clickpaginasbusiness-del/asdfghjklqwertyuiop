@@ -207,58 +207,71 @@ export async function aplicarUsoCredito(
   return true
 }
 
-/** Desconto manual de 1 crédito pela prestadora (ex.: atendimento combinado
- * fora do app) — mesmo efeito de um uso automático, mas sem agendamento
- * vinculado e com descrição livre. `servicoId` precisa ser um serviço do
- * próprio plano (validado por quem chama) — sem isso o detalhamento de
- * crédito por serviço (getCreditosPorServico) não sabe de qual serviço
- * descontar. Mesma trava otimista de `aplicarUsoCredito`, com o mesmo
- * caminho duplo (linha por serviço vs. agregado do plano genérico). */
-export async function descontarUsoManual(
+/** Edita o número de créditos restantes de um serviço diretamente (tela de
+ * gestão de créditos da prestadora) — em vez de só "descontar 1 uso", ela
+ * digita o valor final. Sempre limitado a `[0, quota]` (não deixa criar
+ * crédito além do que o plano promete). Mesma trava otimista de
+ * `aplicarUsoCredito`, com o mesmo caminho duplo (linha por serviço vs.
+ * agregado do plano genérico — `servicoId: null` indica plano genérico).
+ * Grava sempre um registro em `planos_usos` (`tipo: 'ajuste'`) com o delta
+ * no texto, pra manter rastro de auditoria mesmo numa edição direta —
+ * `descricao` do chamador é opcional e só complementa esse texto. */
+export async function ajustarCreditoServico(
   admin: Admin,
-  { assinaturaId, descricao, servicoId }: { assinaturaId: string; descricao: string; servicoId: string }
+  { assinaturaId, servicoId, novoValor, descricao }: {
+    assinaturaId: string
+    servicoId: string | null
+    novoValor: number
+    descricao?: string
+  }
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const creditoServico = await buscarCreditoServico(admin, assinaturaId, servicoId)
+  if (servicoId) {
+    const creditoServico = await buscarCreditoServico(admin, assinaturaId, servicoId)
+    if (!creditoServico) return { ok: false, error: 'Serviço não encontrado nessa assinatura' }
 
-  if (creditoServico) {
-    if (creditoServico.creditos_restantes <= 0) return { ok: false, error: 'Esse serviço não tem créditos restantes' }
+    const valorFinal = Math.max(0, Math.min(novoValor, creditoServico.quantidade))
     const { data } = await admin
       .from('planos_assinaturas_servicos')
-      .update({ creditos_restantes: creditoServico.creditos_restantes - 1 })
+      .update({ creditos_restantes: valorFinal })
       .eq('assinatura_id', assinaturaId)
       .eq('servico_id', servicoId)
       .eq('creditos_restantes', creditoServico.creditos_restantes)
       .select('id')
       .maybeSingle()
     if (!data) return { ok: false, error: 'O saldo mudou nesse meio-tempo — tente novamente' }
-  } else {
-    const { data: assinatura } = await admin
-      .from('planos_assinaturas')
-      .select('creditos_restantes')
-      .eq('id', assinaturaId)
-      .maybeSingle()
 
-    if (!assinatura) return { ok: false, error: 'Assinatura não encontrada' }
-    if (assinatura.creditos_restantes <= 0) return { ok: false, error: 'Assinatura sem créditos restantes' }
-
-    const { data } = await admin
-      .from('planos_assinaturas')
-      .update({ creditos_restantes: assinatura.creditos_restantes - 1 })
-      .eq('id', assinaturaId)
-      .eq('creditos_restantes', assinatura.creditos_restantes)
-      .select('id')
-      .maybeSingle()
-
-    if (!data) return { ok: false, error: 'O saldo mudou nesse meio-tempo — tente novamente' }
+    await admin.from('planos_usos').insert({
+      assinatura_id: assinaturaId,
+      servico_id: servicoId,
+      tipo: 'ajuste',
+      descricao: `Ajuste manual: ${creditoServico.creditos_restantes} → ${valorFinal} restantes.${descricao ? ` ${descricao}` : ''}`,
+    })
+    return { ok: true }
   }
+
+  const { data: assinatura } = await admin
+    .from('planos_assinaturas')
+    .select('creditos_restantes, creditos_totais')
+    .eq('id', assinaturaId)
+    .maybeSingle()
+  if (!assinatura) return { ok: false, error: 'Assinatura não encontrada' }
+
+  const valorFinal = Math.max(0, Math.min(novoValor, assinatura.creditos_totais))
+  const { data } = await admin
+    .from('planos_assinaturas')
+    .update({ creditos_restantes: valorFinal })
+    .eq('id', assinaturaId)
+    .eq('creditos_restantes', assinatura.creditos_restantes)
+    .select('id')
+    .maybeSingle()
+  if (!data) return { ok: false, error: 'O saldo mudou nesse meio-tempo — tente novamente' }
 
   await admin.from('planos_usos').insert({
     assinatura_id: assinaturaId,
-    servico_id: servicoId,
-    tipo: 'manual',
-    descricao,
+    servico_id: null,
+    tipo: 'ajuste',
+    descricao: `Ajuste manual: ${assinatura.creditos_restantes} → ${valorFinal} restantes.${descricao ? ` ${descricao}` : ''}`,
   })
-
   return { ok: true }
 }
 
@@ -272,7 +285,7 @@ export interface CreditoServico {
 
 /** Detalhamento de crédito por serviço de uma assinatura — lê direto de
  * planos_assinaturas_servicos, a mesma tabela que aplicarUsoCredito e
- * descontarUsoManual decrementam, então nunca diverge do que é de fato
+ * ajustarCreditoServico decrementam, então nunca diverge do que é de fato
  * gasto (antes disso era recalculado contando planos_usos a cada leitura;
  * agora é uma leitura simples). Assinatura de plano genérico (sem
  * planos_servicos) não tem linha nenhuma aqui, retorna lista vazia — quem
@@ -295,6 +308,42 @@ export async function getCreditosPorServico(admin: Admin, assinaturaId: string):
       usados: l.quantidade - l.creditos_restantes,
       restantes: l.creditos_restantes,
     }))
+}
+
+export interface UsoHistorico {
+  id: string
+  servicoId: string | null
+  servicoNome: string | null
+  tipo: 'automatico' | 'manual' | 'ajuste'
+  descricao: string | null
+  createdAt: string
+}
+
+/** Histórico completo (todos os ciclos, não só o atual) de uso de créditos
+ * de uma assinatura, mais recente primeiro — usado na tela de gestão de
+ * créditos da prestadora pra ela auditar o que aconteceu, não só ver o
+ * número final. Buscado sob demanda (só quando ela abre o detalhe de uma
+ * assinatura específica), não junto com a lista de assinantes. */
+export async function getHistoricoUsos(admin: Admin, assinaturaId: string): Promise<UsoHistorico[]> {
+  const { data } = await admin
+    .from('planos_usos')
+    .select('id, servico_id, tipo, descricao, created_at, servicos(nome)')
+    .eq('assinatura_id', assinaturaId)
+    .order('created_at', { ascending: false })
+
+  const linhas = (data ?? []) as unknown as {
+    id: string; servico_id: string | null; tipo: 'automatico' | 'manual' | 'ajuste'; descricao: string | null
+    created_at: string; servicos: { nome: string } | null
+  }[]
+
+  return linhas.map((u) => ({
+    id: u.id,
+    servicoId: u.servico_id,
+    servicoNome: u.servicos?.nome ?? null,
+    tipo: u.tipo,
+    descricao: u.descricao,
+    createdAt: u.created_at,
+  }))
 }
 
 /**

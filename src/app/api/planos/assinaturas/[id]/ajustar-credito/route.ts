@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { descontarUsoManual } from '@/lib/planosPrestadora'
+import { ajustarCreditoServico } from '@/lib/planosPrestadora'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -12,12 +12,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   const { data: prestadora } = await supabase.from('prestadoras').select('id').eq('user_id', user.id).single()
   if (!prestadora) return NextResponse.json({ error: 'Prestadora não encontrada' }, { status: 404 })
 
-  let body: { descricao?: string; servicoId?: string }
+  let body: { servicoId?: string | null; novoValor?: number; descricao?: string }
   try { body = await request.json() } catch { return NextResponse.json({ error: 'JSON inválido' }, { status: 400 }) }
 
-  const descricao = body.descricao?.trim()
-  if (!descricao) return NextResponse.json({ error: 'Descrição é obrigatória' }, { status: 400 })
-  if (!body.servicoId) return NextResponse.json({ error: 'Selecione o serviço' }, { status: 400 })
+  if (typeof body.novoValor !== 'number' || body.novoValor < 0 || !Number.isInteger(body.novoValor)) {
+    return NextResponse.json({ error: 'Valor inválido' }, { status: 400 })
+  }
 
   const admin = createAdminClient()
   const { data: assinatura } = await admin
@@ -30,15 +30,20 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: 'Assinatura não encontrada' }, { status: 404 })
   }
 
-  const { data: servicoNoPlano } = await admin
-    .from('planos_servicos')
-    .select('id')
-    .eq('plano_id', assinatura.plano_id)
-    .eq('servico_id', body.servicoId)
-    .maybeSingle()
-  if (!servicoNoPlano) return NextResponse.json({ error: 'Serviço não faz parte deste plano' }, { status: 400 })
+  const servicoId = body.servicoId ?? null
+  if (servicoId) {
+    const { data: servicoNoPlano } = await admin
+      .from('planos_servicos')
+      .select('id')
+      .eq('plano_id', assinatura.plano_id)
+      .eq('servico_id', servicoId)
+      .maybeSingle()
+    if (!servicoNoPlano) return NextResponse.json({ error: 'Serviço não faz parte deste plano' }, { status: 400 })
+  }
 
-  const resultado = await descontarUsoManual(admin, { assinaturaId, descricao, servicoId: body.servicoId })
+  const resultado = await ajustarCreditoServico(admin, {
+    assinaturaId, servicoId, novoValor: body.novoValor, descricao: body.descricao?.trim() || undefined,
+  })
   if (!resultado.ok) return NextResponse.json({ error: resultado.error }, { status: 400 })
 
   return NextResponse.json({ ok: true })
