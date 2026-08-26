@@ -1,19 +1,10 @@
-import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { getPrestadoraAutenticada } from '@/lib/painelAuth'
 import { planoEfetivo } from '@/lib/plano'
 import ProfissionaisClient from './ProfissionaisClient'
 
 export default async function ProfissionaisPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/painel/login')
-
-  const { data: prestadora } = await supabase
-    .from('prestadoras')
-    .select('id, plano, e_parceira')
-    .eq('user_id', user.id)
-    .single()
-
+  const { supabase, prestadora } = await getPrestadoraAutenticada()
   if (!prestadora) redirect('/painel/login')
 
   const { data: profissionais } = await supabase

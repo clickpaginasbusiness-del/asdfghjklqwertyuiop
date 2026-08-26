@@ -1,6 +1,6 @@
-import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { endOfYear, subDays } from 'date-fns'
+import { getPrestadoraAutenticada } from '@/lib/painelAuth'
 import PainelDashboardClient from './PainelDashboardClient'
 
 /** Próxima ocorrência do aniversário a partir de hoje (esse ano, ou o
@@ -16,16 +16,7 @@ function proximoAniversario(dataNascimento: string, hojeZerado: Date): Date {
 }
 
 export default async function PainelPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/painel/login')
-
-  const { data: prestadora } = await supabase
-    .from('prestadoras')
-    .select('*')
-    .eq('user_id', user.id)
-    .single()
-
+  const { supabase, prestadora } = await getPrestadoraAutenticada()
   if (!prestadora) redirect('/painel/login')
 
   const hoje = new Date()

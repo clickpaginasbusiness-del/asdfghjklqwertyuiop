@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { getPrestadoraAutenticada } from '@/lib/painelAuth'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getResumoCaixa } from '@/lib/caixa'
 import CaixaClient from './CaixaClient'
@@ -7,16 +7,7 @@ import CaixaClient from './CaixaClient'
 export const metadata = { title: 'Caixa — BelleBook' }
 
 export default async function CaixaPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/painel/login')
-
-  const { data: prestadora } = await supabase
-    .from('prestadoras')
-    .select('id')
-    .eq('user_id', user.id)
-    .single()
-
+  const { prestadora } = await getPrestadoraAutenticada()
   if (!prestadora) redirect('/painel/login')
 
   const resumo = await getResumoCaixa(createAdminClient(), prestadora.id)

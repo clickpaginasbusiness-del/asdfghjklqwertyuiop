@@ -509,49 +509,69 @@ export async function getResumoPlanos(admin: Admin, prestadoraId: string): Promi
   inicioMes.setDate(1)
   inicioMes.setHours(0, 0, 0, 0)
 
-  const resumos: ResumoPlano[] = []
+  // Uma consulta só pra todas as assinaturas de todos os planos dessa
+  // prestadora — em vez de duas consultas POR PLANO num loop sequencial
+  // (até 4 idas ao banco por plano antes desta correção). O resto é
+  // agrupado em JS a partir daqui.
+  const { data: assinaturasData } = await admin
+    .from('planos_assinaturas')
+    .select('id, plano_id, status')
+    .eq('prestadora_id', prestadoraId)
+
+  const todasAssinaturas = assinaturasData ?? []
+  const planoPorAssinatura = new Map<string, string>()
+  const ativosPorPlano = new Map<string, number>()
+
+  for (const a of todasAssinaturas) {
+    planoPorAssinatura.set(a.id, a.plano_id)
+    if (a.status === 'ativa') ativosPorPlano.set(a.plano_id, (ativosPorPlano.get(a.plano_id) ?? 0) + 1)
+  }
+
+  const todosIds = todasAssinaturas.map((a) => a.id)
+  const receitaPorPlano = new Map<string, number>()
+  const usosPorPlano = new Map<string, number>()
+
+  if (todosIds.length > 0) {
+    const [{ data: entradasCaixa }, { data: usos }] = await Promise.all([
+      admin
+        .from('caixa_prestadora')
+        .select('valor, plano_assinatura_id')
+        .in('plano_assinatura_id', todosIds)
+        .neq('status', 'reembolsado'),
+      admin
+        .from('planos_usos')
+        .select('assinatura_id')
+        .in('assinatura_id', todosIds)
+        .gte('created_at', inicioMes.toISOString()),
+    ])
+
+    for (const e of entradasCaixa ?? []) {
+      const planoId = e.plano_assinatura_id ? planoPorAssinatura.get(e.plano_assinatura_id) : undefined
+      if (!planoId) continue
+      receitaPorPlano.set(planoId, (receitaPorPlano.get(planoId) ?? 0) + e.valor)
+    }
+
+    for (const u of usos ?? []) {
+      const planoId = u.assinatura_id ? planoPorAssinatura.get(u.assinatura_id) : undefined
+      if (!planoId) continue
+      usosPorPlano.set(planoId, (usosPorPlano.get(planoId) ?? 0) + 1)
+    }
+  }
+
   let totalAssinantesAtivos = 0
   let receitaMensalEstimada = 0
 
-  for (const plano of listaPlanos) {
-    const { count: assinantesAtivos } = await admin
-      .from('planos_assinaturas')
-      .select('id', { count: 'exact', head: true })
-      .eq('plano_id', plano.id)
-      .eq('status', 'ativa')
-
-    const { data: assinaturasDoPlano } = await admin
-      .from('planos_assinaturas')
-      .select('id')
-      .eq('plano_id', plano.id)
-
-    const idsAssinaturas = (assinaturasDoPlano ?? []).map((a) => a.id)
-
-    let receitaHistorica = 0
-    let creditosUsadosEsseMes = 0
-
-    if (idsAssinaturas.length > 0) {
-      const { data: entradasCaixa } = await admin
-        .from('caixa_prestadora')
-        .select('valor')
-        .in('plano_assinatura_id', idsAssinaturas)
-        .neq('status', 'reembolsado')
-      receitaHistorica = (entradasCaixa ?? []).reduce((s, e) => s + e.valor, 0)
-
-      const { count } = await admin
-        .from('planos_usos')
-        .select('id', { count: 'exact', head: true })
-        .in('assinatura_id', idsAssinaturas)
-        .gte('created_at', inicioMes.toISOString())
-      creditosUsadosEsseMes = count ?? 0
-    }
-
-    const ativos = assinantesAtivos ?? 0
+  const resumos: ResumoPlano[] = listaPlanos.map((plano) => {
+    const ativos = ativosPorPlano.get(plano.id) ?? 0
     totalAssinantesAtivos += ativos
     if (plano.ativo) receitaMensalEstimada += (ativos * plano.preco) / MESES_POR_INTERVALO[plano.intervalo]
-
-    resumos.push({ plano, assinantesAtivos: ativos, receitaHistorica: round2(receitaHistorica), creditosUsadosEsseMes })
-  }
+    return {
+      plano,
+      assinantesAtivos: ativos,
+      receitaHistorica: round2(receitaPorPlano.get(plano.id) ?? 0),
+      creditosUsadosEsseMes: usosPorPlano.get(plano.id) ?? 0,
+    }
+  })
 
   return {
     totalAssinantesAtivos,

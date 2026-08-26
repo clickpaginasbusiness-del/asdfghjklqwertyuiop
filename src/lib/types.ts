@@ -59,6 +59,7 @@ export type Prestadora = {
   pagina_preset: PresetPagina
   pagina_banner_foto_id: string | null
   link_compartilhado_em: string | null
+  checklist_completo: boolean
   created_at: string
 }
 
