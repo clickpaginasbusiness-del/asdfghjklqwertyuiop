@@ -30,7 +30,10 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     assinatura: {
       id: assinatura.id,
-      creditosRestantes: assinatura.creditos_restantes,
+      // creditoDisponivel já é o número certo pro serviço pedido — linha
+      // por serviço quando o plano tem planos_servicos, agregado quando é
+      // genérico (ver buscarAssinaturaComCredito).
+      creditosRestantes: assinatura.creditoDisponivel,
       planoNome: assinatura.plano.nome,
       descontoTipo: assinatura.plano.desconto_tipo,
       descontoValor: assinatura.plano.desconto_valor,

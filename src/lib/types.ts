@@ -59,6 +59,7 @@ export type Prestadora = {
   pagina_preset: PresetPagina
   pagina_banner_foto_id: string | null
   link_compartilhado_em: string | null
+  checklist_completo: boolean
   created_at: string
 }
 
@@ -191,6 +192,7 @@ export type PlanoUso = {
   id: string
   assinatura_id: string
   agendamento_id: string | null
+  servico_id: string | null
   tipo: 'automatico' | 'manual'
   descricao: string | null
   created_at: string
@@ -249,9 +251,10 @@ export type Agendamento = {
   created_at: string
   servicos?: Servico
   clientes?: Cliente
-  planos_assinaturas?: { planos_prestadora: { nome: string } | null } | null
+  planos_assinaturas?: { planos_prestadora: { nome: string; desconto_tipo?: 'percentual' | 'fixo'; desconto_valor?: number } | null } | null
   prestadoras?: Prestadora
   profissionais?: Profissional
+  caixa_prestadora?: { valor_bruto: number; status: string }[]
 }
 
 export type GaleriaItem = {

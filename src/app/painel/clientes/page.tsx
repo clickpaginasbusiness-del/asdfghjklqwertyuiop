@@ -1,18 +1,9 @@
-import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { getPrestadoraAutenticada } from '@/lib/painelAuth'
 import ClientesClient from './ClientesClient'
 
 export default async function ClientesPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/painel/login')
-
-  const { data: prestadora } = await supabase
-    .from('prestadoras')
-    .select('id, nome')
-    .eq('user_id', user.id)
-    .single()
-
+  const { supabase, prestadora } = await getPrestadoraAutenticada()
   if (!prestadora) redirect('/painel/login')
 
   // Busca todos os agendamentos com joins — sem filtro de status para ter histórico completo

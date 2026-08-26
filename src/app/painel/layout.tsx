@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { differenceInCalendarDays } from 'date-fns'
-import { createClient } from '@/lib/supabase/server'
+import { getPrestadoraAutenticada } from '@/lib/painelAuth'
 import { getChecklistStatus } from '@/lib/checklist'
 import PainelLayoutClient from './PainelLayoutClient'
 
@@ -17,17 +17,10 @@ export default async function PainelLayout({ children }: { children: React.React
     return <>{children}</>
   }
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) redirect('/painel/login')
-
-  const { data: prestadora } = await supabase
-    .from('prestadoras')
-    .select('*')
-    .eq('user_id', user.id)
-    .single()
-
+  // getPrestadoraAutenticada já redireciona pro login se não houver sessão.
+  // Sem prestadora (conta logada mas sem perfil de prestadora criado ainda),
+  // aqui no layout o destino certo é o cadastro, não o login.
+  const { supabase, prestadora } = await getPrestadoraAutenticada()
   if (!prestadora) redirect('/painel/cadastro')
 
   // Sem assinatura ativa → página de planos

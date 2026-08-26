@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
-import { formatCurrency, formatDateTime, maskTelefone, buildWhatsappUrl } from '@/lib/utils'
+import { formatCurrency, formatDateTime, maskTelefone, buildWhatsappUrl, valorParaExibirAgendamento } from '@/lib/utils'
 import { cancelarAgendamento, concluirAgendamento } from '@/lib/agendamentoAcoes'
 import { Calendar, Phone, Search, MessageCircle, ArrowDownAZ, ArrowUpAZ, Clock4, CheckCheck, Trash2, Star } from 'lucide-react'
 import { Input } from '@/components/ui/input'
@@ -473,7 +473,23 @@ export default function AgendamentosClient({
 
                     {/* Preço + ações */}
                     <div className="flex items-center justify-between sm:shrink-0 sm:flex-col sm:items-end sm:justify-start gap-1 sm:ml-auto pt-2 mt-1 border-t border-gray-100 sm:pt-0 sm:mt-0 sm:border-0">
-                      <p className="text-sm font-medium text-gray-900">{formatCurrency(a.servicos?.preco ?? 0)}</p>
+                      <p className="text-sm font-medium text-gray-900">
+                        {(() => {
+                          const exibicao = valorParaExibirAgendamento(
+                            a.caixa_prestadora, a.planos_assinaturas?.planos_prestadora, a.servicos?.preco ?? 0
+                          )
+                          if (exibicao.tipo === 'incluido_no_plano') return <span className="text-emerald-600">Incluído no plano</span>
+                          if (exibicao.tipo === 'com_desconto_plano') {
+                            return (
+                              <>
+                                {formatCurrency(exibicao.valor)}
+                                <span className="block text-[11px] font-normal text-emerald-600">com desconto do plano</span>
+                              </>
+                            )
+                          }
+                          return formatCurrency(exibicao.valor)
+                        })()}
+                      </p>
 
                       {/* Ações para confirmados */}
                       {a.status === 'confirmado' && (

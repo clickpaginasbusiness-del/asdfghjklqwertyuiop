@@ -1,4 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { getCreditosPorServico } from '@/lib/planosPrestadora'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -21,5 +23,15 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     .eq('plano_id', planoId)
     .order('created_at', { ascending: false })
 
-  return NextResponse.json({ assinaturas: assinaturas ?? [] })
+  // Detalhamento por serviço (getCreditosPorServico usa admin porque cruza
+  // planos_servicos/planos_usos, fora do escopo de RLS da sessão da prestadora).
+  const admin = createAdminClient()
+  const assinaturasComCreditos = await Promise.all(
+    (assinaturas ?? []).map(async (a) => ({
+      ...a,
+      creditosPorServico: await getCreditosPorServico(admin, a.id),
+    }))
+  )
+
+  return NextResponse.json({ assinaturas: assinaturasComCreditos })
 }

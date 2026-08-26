@@ -1,20 +1,11 @@
-import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { getPrestadoraAutenticada } from '@/lib/painelAuth'
 import ServicosClient, { type ServicoComProfissionais } from './ServicosClient'
 import { planoEfetivo } from '@/lib/plano'
 import { limitesPlano } from '@/lib/planoLimites'
 
 export default async function ServicosPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/painel/login')
-
-  const { data: prestadora } = await supabase
-    .from('prestadoras')
-    .select('id, plano, e_parceira')
-    .eq('user_id', user.id)
-    .single()
-
+  const { supabase, prestadora } = await getPrestadoraAutenticada()
   if (!prestadora) redirect('/painel/login')
 
   const podeUsarPlanos = limitesPlano(planoEfetivo(prestadora)).assinaturas_clientes

@@ -1,6 +1,6 @@
-import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { endOfYear, subDays } from 'date-fns'
+import { getPrestadoraAutenticada } from '@/lib/painelAuth'
 import PainelDashboardClient from './PainelDashboardClient'
 
 /** Próxima ocorrência do aniversário a partir de hoje (esse ano, ou o
@@ -16,16 +16,7 @@ function proximoAniversario(dataNascimento: string, hojeZerado: Date): Date {
 }
 
 export default async function PainelPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/painel/login')
-
-  const { data: prestadora } = await supabase
-    .from('prestadoras')
-    .select('*')
-    .eq('user_id', user.id)
-    .single()
-
+  const { supabase, prestadora } = await getPrestadoraAutenticada()
   if (!prestadora) redirect('/painel/login')
 
   const hoje = new Date()
@@ -34,7 +25,7 @@ export default async function PainelPage() {
     // 60 dias atrás → cobre filtros "30 dias" + resto do ano
     supabase
       .from('agendamentos')
-      .select('id, data_hora, status, cliente_e_prestadora, agendamento_manual, servicos(nome, preco, duracao_minutos), clientes(id, nome, telefone), profissionais(nome), planos_assinaturas(planos_prestadora(nome))')
+      .select('id, data_hora, status, cliente_e_prestadora, agendamento_manual, servicos(nome, preco, duracao_minutos), clientes(id, nome, telefone), profissionais(nome), planos_assinaturas(planos_prestadora(nome, desconto_tipo, desconto_valor)), caixa_prestadora(valor_bruto, status)')
       .eq('prestadora_id', prestadora.id)
       .in('status', ['confirmado', 'concluido'])
       .gte('data_hora', subDays(hoje, 60).toISOString())

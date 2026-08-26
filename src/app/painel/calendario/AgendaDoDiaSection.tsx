@@ -24,6 +24,7 @@ import {
   startOfTodaySP,
   dateKeyToDate,
   computeHorasDoDia,
+  valorParaExibirAgendamento,
 } from '@/lib/utils'
 import type { Prestadora, HorarioFuncionamento } from '@/lib/types'
 import type { AgendaSlotAg, ProfissionalCalendario } from './page'
@@ -308,7 +309,16 @@ export function AgendaDoDiaSection({
               </p>
               <p className="flex items-center gap-2">
                 <DollarSign className="w-4 h-4 text-gray-400 shrink-0" />
-                {formatCurrency(modalAg.servicos?.preco ?? 0)}
+                {(() => {
+                  const exibicao = valorParaExibirAgendamento(
+                    modalAg.caixa_prestadora, modalAg.planos_assinaturas?.planos_prestadora, modalAg.servicos?.preco ?? 0
+                  )
+                  if (exibicao.tipo === 'incluido_no_plano') return <span className="text-emerald-600 font-medium">Incluído no plano</span>
+                  if (exibicao.tipo === 'com_desconto_plano') {
+                    return <span>{formatCurrency(exibicao.valor)} <span className="text-emerald-600 text-xs">(com desconto do plano)</span></span>
+                  }
+                  return formatCurrency(exibicao.valor)
+                })()}
               </p>
               <p className="flex items-center gap-2">
                 <CalendarDays className="w-4 h-4 text-gray-400 shrink-0" />

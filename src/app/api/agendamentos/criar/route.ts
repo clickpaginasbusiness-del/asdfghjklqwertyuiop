@@ -135,12 +135,20 @@ export async function POST(request: NextRequest) {
 
   let creditosRestantesApos: number | null = null
   if (assinaturaComCredito) {
-    await aplicarUsoCredito(supabaseAdmin, {
+    const consumiu = await aplicarUsoCredito(supabaseAdmin, {
       assinaturaId: assinaturaComCredito.id,
       agendamentoId: ag.id,
-      creditosRestantes: assinaturaComCredito.creditos_restantes,
+      servicoId,
     })
-    creditosRestantesApos = Math.max(0, assinaturaComCredito.creditos_restantes - 1)
+    if (!consumiu) {
+      // Outra requisição consumiu o crédito nesse meio-tempo (trava
+      // otimista) — o agendamento já foi criado vinculado ao plano, mas
+      // sem crédito nenhum sendo debitado duas vezes pro mesmo saldo.
+      console.warn('[agendamentos/criar] aplicarUsoCredito perdeu a corrida (saldo mudou) —', assinaturaComCredito.id)
+    }
+    creditosRestantesApos = consumiu
+      ? Math.max(0, assinaturaComCredito.creditoDisponivel - 1)
+      : assinaturaComCredito.creditoDisponivel
   }
 
   // Cliente testando o próprio sistema (mesmo telefone da prestadora) — não

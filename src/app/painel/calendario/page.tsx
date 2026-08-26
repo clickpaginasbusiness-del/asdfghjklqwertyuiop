@@ -1,19 +1,10 @@
-import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { addDays, startOfDay, endOfDay } from 'date-fns'
+import { getPrestadoraAutenticada } from '@/lib/painelAuth'
 import CalendarioClient from './CalendarioClient'
 
 export default async function CalendarioPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/painel/login')
-
-  const { data: prestadora } = await supabase
-    .from('prestadoras')
-    .select('*')
-    .eq('user_id', user.id)
-    .single()
-
+  const { supabase, prestadora } = await getPrestadoraAutenticada()
   if (!prestadora) redirect('/painel/login')
 
   const hoje = new Date()
@@ -36,7 +27,7 @@ export default async function CalendarioPage() {
       .order('nome'),
     supabase
       .from('agendamentos')
-      .select('id, data_hora, status, cliente_id, profissional_id, cliente_e_prestadora, agendamento_manual, servicos(nome, preco, duracao_minutos), clientes(nome, telefone, notas), profissionais(nome), planos_assinaturas(planos_prestadora(nome))')
+      .select('id, data_hora, status, cliente_id, profissional_id, cliente_e_prestadora, agendamento_manual, servicos(nome, preco, duracao_minutos), clientes(nome, telefone, notas), profissionais(nome), planos_assinaturas(planos_prestadora(nome, desconto_tipo, desconto_valor)), caixa_prestadora(valor_bruto, status)')
       .eq('prestadora_id', prestadora.id)
       .neq('status', 'cancelado')
       .gte('data_hora', startOfDay(hoje).toISOString())
@@ -75,5 +66,6 @@ export type AgendaSlotAg = {
   servicos: { nome: string; preco: number; duracao_minutos: number } | null
   clientes: { nome: string; telefone: string | null; notas: string | null } | null
   profissionais: { nome: string } | null
-  planos_assinaturas: { planos_prestadora: { nome: string } | null } | null
+  planos_assinaturas: { planos_prestadora: { nome: string; desconto_tipo?: 'percentual' | 'fixo'; desconto_valor?: number } | null } | null
+  caixa_prestadora: { valor_bruto: number; status: string }[]
 }

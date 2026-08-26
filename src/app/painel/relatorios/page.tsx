@@ -1,41 +1,35 @@
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
+import { getPrestadoraAutenticada } from '@/lib/painelAuth'
 import { getResumoParceira } from '@/lib/parceiras'
 import { getResumoPlanos } from '@/lib/planosPrestadora'
 import RelatoriosClient, { type Ag, type AvaliacaoRel, type LancamentoFinanceiro } from './RelatoriosClient'
 
 export default async function RelatoriosPage() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/painel/login')
-
-  const { data: prestadora } = await supabase
-    .from('prestadoras')
-    .select('id, hora_abertura, hora_fechamento, e_parceira, codigo_indicacao')
-    .eq('user_id', user.id)
-    .single()
-
+  const { supabase, prestadora } = await getPrestadoraAutenticada()
   if (!prestadora) redirect('/painel/login')
 
-  // Resumo de parceira usa o cliente admin (não o autenticado por RLS)
-  // porque liberar comissões vencidas exige um UPDATE, e a policy de
-  // parceiras_comissoes só permite SELECT da própria prestadora.
-  const resumoParceira = prestadora.e_parceira
-    ? await getResumoParceira(createAdminClient(), prestadora.id)
-    : null
-
-  // getResumoPlanos usa o cliente admin pelo mesmo motivo: agrega receita
-  // histórica de caixa_prestadora entre planos, fora do escopo de uma única RLS SELECT simples.
-  const resumoPlanos = await getResumoPlanos(createAdminClient(), prestadora.id)
-
+  // Nenhuma dessas 7 consultas depende do resultado de outra — todas juntas
+  // no mesmo Promise.all (resumoParceira/resumoPlanos usavam o cliente
+  // admin e rodavam sozinhas, sequencialmente, antes das outras 5 nem
+  // começarem a disparar).
   const [
+    resumoParceira,
+    resumoPlanos,
     { data: agendamentos },
     { data: profissionais },
     { data: visitas },
     { data: avaliacoes },
     { data: lancamentos },
   ] = await Promise.all([
+    // Resumo de parceira usa o cliente admin (não o autenticado por RLS)
+    // porque liberar comissões vencidas exige um UPDATE, e a policy de
+    // parceiras_comissoes só permite SELECT da própria prestadora.
+    prestadora.e_parceira ? getResumoParceira(createAdminClient(), prestadora.id) : Promise.resolve(null),
+    // getResumoPlanos usa o cliente admin pelo mesmo motivo: agrega receita
+    // histórica de caixa_prestadora entre planos, fora do escopo de uma
+    // única RLS SELECT simples.
+    getResumoPlanos(createAdminClient(), prestadora.id),
     supabase
       .from('agendamentos')
       .select('id, data_hora, created_at, status, servicos(nome, preco), clientes(id, nome), profissionais(nome)')

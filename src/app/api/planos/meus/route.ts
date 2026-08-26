@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { verifyClientToken } from '@/lib/clientAuth'
+import { getCreditosPorServico } from '@/lib/planosPrestadora'
 import { NextRequest, NextResponse } from 'next/server'
 
 /** "Meus planos" — assinaturas da cliente logada com a prestadora da página
@@ -20,5 +21,12 @@ export async function POST(request: NextRequest) {
     .eq('prestadora_id', body.prestadoraId)
     .order('created_at', { ascending: false })
 
-  return NextResponse.json({ assinaturas: assinaturas ?? [] })
+  const assinaturasComCreditos = await Promise.all(
+    (assinaturas ?? []).map(async (a) => ({
+      ...a,
+      creditosPorServico: await getCreditosPorServico(admin, a.id),
+    }))
+  )
+
+  return NextResponse.json({ assinaturas: assinaturasComCreditos })
 }

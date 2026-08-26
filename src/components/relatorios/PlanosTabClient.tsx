@@ -5,9 +5,9 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { Textarea } from '@/components/ui/textarea'
-import { formatCurrency, maskTelefone } from '@/lib/utils'
-import { Users, DollarSign, Tag, ChevronDown, ChevronUp, Trash2, MinusCircle } from 'lucide-react'
-import type { ResumoPlanos } from '@/lib/planosPrestadora'
+import { formatCurrency, formatDateShort, formatDateTime, maskTelefone } from '@/lib/utils'
+import { Users, DollarSign, Tag, ChevronDown, ChevronUp, Trash2, Pencil } from 'lucide-react'
+import type { ResumoPlanos, CreditoServico, UsoHistorico } from '@/lib/planosPrestadora'
 import toast from 'react-hot-toast'
 
 type AssinanteLinha = {
@@ -17,15 +17,25 @@ type AssinanteLinha = {
   creditos_totais: number
   periodo_fim: string | null
   clientes: { nome: string; telefone: string | null } | null
+  creditosPorServico: CreditoServico[]
+}
+
+const TIPO_LABEL: Record<UsoHistorico['tipo'], string> = {
+  automatico: 'Uso automático (agendamento)',
+  manual: 'Desconto manual',
+  ajuste: 'Ajuste manual',
 }
 
 export function PlanosTabClient({ resumo }: { resumo: ResumoPlanos }) {
   const [expandido, setExpandido] = useState<string | null>(null)
   const [assinantesPorPlano, setAssinantesPorPlano] = useState<Record<string, AssinanteLinha[]>>({})
   const [carregando, setCarregando] = useState<string | null>(null)
-  const [descontarId, setDescontarId] = useState<string | null>(null)
-  const [descricaoDesconto, setDescricaoDesconto] = useState('')
-  const [salvandoDesconto, setSalvandoDesconto] = useState(false)
+  const [editarId, setEditarId] = useState<string | null>(null)
+  const [valores, setValores] = useState<Record<string, string>>({})
+  const [observacao, setObservacao] = useState('')
+  const [salvandoServico, setSalvandoServico] = useState<string | null>(null)
+  const [historico, setHistorico] = useState<UsoHistorico[] | null>(null)
+  const [carregandoHistorico, setCarregandoHistorico] = useState(false)
 
   async function toggleExpandir(planoId: string) {
     if (expandido === planoId) { setExpandido(null); return }
@@ -49,25 +59,68 @@ export function PlanosTabClient({ resumo }: { resumo: ResumoPlanos }) {
     toast.success('Assinatura cancelada')
   }
 
-  async function confirmarDesconto(planoId: string) {
-    if (!descontarId || !descricaoDesconto.trim()) { toast.error('Informe uma descrição'); return }
-    setSalvandoDesconto(true)
-    const res = await fetch(`/api/planos/assinaturas/${descontarId}/descontar`, {
+  async function carregarHistorico(assinaturaId: string) {
+    setCarregandoHistorico(true)
+    const res = await fetch(`/api/planos/assinaturas/${assinaturaId}/usos`)
+    const data = await res.json()
+    setCarregandoHistorico(false)
+    if (res.ok) setHistorico(data.usos)
+  }
+
+  function abrirEdicao(linha: AssinanteLinha) {
+    setEditarId(linha.id)
+    setObservacao('')
+    const iniciais: Record<string, string> = {}
+    if (linha.creditosPorServico.length > 0) {
+      for (const cs of linha.creditosPorServico) iniciais[cs.servicoId] = String(cs.restantes)
+    } else {
+      iniciais.generico = String(linha.creditos_restantes)
+    }
+    setValores(iniciais)
+    setHistorico(null)
+    carregarHistorico(linha.id)
+  }
+
+  function podeSalvar(chave: string, valorAtual: number): boolean {
+    const bruto = valores[chave]
+    if (bruto === undefined || bruto === '') return false
+    const n = Number(bruto)
+    return Number.isInteger(n) && n >= 0 && n !== valorAtual
+  }
+
+  async function salvarAjuste(planoId: string, servicoId: string | null, chave: string) {
+    if (!editarId) return
+    const novoValor = Number(valores[chave])
+
+    setSalvandoServico(chave)
+    const res = await fetch(`/api/planos/assinaturas/${editarId}/ajustar-credito`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ descricao: descricaoDesconto }),
+      body: JSON.stringify({ servicoId, novoValor, descricao: observacao.trim() || undefined }),
     })
     const data = await res.json()
-    setSalvandoDesconto(false)
-    if (!res.ok) { toast.error(data.error ?? 'Erro ao descontar uso'); return }
+    setSalvandoServico(null)
+    if (!res.ok) { toast.error(data.error ?? 'Erro ao salvar'); return }
+
     setAssinantesPorPlano((prev) => ({
       ...prev,
-      [planoId]: prev[planoId].map((a) => a.id === descontarId ? { ...a, creditos_restantes: Math.max(0, a.creditos_restantes - 1) } : a),
+      [planoId]: prev[planoId].map((a) => a.id !== editarId ? a : (
+        servicoId
+          ? {
+              ...a,
+              creditosPorServico: a.creditosPorServico.map((cs) => cs.servicoId !== servicoId
+                ? cs
+                : { ...cs, restantes: novoValor, usados: cs.quantidadeTotal - novoValor }),
+            }
+          : { ...a, creditos_restantes: novoValor }
+      )),
     }))
-    toast.success('Uso descontado')
-    setDescontarId(null)
-    setDescricaoDesconto('')
+    toast.success('Crédito atualizado')
+    carregarHistorico(editarId)
   }
+
+  const assinanteEditando = Object.values(assinantesPorPlano).flat().find((a) => a.id === editarId)
+  const planoIdEditando = resumo.planos.find((p) => assinantesPorPlano[p.plano.id]?.some((a) => a.id === editarId))?.plano.id
 
   return (
     <div className="space-y-6">
@@ -131,18 +184,28 @@ export function PlanosTabClient({ resumo }: { resumo: ResumoPlanos }) {
                           <div className="min-w-0">
                             <p className="text-sm font-medium text-gray-900 truncate">{a.clientes?.nome ?? 'Cliente'}</p>
                             <p className="text-xs text-gray-400">
-                              {a.clientes?.telefone ? maskTelefone(a.clientes.telefone) : '—'} · {a.creditos_restantes}/{a.creditos_totais} créditos
+                              {a.clientes?.telefone ? maskTelefone(a.clientes.telefone) : '—'}
+                              {a.periodo_fim && ` · Renova em ${formatDateShort(a.periodo_fim)}`}
                               {a.status !== 'ativa' && ` · ${a.status === 'cancelada' ? 'Cancelada' : 'Suspensa'}`}
                             </p>
+                            {a.creditosPorServico.length > 0 ? (
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                {a.creditosPorServico.map((cs, i) => (
+                                  <span key={cs.servicoId}>{i > 0 && ' · '}{cs.restantes}/{cs.quantidadeTotal} {cs.servicoNome}</span>
+                                ))}
+                              </p>
+                            ) : (
+                              <p className="text-xs text-gray-500 mt-0.5">{a.creditos_restantes}/{a.creditos_totais} créditos</p>
+                            )}
                           </div>
                           {a.status === 'ativa' && (
                             <div className="flex items-center gap-1 shrink-0">
                               <button
-                                onClick={() => setDescontarId(a.id)}
-                                title="Descontar uso manualmente"
+                                onClick={() => abrirEdicao(a)}
+                                title="Editar créditos"
                                 className="p-1.5 text-gray-400 hover:text-amber-600 rounded-lg hover:bg-amber-50"
                               >
-                                <MinusCircle className="w-4 h-4" />
+                                <Pencil className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={() => cancelarAssinatura(a.id, plano.id)}
@@ -164,27 +227,89 @@ export function PlanosTabClient({ resumo }: { resumo: ResumoPlanos }) {
         </div>
       )}
 
-      <Modal open={!!descontarId} onClose={() => setDescontarId(null)} title="Descontar uso manualmente">
-        <div className="p-6 space-y-4">
-          <Textarea
-            label="Descrição"
-            placeholder="Ex: Atendimento combinado por WhatsApp"
-            rows={3}
-            value={descricaoDesconto}
-            onChange={(e) => setDescricaoDesconto(e.target.value)}
-          />
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={() => setDescontarId(null)} className="flex-1">Cancelar</Button>
-            <Button
-              onClick={() => {
-                const planoId = resumo.planos.find((p) => assinantesPorPlano[p.plano.id]?.some((a) => a.id === descontarId))?.plano.id
-                if (planoId) confirmarDesconto(planoId)
-              }}
-              loading={salvandoDesconto}
-              className="flex-1"
-            >
-              Descontar
-            </Button>
+      <Modal open={!!editarId} onClose={() => setEditarId(null)} title="Editar créditos">
+        <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+          {assinanteEditando && (
+            <>
+              <div className="space-y-2">
+                {assinanteEditando.creditosPorServico.length > 0 ? (
+                  assinanteEditando.creditosPorServico.map((cs) => (
+                    <div key={cs.servicoId} className="flex items-center gap-2">
+                      <span className="flex-1 text-sm text-gray-700 truncate">{cs.servicoNome}</span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={cs.quantidadeTotal}
+                        value={valores[cs.servicoId] ?? ''}
+                        onChange={(e) => setValores((prev) => ({ ...prev, [cs.servicoId]: e.target.value }))}
+                        className="w-16 h-11 rounded-xl border border-gray-200 px-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-300"
+                      />
+                      <span className="text-xs text-gray-400 shrink-0">/ {cs.quantidadeTotal}</span>
+                      <Button
+                        size="sm"
+                        onClick={() => planoIdEditando && salvarAjuste(planoIdEditando, cs.servicoId, cs.servicoId)}
+                        loading={salvandoServico === cs.servicoId}
+                        disabled={!podeSalvar(cs.servicoId, cs.restantes)}
+                      >
+                        Salvar
+                      </Button>
+                    </div>
+                  ))
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="flex-1 text-sm text-gray-700">Créditos</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={assinanteEditando.creditos_totais}
+                      value={valores.generico ?? ''}
+                      onChange={(e) => setValores((prev) => ({ ...prev, generico: e.target.value }))}
+                      className="w-16 h-11 rounded-xl border border-gray-200 px-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-300"
+                    />
+                    <span className="text-xs text-gray-400 shrink-0">/ {assinanteEditando.creditos_totais}</span>
+                    <Button
+                      size="sm"
+                      onClick={() => planoIdEditando && salvarAjuste(planoIdEditando, null, 'generico')}
+                      loading={salvandoServico === 'generico'}
+                      disabled={!podeSalvar('generico', assinanteEditando.creditos_restantes)}
+                    >
+                      Salvar
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              <Textarea
+                label="Observação (opcional)"
+                placeholder="Ex: correção de erro de digitação"
+                rows={2}
+                value={observacao}
+                onChange={(e) => setObservacao(e.target.value)}
+              />
+
+              <div>
+                <p className="text-sm font-medium text-gray-700 mb-1.5">Histórico</p>
+                {carregandoHistorico ? (
+                  <p className="text-xs text-gray-400">Carregando...</p>
+                ) : !historico || historico.length === 0 ? (
+                  <p className="text-xs text-gray-400">Nenhum uso registrado ainda</p>
+                ) : (
+                  <ul className="space-y-1.5 max-h-48 overflow-y-auto">
+                    {historico.map((u) => (
+                      <li key={u.id} className="text-xs text-gray-500 bg-gray-50 rounded-lg px-2.5 py-1.5">
+                        <span className="font-medium text-gray-700">{formatDateTime(u.createdAt)}</span>
+                        {' · '}{TIPO_LABEL[u.tipo]}
+                        {u.servicoNome && ` · ${u.servicoNome}`}
+                        {u.descricao && <div className="mt-0.5 text-gray-400">{u.descricao}</div>}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </>
+          )}
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => setEditarId(null)}>Fechar</Button>
           </div>
         </div>
       </Modal>

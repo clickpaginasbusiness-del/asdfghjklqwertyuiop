@@ -20,13 +20,13 @@ import {
   CalendarPlus, Share2, Quote, Trash2, Home, Eye, Sparkles,
 } from 'lucide-react'
 import { getServicoIcone } from '@/lib/servicoIcones'
-import { calcularValorSinal } from '@/lib/sinal'
+import { calcularValorSinal, calcularPrecoComDesconto } from '@/lib/sinal'
 import type { PrestadoraPublica, Servico, GaleriaItem, Agendamento, Profissional, HorarioFuncionamento, Avaliacao } from '@/lib/types'
 import { getTema } from '@/lib/theme'
 import { planoEfetivo, ehPro } from '@/lib/plano'
 import { limitesPlano } from '@/lib/planoLimites'
 import { PlanosSection, type PlanoPublico } from '@/components/perfil-publico/PlanosSection'
-import { usePlanoCredito, calcularValorComDesconto } from '@/components/perfil-publico/usePlanoCredito'
+import { usePlanoCredito } from '@/components/perfil-publico/usePlanoCredito'
 import { CreditoPlanoCard } from '@/components/perfil-publico/CreditoPlanoCard'
 import { MeusPlanosModal } from '@/components/perfil-publico/MeusPlanosModal'
 import { HorarioHojeDropdown } from '@/components/perfil-publico/HorarioHojeDropdown'
@@ -161,6 +161,10 @@ export default function PerfilPublicoClient({
   // Pagamento online (sinal obrigatório ou pagamento opcional do valor total)
   const [concordaNaoReembolsavel, setConcordaNaoReembolsavel] = useState(false)
   const [mostrarPagamentoOpcional, setMostrarPagamentoOpcional] = useState(false)
+  // Só é relevante quando sinal_obrigatorio: escolha entre pagar só o sinal
+  // (resto presencial) ou o valor completo (com desconto de plano, se houver)
+  // agora mesmo. Default 'sinal' preserva o comportamento anterior à Fase 5.
+  const [modoPagamento, setModoPagamento] = useState<'sinal' | 'completo'>('sinal')
 
   const [loginModal, setLoginModal] = useState(false)
   const [authMode, setAuthMode] = useState<'login' | 'cadastro' | 'recuperacao'>('login')
@@ -370,6 +374,7 @@ export default function PerfilPublicoClient({
   function selecionarServico(s: ServicoComProfissionais) {
     setServicoSelecionado(s)
     setProfissionalSelecionada(profissionais.length === 1 ? profissionais[0] : null)
+    setModoPagamento('sinal')
     if (temMultiplasProfissionais) {
       setStep('profissional')
     } else {
@@ -704,6 +709,7 @@ export default function PerfilPublicoClient({
         profissionalId: profissionalSelecionada?.id ?? null,
         dataHora: dataHora.toISOString(),
         usarCreditoPlano: !!assinaturaComCredito && usarCredito,
+        modoPagamento,
       }),
     })
     const data = await res.json()
@@ -749,6 +755,7 @@ export default function PerfilPublicoClient({
     setAgendamentoFeito(null)
     setConcordaNaoReembolsavel(false)
     setMostrarPagamentoOpcional(false)
+    setModoPagamento('sinal')
   }
 
   const horariosDisponiveis = servicoSelecionado && dataSelecionada
@@ -796,7 +803,7 @@ export default function PerfilPublicoClient({
    * servidor (ver /api/agendamentos/pagar) a partir de plano_assinatura_id. */
   function valorComDescontoDoPlano(valor: number): number {
     if (assinaturaComCredito && usarCredito) {
-      return calcularValorComDesconto(valor, assinaturaComCredito.descontoTipo, assinaturaComCredito.descontoValor)
+      return calcularPrecoComDesconto(valor, { tipo: assinaturaComCredito.descontoTipo, valor: assinaturaComCredito.descontoValor })
     }
     return valor
   }
@@ -1189,6 +1196,8 @@ export default function PerfilPublicoClient({
             corTema={tema.hex}
             clienteLogado={clienteLogado}
             onRequireLogin={() => { if (isDemo) { loginDemoInstantaneo() } else { setLoginModal(true) } }}
+            prestadoraId={prestadora.id}
+            onVerCreditos={() => setMeusPlanosModal(true)}
           />
         </div>
 
@@ -1532,15 +1541,40 @@ export default function PerfilPublicoClient({
                           assinatura={assinaturaComCredito}
                           usarCredito={usarCredito}
                           onChange={setUsarCredito}
+                          descontoAplicavel={!(servicoSelecionado.aceitar_pagamento_online && servicoSelecionado.sinal_obrigatorio) || modoPagamento === 'completo'}
                         />
                       )}
 
                       {servicoSelecionado.aceitar_pagamento_online ? (
                         servicoSelecionado.sinal_obrigatorio ? (
                           <div className="space-y-3">
+                            <div className="grid grid-cols-2 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setModoPagamento('sinal')}
+                                className="rounded-lg border px-3 py-2 text-sm font-medium transition-colors"
+                                style={modoPagamento === 'sinal'
+                                  ? { backgroundColor: tema.hex, borderColor: tema.hex, color: 'white' }
+                                  : { borderColor: '#e5e7eb', color: '#4b5563' }}
+                              >
+                                Pagar sinal
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setModoPagamento('completo')}
+                                className="rounded-lg border px-3 py-2 text-sm font-medium transition-colors"
+                                style={modoPagamento === 'completo'
+                                  ? { backgroundColor: tema.hex, borderColor: tema.hex, color: 'white' }
+                                  : { borderColor: '#e5e7eb', color: '#4b5563' }}
+                              >
+                                Pagar valor completo
+                              </button>
+                            </div>
                             <div className="rounded-xl bg-amber-50 border border-amber-100 px-3 py-2.5">
                               <p className="text-sm font-semibold text-amber-800">
-                                Sinal: {formatCurrency(valorComDescontoDoPlano(calcularValorSinal(servicoSelecionado.preco, servicoSelecionado.sinal_tipo, servicoSelecionado.sinal_valor)))}
+                                {modoPagamento === 'sinal'
+                                  ? `Sinal: ${formatCurrency(calcularValorSinal(servicoSelecionado.preco, servicoSelecionado.sinal_tipo, servicoSelecionado.sinal_valor))}`
+                                  : `Total: ${formatCurrency(valorComDescontoDoPlano(servicoSelecionado.preco))}`}
                               </p>
                               <p className="text-xs text-amber-700 mt-1">
                                 Este pagamento é não reembolsável. Em caso de cancelamento, o valor não será devolvido.
@@ -1563,7 +1597,7 @@ export default function PerfilPublicoClient({
                               size="lg"
                               style={{ backgroundColor: tema.hex }}
                             >
-                              Pagar sinal e confirmar agendamento
+                              {modoPagamento === 'sinal' ? 'Pagar sinal e confirmar agendamento' : 'Pagar valor completo e confirmar agendamento'}
                             </Button>
                           </div>
                         ) : !mostrarPagamentoOpcional ? (

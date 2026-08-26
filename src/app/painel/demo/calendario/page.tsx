@@ -17,6 +17,7 @@ export default function CalendarioDemoPage() {
       clientes: a.clientes ? { nome: a.clientes.nome, telefone: a.clientes.telefone, notas: a.clientes.notas } : null,
       profissionais: a.profissionais ? { nome: a.profissionais.nome } : null,
       planos_assinaturas: null,
+      caixa_prestadora: [],
     }))
 
   return (

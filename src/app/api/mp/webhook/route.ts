@@ -251,7 +251,7 @@ async function processarPagamentoAgendamento(
 
   const { data: agendamento } = await supabaseAdmin
     .from('agendamentos')
-    .select('id, data_hora, prestadora_id, plano_assinatura_id, servicos(nome, preco), clientes(nome), profissionais(nome)')
+    .select('id, data_hora, prestadora_id, plano_assinatura_id, servico_id, tipo_pagamento, servicos(nome, preco), clientes(nome), profissionais(nome)')
     .eq('id', agendamentoId)
     .eq('status', 'aguardando_pagamento')
     .maybeSingle()
@@ -273,24 +273,26 @@ async function processarPagamentoAgendamento(
 
   // Reservado com crédito de plano — debita agora que o pagamento (sinal ou
   // valor total, já com desconto do plano aplicado) foi de fato confirmado.
+  // aplicarUsoCredito reconfere o saldo (linha por serviço ou agregado,
+  // conforme o plano) por conta própria — nunca a partir de um valor lido
+  // antes aqui.
   if (agendamento.plano_assinatura_id) {
-    const { data: assinatura } = await supabaseAdmin
-      .from('planos_assinaturas')
-      .select('id, creditos_restantes')
-      .eq('id', agendamento.plano_assinatura_id)
-      .maybeSingle()
-    if (assinatura && assinatura.creditos_restantes > 0) {
-      await aplicarUsoCredito(supabaseAdmin, {
-        assinaturaId: assinatura.id,
-        agendamentoId: agendamento.id,
-        creditosRestantes: assinatura.creditos_restantes,
-      })
+    const consumiu = await aplicarUsoCredito(supabaseAdmin, {
+      assinaturaId: agendamento.plano_assinatura_id,
+      agendamentoId: agendamento.id,
+      servicoId: agendamento.servico_id,
+    })
+    if (!consumiu) {
+      console.warn('[mp webhook][payment] aplicarUsoCredito não debitou (sem crédito ou corrida) —', agendamento.plano_assinatura_id)
     }
   }
 
-  // Cobrou menos que o preço cheio do serviço → foi sinal; senão foi o
-  // valor total (cenário de pagamento online opcional).
-  const tipo = servico && valorBruto < servico.preco - 0.01 ? 'sinal' : 'pagamento_servico'
+  // tipo_pagamento (persistido em criar-pendente) é a fonte de verdade — só
+  // cai pra heurística de valor (quebra quando o pagamento completo sai
+  // descontado por plano) se vier null, agendamento criado antes da Fase 5.
+  const tipo = agendamento.tipo_pagamento
+    ? (agendamento.tipo_pagamento === 'sinal' ? 'sinal' : 'pagamento_servico')
+    : (servico && valorBruto < servico.preco - 0.01 ? 'sinal' : 'pagamento_servico')
 
   await criarEntradaCaixa(supabaseAdmin, {
     prestadoraId: agendamento.prestadora_id,

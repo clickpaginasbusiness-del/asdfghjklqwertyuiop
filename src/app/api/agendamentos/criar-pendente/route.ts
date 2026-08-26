@@ -11,6 +11,7 @@ type Body = {
   profissionalId?: string | null
   dataHora?: string
   usarCreditoPlano?: boolean
+  modoPagamento?: 'sinal' | 'completo'
 }
 
 /**
@@ -119,6 +120,14 @@ export async function POST(request: NextRequest) {
     ? await buscarAssinaturaComCredito(supabaseAdmin, { clienteId: session.clienteId, prestadoraId, servicoId })
     : null
 
+  // Modo de pagamento é significativo só quando o sinal é obrigatório — fora
+  // disso o serviço só tem o modo "completo" (mesmo comportamento de hoje).
+  // Quando é obrigatório e o client não manda nada válido, o default é
+  // 'sinal', preservando o comportamento anterior à Fase 5.
+  const tipoPagamento: 'sinal' | 'completo' = !servico.sinal_obrigatorio
+    ? 'completo'
+    : body.modoPagamento === 'completo' ? 'completo' : 'sinal'
+
   const { data: ag, error } = await supabaseAdmin
     .from('agendamentos')
     .insert({
@@ -129,6 +138,7 @@ export async function POST(request: NextRequest) {
       data_hora: dataHora,
       status: 'aguardando_pagamento',
       plano_assinatura_id: assinaturaComCredito?.id ?? null,
+      tipo_pagamento: tipoPagamento,
     })
     .select('id')
     .single()

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import Script from 'next/script'
 import { Inter, Playfair_Display } from 'next/font/google'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 import './globals.css'
 import { Toaster } from 'react-hot-toast'
 import { ServiceWorkerRegister } from '@/components/pwa/ServiceWorkerRegister'
@@ -110,6 +111,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           />
         </noscript>
         {children}
+        <SpeedInsights />
         <ServiceWorkerRegister />
         <InstallPrompt />
         <OnboardingRedirect />

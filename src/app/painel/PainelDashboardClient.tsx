@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
-import { formatCurrency, formatDateShort, formatDayMonth, formatTime, buildWhatsappUrl } from '@/lib/utils'
+import { formatCurrency, formatDateShort, formatDayMonth, formatTime, buildWhatsappUrl, valorParaExibirAgendamento } from '@/lib/utils'
 import { Calendar, DollarSign, Clock, MessageCircle, CheckCheck, Cake } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { VoceBadge } from '@/components/painel/VoceBadge'
@@ -32,7 +32,8 @@ type Ag = {
   profissionais: { nome: string } | null
   cliente_e_prestadora: boolean
   agendamento_manual: boolean
-  planos_assinaturas: { planos_prestadora: { nome: string } | null } | null
+  planos_assinaturas: { planos_prestadora: { nome: string; desconto_tipo?: 'percentual' | 'fixo'; desconto_valor?: number } | null } | null
+  caixa_prestadora?: { valor_bruto: number; status: string }[]
 }
 
 type Aniversariante = {
@@ -137,7 +138,13 @@ function AgendamentoItem({
       </div>
 
       <div className="flex items-center justify-between sm:shrink-0 sm:flex-col sm:items-end sm:justify-start gap-1 sm:ml-auto pt-2 mt-1 border-t border-gray-100 sm:pt-0 sm:mt-0 sm:border-0">
-        <p className="text-sm font-semibold text-gray-800">{formatCurrency(a.servicos?.preco ?? 0)}</p>
+        <p className="text-sm font-semibold text-gray-800">
+          {(() => {
+            const exibicao = valorParaExibirAgendamento(a.caixa_prestadora, a.planos_assinaturas?.planos_prestadora, a.servicos?.preco ?? 0)
+            if (exibicao.tipo === 'incluido_no_plano') return <span className="text-emerald-600">Incluído no plano</span>
+            return formatCurrency(exibicao.valor)
+          })()}
+        </p>
         <div className="flex items-center gap-1.5 flex-wrap justify-end">
           <button
             onClick={() => passou && !concluindoId && concluir(a.id)}
@@ -204,7 +211,7 @@ export default function PainelDashboardClient({
   useEffect(() => {
     const supabase = createClient()
     // cancelado_por deliberadamente fora do SELECT — lemos direto do payload.new
-    const AG_SELECT = 'id, data_hora, status, servicos(nome, preco, duracao_minutos), clientes(id, nome, telefone), profissionais(nome)'
+    const AG_SELECT = 'id, data_hora, status, cliente_e_prestadora, agendamento_manual, servicos(nome, preco, duracao_minutos), clientes(id, nome, telefone), profissionais(nome), planos_assinaturas(planos_prestadora(nome, desconto_tipo, desconto_valor)), caixa_prestadora(valor_bruto, status)'
 
     const channel = supabase
       .channel(`ag-painel-${prestadoraId}`)
@@ -309,7 +316,10 @@ export default function PainelDashboardClient({
   }, [agendamentos, dataInicio, dataFim])
 
   const totalPeriodo = agendamentosPeriodo.length
-  const receitaPeriodo = agendamentosPeriodo.reduce((acc, a) => acc + (a.servicos?.preco ?? 0), 0)
+  const receitaPeriodo = agendamentosPeriodo.reduce((acc, a) => {
+    const exibicao = valorParaExibirAgendamento(a.caixa_prestadora, a.planos_assinaturas?.planos_prestadora, a.servicos?.preco ?? 0)
+    return acc + (exibicao.tipo === 'incluido_no_plano' ? 0 : exibicao.valor)
+  }, 0)
 
   /* ── Agenda de hoje — sempre hoje ── */
   const agendaHoje = useMemo(() => {

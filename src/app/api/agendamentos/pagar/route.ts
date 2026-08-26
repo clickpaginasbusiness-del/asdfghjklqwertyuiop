@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { preference } from '@/lib/mercadopago'
-import { calcularValorSinal } from '@/lib/sinal'
-import { calcularValorComDesconto } from '@/lib/planosPrestadora'
+import { calcularValorFinalAgendamento, type DescontoPlano } from '@/lib/sinal'
+import { temCreditoDisponivel } from '@/lib/planosPrestadora'
 
 type MetodoPagamento = 'cartao' | 'pix' | 'debito'
 const METODOS_VALIDOS = new Set<MetodoPagamento>(['cartao', 'pix', 'debito'])
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
 
   const { data: agendamento } = await admin
     .from('agendamentos')
-    .select('id, status, plano_assinatura_id, servicos(nome, preco, sinal_tipo, sinal_valor, sinal_obrigatorio, aceitar_pagamento_online), clientes(nome, telefone)')
+    .select('id, status, plano_assinatura_id, tipo_pagamento, servico_id, servicos(nome, preco, sinal_tipo, sinal_valor, sinal_obrigatorio, aceitar_pagamento_online), clientes(nome, telefone)')
     .eq('id', agendamentoId)
     .eq('status', 'aguardando_pagamento')
     .maybeSingle()
@@ -45,27 +45,55 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Agendamento não encontrado ou já processado.' }, { status: 404 })
   }
 
-  let valor = servico.sinal_obrigatorio
-    ? calcularValorSinal(servico.preco, servico.sinal_tipo, servico.sinal_valor)
-    : servico.preco
-
-  // Agendamento reservado com crédito de plano — aplica o desconto do plano
-  // sobre o valor cobrado (sinal ou total), nunca sobre a mensalidade do
-  // plano em si (essa já foi cobrada à parte na assinatura do plano).
+  // Agendamento reservado com crédito de plano — o desconto sempre é
+  // calculado sobre o preço cheio do serviço (nunca sobre o sinal), nunca
+  // sobre a mensalidade do plano em si (essa já foi cobrada à parte na
+  // assinatura do plano). Ver calcularValorFinalAgendamento em lib/sinal.ts.
+  //
+  // Reconfere status/saldo AGORA, não só a existência do vínculo: o
+  // agendamento pode ter ficado pendente por um tempo, e nesse meio-tempo a
+  // assinatura pode ter sido cancelada ou o crédito esgotado por outro
+  // agendamento — sem essa reconferência, o desconto continuaria valendo
+  // pra sempre a partir do momento em que o vínculo foi criado, mesmo sem
+  // crédito nenhum sobrando. temCreditoDisponivel olha a linha por serviço
+  // quando o plano tem planos_servicos configurado (não o agregado — um
+  // serviço nunca usado não pode ser bloqueado só porque outro serviço do
+  // mesmo plano esgotou o próprio saldo).
+  let desconto: DescontoPlano | null = null
   if (agendamento.plano_assinatura_id) {
     const { data: assinatura } = await admin
       .from('planos_assinaturas')
-      .select('plano:planos_prestadora(desconto_tipo, desconto_valor)')
+      .select('status, plano:planos_prestadora(desconto_tipo, desconto_valor)')
       .eq('id', agendamento.plano_assinatura_id)
       .maybeSingle()
     const plano = assinatura?.plano as unknown as { desconto_tipo: 'percentual' | 'fixo'; desconto_valor: number } | null
-    if (plano) valor = calcularValorComDesconto(valor, plano.desconto_tipo, plano.desconto_valor)
+    if (plano && assinatura?.status === 'ativa') {
+      const temCredito = await temCreditoDisponivel(admin, {
+        assinaturaId: agendamento.plano_assinatura_id,
+        servicoId: agendamento.servico_id,
+      })
+      if (temCredito) {
+        desconto = { tipo: plano.desconto_tipo, valor: plano.desconto_valor }
+      }
+    }
   }
+
+  // tipo_pagamento é a fonte de verdade da escolha da cliente (persistida em
+  // criar-pendente); só cai pra sinal_obrigatorio quando vem null — agendamento
+  // criado antes da Fase 5 entrar no ar.
+  const cobrarSinal = agendamento.tipo_pagamento
+    ? agendamento.tipo_pagamento === 'sinal'
+    : servico.sinal_obrigatorio
+
+  const { valorACobrar } = calcularValorFinalAgendamento(
+    servico.preco, servico.sinal_tipo, servico.sinal_valor, cobrarSinal, desconto
+  )
+  const valor = valorACobrar
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
   if (!appUrl) throw new Error('NEXT_PUBLIC_APP_URL not set')
 
-  const titulo = servico.sinal_obrigatorio ? `Sinal — ${servico.nome}` : servico.nome
+  const titulo = cobrarSinal ? `Sinal — ${servico.nome}` : servico.nome
 
   // Cliente não tem email no sistema (só telefone) — manda nome/telefone
   // como payer mesmo assim. Sem isso a Preference ia sem nenhum dado de

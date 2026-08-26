@@ -2,6 +2,7 @@ import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 import { parseISO, isValid } from 'date-fns'
 import type { HorarioFuncionamento } from '@/lib/types'
+import { calcularPrecoComDesconto } from '@/lib/sinal'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -12,6 +13,47 @@ export function formatCurrency(value: number): string {
     style: 'currency',
     currency: 'BRL',
   }).format(value)
+}
+
+export type ValorExibicaoAgendamento =
+  /** Valor de fato cobrado (caixa_prestadora.valor_bruto) ou, sem nenhuma
+   * cobrança/plano envolvido, o preço de tabela do serviço mesmo. */
+  | { tipo: 'valor'; valor: number }
+  /** Coberto 100% por crédito de plano sem desconto nenhum configurado
+   * (plano "N atendimentos inclusos") — não há nada a cobrar. */
+  | { tipo: 'incluido_no_plano' }
+  /** Usou crédito de um plano COM desconto, mas foi/será pago
+   * presencialmente (sem cobrança online) — a prestadora precisa cobrar
+   * esse valor já descontado na hora, não o preço cheio. */
+  | { tipo: 'com_desconto_plano'; valor: number }
+
+/**
+ * Decide o que mostrar como "valor" de um agendamento em Agendamentos e
+ * Calendário. Nunca é simplesmente `servico.preco`: o valor de fato
+ * cobrado (`caixa_prestadora.valor_bruto`, gravado pelo webhook do MP)
+ * manda sempre que existir; sem cobrança online, um agendamento que usou
+ * crédito de plano ou é "incluído" (desconto 0 — nada a cobrar) ou precisa
+ * mostrar o preço já com desconto (a prestadora vai cobrar isso na mão) —
+ * só cai pro preço de tabela puro quando não há plano nem cobrança
+ * nenhuma envolvida.
+ */
+export function valorParaExibirAgendamento(
+  caixaPrestadora: { valor_bruto: number; status: string }[] | null | undefined,
+  planoAssinatura: { desconto_tipo?: 'percentual' | 'fixo'; desconto_valor?: number } | null | undefined,
+  precoServico: number
+): ValorExibicaoAgendamento {
+  const entradaCaixa = (caixaPrestadora ?? []).find((c) => c.status !== 'reembolsado')
+  if (entradaCaixa) return { tipo: 'valor', valor: entradaCaixa.valor_bruto }
+
+  if (planoAssinatura) {
+    if (!planoAssinatura.desconto_valor) return { tipo: 'incluido_no_plano' }
+    return {
+      tipo: 'com_desconto_plano',
+      valor: calcularPrecoComDesconto(precoServico, { tipo: planoAssinatura.desconto_tipo ?? 'percentual', valor: planoAssinatura.desconto_valor }),
+    }
+  }
+
+  return { tipo: 'valor', valor: precoServico }
 }
 
 function parseDate(date: string | Date | null | undefined): Date | null {
