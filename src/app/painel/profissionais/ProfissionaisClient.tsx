@@ -14,11 +14,16 @@ import type { Profissional } from '@/lib/types'
 import Link from 'next/link'
 import { validarArquivo } from '@/lib/uploadValidation'
 import { limitesPlano } from '@/lib/planoLimites'
-import { NOME_PLANO } from '@/lib/mercadopago'
 import type { Plano } from '@/lib/plano'
 import toast from 'react-hot-toast'
 
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
+
+// Não importado de @/lib/mercadopago (mesmo padrão de CheckoutClient.tsx):
+// aquele módulo inicializa o client do MP com a access token no nível do
+// módulo e não pode ser importado em código de cliente — arrasta o SDK
+// inteiro (~1.3MB) pro bundle só por causa desse valor.
+const NOME_PLANO: Record<Plano, string> = { start: 'Start', pro: 'Pro', studio: 'Studio' }
 
 interface ProfForm {
   nome: string
