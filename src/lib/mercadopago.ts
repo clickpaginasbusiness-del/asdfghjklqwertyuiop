@@ -16,9 +16,19 @@ export type MetodoPagamento = 'cartao' | 'pix' | 'debito'
  * de cartão+mensal (ver getOrCreatePlanoMensal); anual é sempre pagamento
  * avulso via Preference, com o preço fixo lido daqui direto. */
 export const PRECOS: Record<Plano, Record<Ciclo, number>> = {
-  start: { mensal: 49, anual: 470 },
+  start: { mensal: 29, anual: 240 },
   pro: { mensal: 89, anual: 855 },
   studio: { mensal: 119, anual: 1142 },
+}
+
+/** Preço de tabela anterior do Start, mantido só pra exibir riscado nas
+ * vitrines comparativas (landing, /planos) — não usar pra cobrança. */
+export const PRECO_START_ANTERIOR: Record<Ciclo, number> = { mensal: 49, anual: 470 }
+
+/** Percentual exato de desconto entre dois preços, arredondado pro inteiro
+ * mais próximo — usado pro badge "X% off" ao lado do preço riscado. */
+export function percentualDesconto(antigo: number, novo: number): number {
+  return Math.round((1 - novo / antigo) * 100)
 }
 
 export const NOME_PLANO: Record<Plano, string> = {
@@ -34,11 +44,23 @@ export const NOME_PLANO: Record<Plano, string> = {
  * em app_config é `mp_plan_{plano}_mensal` (mesmo nome pedido pro time de
  * produto acompanhar) — o id criado fica lá porque uma rota serverless não
  * tem como persistir variável de ambiente em runtime.
+ *
+ * O preapproval_plan do MP trava transaction_amount no momento da criação —
+ * por isso guarda junto (`{chave}_preco`) o preço com que ele foi criado, e
+ * invalida o cache sozinho quando PRECOS muda (mesmo problema já resolvido
+ * pra planos_prestadora em /api/planos/[id], aqui generalizado: nenhuma
+ * edição de PRECOS precisa lembrar de limpar app_config manualmente).
  */
 export async function getOrCreatePlanoMensal(admin: SupabaseClient, plano: Plano): Promise<string> {
   const chave = `mp_plan_${plano}_mensal`
-  const { data } = await admin.from('app_config').select('valor').eq('chave', chave).maybeSingle()
-  if (data?.valor) return data.valor
+  const chavePreco = `${chave}_preco`
+  const precoAtual = String(PRECOS[plano].mensal)
+
+  const [{ data: cacheId }, { data: cachePreco }] = await Promise.all([
+    admin.from('app_config').select('valor').eq('chave', chave).maybeSingle(),
+    admin.from('app_config').select('valor').eq('chave', chavePreco).maybeSingle(),
+  ])
+  if (cacheId?.valor && cachePreco?.valor === precoAtual) return cacheId.valor
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
   if (!appUrl) throw new Error('NEXT_PUBLIC_APP_URL not set')
@@ -61,6 +83,7 @@ export async function getOrCreatePlanoMensal(admin: SupabaseClient, plano: Plano
   if (!id) throw new Error('Mercado Pago não retornou id do plano criado')
 
   await admin.from('app_config').upsert({ chave, valor: id })
+  await admin.from('app_config').upsert({ chave: chavePreco, valor: precoAtual })
   return id
 }
 

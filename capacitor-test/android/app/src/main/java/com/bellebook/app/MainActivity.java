@@ -1,4 +1,4 @@
-package com.bellebook.painel.capacitortest;
+package com.bellebook.app;
 
 import com.getcapacitor.BridgeActivity;
 

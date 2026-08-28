@@ -20,7 +20,7 @@ type Metodo = 'cartao' | 'pix' | 'debito'
 const PLANO_INFO: Record<Plano, { nome: string; precos: Record<Ciclo, string>; icon: typeof Zap; features: string[] }> = {
   start: {
     nome: 'Plano Start',
-    precos: { mensal: 'R$49/mês', anual: 'R$470/ano · R$39/mês' },
+    precos: { mensal: 'R$29/mês', anual: 'R$240/ano · R$20/mês' },
     icon: Zap,
     features: [
       'Agendamentos ilimitados',

@@ -19,7 +19,7 @@ type Metodo = 'cartao' | 'pix' | 'debito'
 // src/lib/mercadopago.ts) porque aquele módulo inicializa o client do MP com
 // a access token e não pode ser importado em código de cliente.
 const PRECOS: Record<Plano, Record<Ciclo, number>> = {
-  start: { mensal: 49, anual: 470 },
+  start: { mensal: 29, anual: 240 },
   pro: { mensal: 89, anual: 855 },
   studio: { mensal: 119, anual: 1142 },
 }

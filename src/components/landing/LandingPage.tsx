@@ -93,6 +93,15 @@ const SIDEBAR_ITEMS = [
   { icon: Headset,         label: 'Suporte',       active: false },
 ]
 
+// Preço de tabela anterior do Start, só pra exibir riscado — a mudança pra
+// R$29/R$240 é definitiva, não promoção temporária (ver PRECO_START_ANTERIOR
+// em src/lib/mercadopago.ts, fonte da verdade pro valor cobrado de fato).
+const PRECO_START_ANTERIOR = { mensal: 'R$49', anual: 'R$470' }
+const START_DESCONTO = {
+  mensal: Math.round((1 - 29 / 49) * 100),
+  anual: Math.round((1 - 240 / 470) * 100),
+}
+
 const MOCKUP_METRICS = [
   { label: 'Agendamentos', value: '8 hoje' },
   { label: 'Receita',      value: 'R$ 360,00' },
@@ -1200,34 +1209,23 @@ export default function LandingPage() {
                 {cicloPrecos === 'mensal' ? (
                   <div>
                     <div className="flex items-baseline gap-1.5">
-                      {desconto ? (
-                        <>
-                          <span className="text-lg font-semibold text-gray-300 line-through">R$49</span>
-                          <span className="text-4xl font-bold text-emerald-600">{precoComDesconto('R$49', desconto)}</span>
-                        </>
-                      ) : (
-                        <span className="text-4xl font-bold text-gray-900">R$49</span>
-                      )}
+                      <span className="text-lg font-semibold text-gray-300 line-through">{PRECO_START_ANTERIOR.mensal}</span>
+                      <span className="text-4xl font-bold text-emerald-600">{desconto ? precoComDesconto('R$29', desconto) : 'R$29'}</span>
                       <span className="text-gray-400 text-sm">/mês</span>
+                      <span className="text-[11px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">{START_DESCONTO.mensal}% off</span>
                     </div>
-                    <p className="text-sm text-emerald-600 font-medium mt-1">30 dias grátis, depois R$49/mês</p>
+                    <p className="text-sm text-emerald-600 font-medium mt-1">30 dias grátis, depois R$29/mês</p>
                   </div>
                 ) : (
                   <div>
                     <div className="flex items-baseline gap-2">
-                      {desconto ? (
-                        <>
-                          <span className="text-lg font-semibold text-gray-300 line-through">R$470</span>
-                          <span className="text-4xl font-bold text-emerald-600">{precoComDesconto('R$470', desconto)}</span>
-                        </>
-                      ) : (
-                        <span className="text-4xl font-bold text-gray-900">R$470</span>
-                      )}
+                      <span className="text-lg font-semibold text-gray-300 line-through">{PRECO_START_ANTERIOR.anual}</span>
+                      <span className="text-4xl font-bold text-emerald-600">{desconto ? precoComDesconto('R$240', desconto) : 'R$240'}</span>
                       <span className="text-gray-400 text-sm">/ano</span>
-                      <span className="text-[11px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">20% off</span>
+                      <span className="text-[11px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">{START_DESCONTO.anual}% off</span>
                     </div>
-                    <p className="text-sm text-emerald-600 font-medium mt-1">30 dias grátis, depois R$470/ano</p>
-                    <p className="text-xs text-gray-400 mt-0.5">R$39/mês equivalente</p>
+                    <p className="text-sm text-emerald-600 font-medium mt-1">30 dias grátis, depois R$240/ano</p>
+                    <p className="text-xs text-gray-400 mt-0.5">R$20/mês equivalente</p>
                   </div>
                 )}
                 <p className="text-sm text-gray-500 mt-1">Ideal para quem está começando</p>

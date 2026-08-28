@@ -24,12 +24,14 @@ export default async function PlanosCheckoutPage({
 
   const { data: prestadora } = await supabase
     .from('prestadoras')
-    .select('assinatura_ativa, e_trial')
+    .select('assinatura_ativa, e_trial, cancelamento_agendado')
     .eq('user_id', user.id)
     .single()
 
-  // Assinatura PAGA ativa (não trial gratuito) → nada pra confirmar aqui
-  if (prestadora?.assinatura_ativa && !prestadora?.e_trial) redirect('/painel')
+  // Assinatura PAGA ativa (não trial gratuito) e sem cancelamento agendado →
+  // nada pra confirmar aqui. Quem cancelou mas ainda está dentro do período
+  // pago precisa conseguir reassinar por aqui mesmo com assinatura_ativa=true.
+  if (prestadora?.assinatura_ativa && !prestadora?.e_trial && !prestadora?.cancelamento_agendado) redirect('/painel')
 
   return <CheckoutClient plano={plano as Plano} ciclo={cicloValido} />
 }

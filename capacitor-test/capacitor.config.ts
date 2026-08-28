@@ -1,11 +1,11 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
-// appId de TESTE — de propósito diferente do com.bellebook.app usado pelo TWA
-// (ver src/app/.well-known/assetlinks.json/route.ts), pra não colidir com o
-// app que já está indo pra Play Store. Trocar antes de qualquer publicação.
+// App oficial (substitui o TWA abandonado). Mesmo package do app já
+// registrado no Play Console / Firebase — ver
+// src/app/.well-known/assetlinks.json/route.ts e google-services.json.
 const config: CapacitorConfig = {
-  appId: 'com.bellebook.painel.capacitortest',
-  appName: 'BelleBook Painel (teste)',
+  appId: 'com.bellebook.app',
+  appName: 'BelleBook',
   webDir: 'www',
   server: {
     // Carrega o painel ao vivo direto do Vercel — sem export estático, sem

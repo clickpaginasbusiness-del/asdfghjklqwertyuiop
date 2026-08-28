@@ -44,9 +44,18 @@ const FEATURES: Record<Plano, Feature[]> = {
 }
 
 const PRECOS: Record<Plano, { mensal: string; anual: string; mensal_equiv: string }> = {
-  start: { mensal: 'R$49', anual: 'R$470', mensal_equiv: 'R$39' },
+  start: { mensal: 'R$29', anual: 'R$240', mensal_equiv: 'R$20' },
   pro: { mensal: 'R$89', anual: 'R$855', mensal_equiv: 'R$71' },
   studio: { mensal: 'R$119', anual: 'R$1.142', mensal_equiv: 'R$95' },
+}
+
+// Preço de tabela anterior do Start, só pra exibir riscado — a mudança pra
+// R$29/R$240 é definitiva, não promoção temporária (ver PRECO_START_ANTERIOR
+// em src/lib/mercadopago.ts, fonte da verdade pro valor cobrado de fato).
+const PRECO_START_ANTERIOR: Record<Ciclo, string> = { mensal: 'R$49', anual: 'R$470' }
+const START_DESCONTO: Record<Ciclo, number> = {
+  mensal: Math.round((1 - 29 / 49) * 100),
+  anual: Math.round((1 - 240 / 470) * 100),
 }
 
 const NOME_PLANO: Record<Plano, string> = { start: 'Start', pro: 'Pro', studio: 'Studio' }
@@ -260,7 +269,18 @@ export default function PlanosClient({
 
                   <div>
                     <div className="flex items-baseline gap-1.5 flex-wrap">
-                      {cupomStatus === 'ok' ? (
+                      {plano === 'start' ? (
+                        <>
+                          <span className="text-xl font-bold line-through text-gray-400">
+                            {PRECO_START_ANTERIOR[ciclo]}
+                          </span>
+                          <span className="text-3xl font-bold text-gray-900">
+                            {cupomStatus === 'ok'
+                              ? precoComDesconto(ciclo === 'mensal' ? preco.mensal : preco.anual, desconto)
+                              : (ciclo === 'mensal' ? preco.mensal : preco.anual)}
+                          </span>
+                        </>
+                      ) : cupomStatus === 'ok' ? (
                         <>
                           <span className={cn('text-xl font-bold line-through', destaque ? 'text-white/50' : 'text-gray-400')}>
                             {ciclo === 'mensal' ? preco.mensal : preco.anual}
@@ -277,6 +297,11 @@ export default function PlanosClient({
                       <span className={cn('text-sm', destaque ? 'text-white/70' : 'text-gray-400')}>
                         {ciclo === 'mensal' ? '/mês' : '/ano'}
                       </span>
+                      {plano === 'start' && (
+                        <span className="text-[11px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">
+                          {START_DESCONTO[ciclo]}% off
+                        </span>
+                      )}
                     </div>
                     {ciclo === 'anual' && cupomStatus !== 'ok' && (
                       <p className={cn('text-xs mt-0.5', destaque ? 'text-white/50' : 'text-gray-400')}>
