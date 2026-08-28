@@ -42,19 +42,23 @@ export default async function PlanosPage({
     trial_fim: string | null
     e_trial: boolean
     mp_subscription_id: string | null
+    cancelamento_agendado: boolean
   } | null = null
 
   if (user) {
     const { data } = await supabase
       .from('prestadoras')
-      .select('id, plano, assinatura_ativa, trial_fim, e_trial, mp_subscription_id')
+      .select('id, plano, assinatura_ativa, trial_fim, e_trial, mp_subscription_id, cancelamento_agendado')
       .eq('user_id', user.id)
       .single()
 
     prestadora = data
 
-    // Redireciona pro painel somente se tiver assinatura PAGA ativa (não trial gratuito)
-    const isActivePaid = prestadora?.assinatura_ativa && !prestadora?.e_trial
+    // Redireciona pro painel somente se tiver assinatura PAGA ativa (não trial
+    // gratuito) e SEM cancelamento agendado — quem cancelou mas ainda está
+    // dentro do período pago (assinatura_ativa continua true até o período
+    // acabar) precisa conseguir chegar aqui pra reassinar.
+    const isActivePaid = prestadora?.assinatura_ativa && !prestadora?.e_trial && !prestadora?.cancelamento_agendado
     if (isActivePaid) redirect('/painel')
   }
 
