@@ -3,6 +3,7 @@
 import { useEffect } from 'react'
 import { Capacitor } from '@capacitor/core'
 import { PushNotifications } from '@capacitor/push-notifications'
+import { LocalNotifications } from '@capacitor/local-notifications'
 import { createClient } from '@/lib/supabase/client'
 
 /**
@@ -60,6 +61,24 @@ export function FcmPushRegister() {
       registrado = false
     })
 
+    // Mensagens FCM notification+data (ver src/app/api/push/send/route.ts) só
+    // chegam aqui com o app em foreground — em background/fechado o Android
+    // já mostra a notificação sozinho, e o toque nela dispara
+    // pushNotificationActionPerformed, nunca pushNotificationReceived. Por
+    // isso não precisa de nenhuma checagem extra pra evitar duplicata.
+    const receivedListener = PushNotifications.addListener('pushNotificationReceived', async (notification) => {
+      const { display } = await LocalNotifications.checkPermissions()
+      if (display !== 'granted') return // já deveria estar granted, já que o push registrou com sucesso
+
+      await LocalNotifications.schedule({
+        notifications: [{
+          id: Date.now() % 2147483647,
+          title: notification.title ?? 'BelleBook',
+          body: notification.body ?? '',
+        }],
+      })
+    })
+
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) registrar()
     })
@@ -71,6 +90,7 @@ export function FcmPushRegister() {
     return () => {
       registrationListener.then((handle) => handle.remove())
       errorListener.then((handle) => handle.remove())
+      receivedListener.then((handle) => handle.remove())
       authListener.subscription.unsubscribe()
     }
   }, [])
