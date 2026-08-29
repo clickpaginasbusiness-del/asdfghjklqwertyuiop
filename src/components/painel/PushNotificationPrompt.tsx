@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { Bell, Settings, X } from 'lucide-react'
-import { isPushSupported, subscribeToPush } from '@/lib/push'
+import { Capacitor } from '@capacitor/core'
+import { getPushPermissionState, requestPushPermission, subscribeToPush } from '@/lib/push'
 
 const DISMISS_FOREVER_KEY = 'bb_push_prompt_never'
 
@@ -14,13 +15,13 @@ function isDismissedForever() {
   return localStorage.getItem(DISMISS_FOREVER_KEY) === '1'
 }
 
-/** Banner só faz sentido em celular/PWA — no desktop o fluxo de permissão é outro contexto. */
+/** Banner só faz sentido em celular/PWA/app nativo — no desktop o fluxo de permissão é outro contexto. */
 function isMobileOuPwa(): boolean {
   const standalone =
     window.matchMedia('(display-mode: standalone)').matches ||
     (navigator as unknown as { standalone?: boolean }).standalone === true
   const mobileUA = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
-  return standalone || mobileUA
+  return Capacitor.isNativePlatform() || standalone || mobileUA
 }
 
 export function PushNotificationPrompt({ prestadoraId }: { prestadoraId: string }) {
@@ -29,46 +30,59 @@ export function PushNotificationPrompt({ prestadoraId }: { prestadoraId: string 
   const [ativando, setAtivando] = useState(false)
 
   useEffect(() => {
-    if (!isPushSupported()) return
     if (!isMobileOuPwa()) return
 
-    if (Notification.permission === 'granted') {
-      // Re-inscreve silenciosamente: cobre tanto subscription expirada (FCM
-      // rotaciona o token) quanto o caso de a prestadora ter ativado a permissão
-      // direto nas configurações do celular — sem passar pelo botão "Ativar"
-      // daqui, a permissão fica concedida mas nenhuma subscription é salva no
-      // banco e a notificação nunca chega.
-      subscribeToPush().catch(() => {})
-      return
+    let cancelado = false
+    let mostrarHandler: (() => void) | null = null
+
+    getPushPermissionState().then((status) => {
+      if (cancelado || status === 'unsupported') return
+
+      if (status === 'granted') {
+        // Re-inscreve silenciosamente (só no fluxo web): cobre tanto
+        // subscription expirada (FCM rotaciona o token) quanto o caso de a
+        // prestadora ter ativado a permissão direto nas configurações do
+        // celular — sem passar pelo botão "Ativar" daqui, a permissão fica
+        // concedida mas nenhuma subscription é salva no banco. No nativo o
+        // FcmPushRegister.tsx já cuida disso sozinho no mount.
+        if (!Capacitor.isNativePlatform()) subscribeToPush().catch(() => {})
+        return
+      }
+
+      if (isDismissedForever()) return
+
+      function mostrar() {
+        setDenied(status === 'denied')
+        setVisible(true)
+      }
+
+      // Mostra assim que o tour de boas-vindas já foi concluído; se ainda não foi,
+      // espera o evento de conclusão em vez de competir com o tour na tela.
+      if (localStorage.getItem(tourKey(prestadoraId))) {
+        mostrar()
+        return
+      }
+
+      mostrarHandler = mostrar
+      window.addEventListener('bb-onboarding-done', mostrar)
+    })
+
+    return () => {
+      cancelado = true
+      if (mostrarHandler) window.removeEventListener('bb-onboarding-done', mostrarHandler)
     }
-
-    if (isDismissedForever()) return
-
-    function mostrar() {
-      setDenied(Notification.permission === 'denied')
-      setVisible(true)
-    }
-
-    // Mostra assim que o tour de boas-vindas já foi concluído; se ainda não foi,
-    // espera o evento de conclusão em vez de competir com o tour na tela.
-    if (localStorage.getItem(tourKey(prestadoraId))) {
-      mostrar()
-      return
-    }
-
-    window.addEventListener('bb-onboarding-done', mostrar)
-    return () => window.removeEventListener('bb-onboarding-done', mostrar)
   }, [prestadoraId])
 
   async function ativar() {
     setAtivando(true)
-    const ok = await subscribeToPush()
+    const ok = await requestPushPermission()
     setAtivando(false)
     if (ok) {
       setVisible(false)
-    } else if (Notification.permission === 'denied') {
-      setDenied(true)
+      return
     }
+    const status = await getPushPermissionState()
+    if (status === 'denied') setDenied(true)
   }
 
   // Fecha só desta vez — sem persistir nada, o banner volta a aparecer na
