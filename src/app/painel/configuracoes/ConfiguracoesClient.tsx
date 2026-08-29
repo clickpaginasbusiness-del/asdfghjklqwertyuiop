@@ -12,7 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Modal } from '@/components/ui/modal'
-import { isPushSupported, subscribeToPush } from '@/lib/push'
+import { Capacitor } from '@capacitor/core'
+import { getPushPermissionState, requestPushPermission, type PushPermissionState } from '@/lib/push'
 import { isInstalledApp } from '@/lib/platform'
 import toast from 'react-hot-toast'
 
@@ -24,8 +25,6 @@ interface BeforeInstallPromptEvent extends Event {
 function isIos() {
   return /iphone|ipad|ipod/i.test(window.navigator.userAgent)
 }
-
-type PushStatus = 'default' | 'granted' | 'denied' | 'unsupported'
 
 export default function ConfiguracoesClient({ email }: { email: string }) {
   const router = useRouter()
@@ -41,13 +40,13 @@ export default function ConfiguracoesClient({ email }: { email: string }) {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [showInstallHint, setShowInstallHint] = useState(false)
 
-  const [pushStatus, setPushStatus] = useState<PushStatus>('default')
+  const [pushStatus, setPushStatus] = useState<PushPermissionState>('prompt')
   const [ativandoPush, setAtivandoPush] = useState(false)
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- detecção de modo standalone/permissão só é possível após montar (window/Notification)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- detecção de modo standalone só é possível após montar (window)
     setStandalone(isInstalledApp())
-    setPushStatus(isPushSupported() ? Notification.permission : 'unsupported')
+    getPushPermissionState().then(setPushStatus)
 
     function handleBeforeInstall(e: Event) {
       e.preventDefault()
@@ -110,10 +109,11 @@ export default function ConfiguracoesClient({ email }: { email: string }) {
 
   async function handleAtivarPush() {
     setAtivandoPush(true)
-    const ok = await subscribeToPush()
+    const ok = await requestPushPermission()
+    const status = await getPushPermissionState()
     setAtivandoPush(false)
-    setPushStatus(Notification.permission)
-    if (!ok && Notification.permission === 'default') {
+    setPushStatus(status)
+    if (!ok && status === 'prompt') {
       toast.error('Não foi possível ativar as notificações')
     }
   }
@@ -227,7 +227,7 @@ export default function ConfiguracoesClient({ email }: { email: string }) {
                   Ativadas
                 </span>
               )}
-              {pushStatus === 'default' && (
+              {pushStatus === 'prompt' && (
                 <Button variant="outline" size="sm" onClick={handleAtivarPush} loading={ativandoPush} className="shrink-0">
                   Ativar notificações
                 </Button>
@@ -241,7 +241,9 @@ export default function ConfiguracoesClient({ email }: { email: string }) {
             </div>
             {pushStatus === 'denied' && (
               <p className="text-xs text-gray-500 mt-3 leading-relaxed bg-gray-50 rounded-xl px-3 py-2.5">
-                As notificações estão bloqueadas para o BelleBook. Para reativar, acesse as configurações de notificação do seu celular ou navegador e permita para este site.
+                {Capacitor.isNativePlatform()
+                  ? 'As notificações estão bloqueadas para o BelleBook. Para reativar, vá em Configurações do Android → Apps → BelleBook → Notificações e permita.'
+                  : 'As notificações estão bloqueadas para o BelleBook. Para reativar, acesse as configurações de notificação do seu celular ou navegador e permita para este site.'}
               </p>
             )}
             {pushStatus === 'unsupported' && (
