@@ -37,26 +37,54 @@ export async function POST(request: NextRequest) {
   // reaproveita em vez de tentar criar duplicata — a UNIQUE em telefone
   // rejeitaria o insert de qualquer forma. Não sobrescreve nome/cliente_manual
   // dela: se já é uma conta real, continua sendo.
+  type ClienteBase = { id: string; nome: string; telefone: string | null; cliente_manual: boolean; verificado_em: string | null; created_at: string }
+  let clienteBase: ClienteBase | undefined
+
   if (telefone) {
     const { data: existente } = await admin
       .from('clientes')
-      .select('id, nome, telefone, cliente_manual, verificado_em, data_nascimento, notas, created_at')
+      .select('id, nome, telefone, cliente_manual, verificado_em, created_at')
       .eq('telefone', telefone)
       .maybeSingle()
-    if (existente) {
-      return NextResponse.json({ cliente: existente })
+    if (existente) clienteBase = existente
+  }
+
+  if (!clienteBase) {
+    const { data: cliente, error } = await admin
+      .from('clientes')
+      .insert({ nome, telefone, cliente_manual: true })
+      .select('id, nome, telefone, cliente_manual, verificado_em, created_at')
+      .single()
+
+    if (error || !cliente) {
+      return NextResponse.json({ error: 'Erro ao criar cliente.' }, { status: 500 })
     }
+    clienteBase = cliente
   }
 
-  const { data: cliente, error } = await admin
-    .from('clientes')
-    .insert({ nome, telefone, cliente_manual: true, data_nascimento: dataNascimento })
-    .select('id, nome, telefone, cliente_manual, verificado_em, data_nascimento, notas, created_at')
-    .single()
+  const clienteId = clienteBase.id
 
-  if (error || !cliente) {
-    return NextResponse.json({ error: 'Erro ao criar cliente.' }, { status: 500 })
+  // data_nascimento é anotação da PRESTADORA, não da cliente global — mesmo
+  // reaproveitando uma cliente já cadastrada por outra prestadora, o que essa
+  // prestadora informar aqui vira a ficha DELA, sem tocar na de mais ninguém.
+  if (dataNascimento) {
+    await admin
+      .from('clientes_prestadora_dados')
+      .upsert({ cliente_id: clienteId, prestadora_id: prestadora.id, data_nascimento: dataNascimento }, { onConflict: 'cliente_id,prestadora_id' })
   }
 
-  return NextResponse.json({ cliente })
+  const { data: dadosPrestadora } = await admin
+    .from('clientes_prestadora_dados')
+    .select('notas, data_nascimento')
+    .eq('cliente_id', clienteId)
+    .eq('prestadora_id', prestadora.id)
+    .maybeSingle()
+
+  return NextResponse.json({
+    cliente: {
+      ...clienteBase,
+      notas: dadosPrestadora?.notas ?? null,
+      data_nascimento: dadosPrestadora?.data_nascimento ?? null,
+    },
+  })
 }

@@ -13,6 +13,7 @@ export default async function CalendarioPage() {
     { data: horariosFuncionamento },
     { data: profissionais },
     { data: agendamentos },
+    { data: dadosPrestadora },
   ] = await Promise.all([
     supabase
       .from('horarios_funcionamento')
@@ -27,20 +28,31 @@ export default async function CalendarioPage() {
       .order('nome'),
     supabase
       .from('agendamentos')
-      .select('id, data_hora, status, cliente_id, profissional_id, cliente_e_prestadora, agendamento_manual, servicos(nome, preco, duracao_minutos), clientes(nome, telefone, notas), profissionais(nome), planos_assinaturas(planos_prestadora(nome, desconto_tipo, desconto_valor)), caixa_prestadora(valor_bruto, status)')
+      .select('id, data_hora, status, cliente_id, profissional_id, cliente_e_prestadora, agendamento_manual, servicos(nome, preco, duracao_minutos), clientes(nome, telefone), profissionais(nome), planos_assinaturas(planos_prestadora(nome, desconto_tipo, desconto_valor)), caixa_prestadora(valor_bruto, status)')
       .eq('prestadora_id', prestadora.id)
       .neq('status', 'cancelado')
       .gte('data_hora', startOfDay(hoje).toISOString())
       .lte('data_hora', endOfDay(addDays(hoje, 7)).toISOString())
       .order('data_hora'),
+    // notas é por prestadora+cliente, não uma coluna global em clientes.
+    supabase
+      .from('clientes_prestadora_dados')
+      .select('cliente_id, notas')
+      .eq('prestadora_id', prestadora.id),
   ])
+
+  const notasPorCliente = new Map((dadosPrestadora ?? []).map((d) => [d.cliente_id, d.notas]))
+  const agendamentosComNotas = (agendamentos ?? []).map((a) => ({
+    ...a,
+    clientes: a.clientes ? { ...(a.clientes as unknown as { nome: string; telefone: string | null }), notas: notasPorCliente.get(a.cliente_id) ?? null } : null,
+  }))
 
   return (
     <CalendarioClient
       prestadora={prestadora}
       horariosFuncionamento={horariosFuncionamento ?? []}
       profissionais={(profissionais ?? []) as unknown as ProfissionalCalendario[]}
-      agendamentos={(agendamentos ?? []) as unknown as AgendaSlotAg[]}
+      agendamentos={agendamentosComNotas as unknown as AgendaSlotAg[]}
     />
   )
 }
