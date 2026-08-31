@@ -64,8 +64,23 @@ export async function POST(request: NextRequest) {
     if (!valido) {
       return NextResponse.json({ error: 'Cupom inválido ou expirado', tipo: 'cupom' }, { status: 400 })
     }
+
+    // Trava otimista: só incrementa se `usos` ainda for o valor que acabou de
+    // ser lido — evita duas requisições concorrentes lerem o mesmo `usos`,
+    // ambas passarem no `max_usos` acima e o cupom ser usado mais vezes do
+    // que o permitido (mesmo padrão de aplicarUsoCredito, planosPrestadora.ts).
+    const { data: cupomReivindicado } = await admin
+      .from('cupons')
+      .update({ usos: cupom.usos + 1 })
+      .eq('id', cupom.id)
+      .eq('usos', cupom.usos)
+      .select('id')
+      .maybeSingle()
+
+    if (!cupomReivindicado) {
+      return NextResponse.json({ error: 'Cupom inválido ou expirado', tipo: 'cupom' }, { status: 400 })
+    }
     cupomRow = { id: cupom.id, percentual: cupom.percentual, valor_fixo: cupom.valor_fixo }
-    await admin.from('cupons').update({ usos: cupom.usos + 1 }).eq('id', cupom.id)
   }
 
   const valorBase = PRECOS[plano][ciclo]

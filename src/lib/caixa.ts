@@ -169,12 +169,36 @@ export async function solicitarSaqueCaixa(
     return { ok: false, error: 'Saldo disponível insuficiente para esse valor.' }
   }
 
-  const idsUsados: string[] = []
-  let acumulado = 0
+  const idsCandidatos: string[] = []
+  let acumuladoCandidato = 0
   for (const c of lista) {
-    if (acumulado >= valor) break
-    idsUsados.push(c.id)
-    acumulado += c.valor
+    if (acumuladoCandidato >= valor) break
+    idsCandidatos.push(c.id)
+    acumuladoCandidato += c.valor
+  }
+
+  // Trava otimista: só reivindica de fato as linhas que ainda estiverem
+  // 'disponivel' no momento do UPDATE (não no momento da leitura acima) —
+  // evita duas solicitações de saque concorrentes reivindicarem o mesmo
+  // saldo (mesmo padrão de aplicarUsoCredito em planosPrestadora.ts).
+  const { data: reivindicados } = await admin
+    .from('caixa_prestadora')
+    .update({ status: 'sacado' })
+    .in('id', idsCandidatos)
+    .eq('status', 'disponivel')
+    .select('id, valor')
+
+  const idsReivindicados = (reivindicados ?? []).map((r) => r.id)
+  const acumuladoReal = (reivindicados ?? []).reduce((s, c) => s + c.valor, 0)
+
+  if (acumuladoReal < valor) {
+    // Perdeu a corrida pra outra solicitação concorrente — devolve o que
+    // conseguiu reivindicar antes de recusar, pra não sumir com saldo sem
+    // gerar nenhum saque correspondente.
+    if (idsReivindicados.length) {
+      await admin.from('caixa_prestadora').update({ status: 'disponivel' }).in('id', idsReivindicados)
+    }
+    return { ok: false, error: 'Saldo disponível insuficiente para esse valor. Tente novamente.' }
   }
 
   const { error: erroInsert } = await admin.from('caixa_saques').insert({
@@ -184,11 +208,12 @@ export async function solicitarSaqueCaixa(
   })
   if (erroInsert) {
     console.error('[caixa] erro ao criar saque', prestadoraId, erroInsert)
+    // Insert falhou depois de já reivindicar o saldo — devolve pra não
+    // travar dinheiro sacado sem nenhum pedido de saque correspondente.
+    if (idsReivindicados.length) {
+      await admin.from('caixa_prestadora').update({ status: 'disponivel' }).in('id', idsReivindicados)
+    }
     return { ok: false, error: 'Erro ao solicitar saque. Tente novamente.' }
-  }
-
-  if (idsUsados.length) {
-    await admin.from('caixa_prestadora').update({ status: 'sacado' }).in('id', idsUsados)
   }
 
   return { ok: true }

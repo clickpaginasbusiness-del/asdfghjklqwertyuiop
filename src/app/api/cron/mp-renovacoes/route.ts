@@ -178,7 +178,7 @@ export async function GET(request: NextRequest) {
   // renova o período quando a cobrança chega.
   const { data: assinaturasPix } = await admin
     .from('planos_assinaturas')
-    .select('id, plano_id, cliente_id, prestadora_id, periodo_fim, planos_prestadora(nome, preco, ativo)')
+    .select('id, plano_id, cliente_id, prestadora_id, periodo_fim, mp_pagamento_pendente_id, planos_prestadora(nome, preco, ativo)')
     .eq('mp_metodo', 'pix')
     .eq('status', 'ativa')
     .not('periodo_fim', 'is', null)
@@ -188,6 +188,7 @@ export async function GET(request: NextRequest) {
     if (!plano || !a.periodo_fim) continue
     const diasAteVencimento = (new Date(a.periodo_fim).getTime() - agora) / MS_DIA
     if (diasAteVencimento < 0 || diasAteVencimento > 1) continue // só gera na véspera
+    if (a.mp_pagamento_pendente_id) continue // já gerou a cobrança desse ciclo, só aguardando pagamento
 
     try {
       const referencia = `plano_cliente:${a.plano_id}:${a.cliente_id}:${randomUUID()}`
@@ -201,7 +202,10 @@ export async function GET(request: NextRequest) {
           payment_methods: { excluded_payment_types: [{ id: 'credit_card' }] },
         },
       })
-      if (pref.init_point) planosRenovados++
+      if (pref.init_point) {
+        await admin.from('planos_assinaturas').update({ mp_pagamento_pendente_id: pref.id }).eq('id', a.id)
+        planosRenovados++
+      }
     } catch (err) {
       console.error('[cron/mp-renovacoes] erro ao gerar cobrança de plano de cliente', a.id, err)
     }
