@@ -19,6 +19,7 @@ const SENSITIVE_PATH_PREFIXES = [
   '/api/clientes/auth/finalizar-cadastro',
   '/api/clientes/auth/redefinir-senha',
   '/api/push/send',
+  '/api/mp/validate-coupon',
 ]
 
 function getIp(req: NextRequest): string {
