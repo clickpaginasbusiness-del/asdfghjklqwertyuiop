@@ -1,6 +1,5 @@
 import { cache } from 'react'
 import { redirect } from 'next/navigation'
-import type { User } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import type { Prestadora } from '@/lib/types'
 
@@ -33,5 +32,3 @@ export const getPrestadoraAutenticada = cache(async () => {
 
   return { supabase, user, prestadora: prestadora as Prestadora | null }
 })
-
-export type PrestadoraAutenticada = { supabase: Awaited<ReturnType<typeof createClient>>; user: User; prestadora: Prestadora | null }

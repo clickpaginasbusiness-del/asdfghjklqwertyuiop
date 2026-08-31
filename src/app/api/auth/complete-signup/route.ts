@@ -1,28 +1,12 @@
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
-import { processarRecompensaCadastro } from '@/lib/indicacao'
+import { sanitizeSlug, criarPrestadoraComTrial } from '@/lib/onboardingPrestadora'
 import { NextRequest, NextResponse } from 'next/server'
 
 const supabaseAdmin = createAdminClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
-
-function sanitizeSlug(raw: string): string {
-  return String(raw).toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 50)
-}
-
-function generateCodigoIndicacao(nome: string): string {
-  const letters = nome
-    .toUpperCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^A-Z]/g, '')
-    .slice(0, 5)
-    .padEnd(2, 'X')
-  const digits = Math.floor(1000 + Math.random() * 9000)
-  return `${letters}${digits}`
-}
 
 export async function POST(request: NextRequest) {
   // Session is set in cookies by verifyOtp on the client (via @supabase/ssr)
@@ -98,68 +82,20 @@ export async function POST(request: NextRequest) {
   }
 
   // Bloqueia reaproveitamento do trial gratuito por números que já usaram
-  // antes (mesmo que a conta anterior tenha sido deletada).
-  const { data: telefoneJaUsado } = await supabaseAdmin
-    .from('telefones_usados_trial')
-    .select('id')
-    .eq('telefone', telefoneLimpo)
-    .maybeSingle()
+  // antes (mesmo que a conta anterior tenha sido deletada) — lógica
+  // compartilhada com api/auth/google/completar (ver onboardingPrestadora.ts).
+  const resultado = await criarPrestadoraComTrial(supabaseAdmin, {
+    userId: user.id,
+    nome: nomeLimpo,
+    email: emailLimpo,
+    slug: slugLimpo,
+    telefone: telefoneLimpo,
+    refCode,
+  })
 
-  const semTrial = Boolean(telefoneJaUsado)
-  const trialFim = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-
-  // Resolve referrer pelo código de indicação
-  let referrerId: string | null = null
-  if (refCode) {
-    const { data: referrer } = await supabaseAdmin
-      .from('prestadoras')
-      .select('id')
-      .eq('codigo_indicacao', String(refCode).toUpperCase())
-      .maybeSingle()
-    referrerId = referrer?.id ?? null
+  if (!resultado.ok) {
+    return NextResponse.json({ error: resultado.error }, { status: resultado.status })
   }
 
-  // Gera código de indicação único para a nova prestadora
-  let codigoIndicacao: string | null = null
-  for (let i = 0; i < 5; i++) {
-    const tentativa = generateCodigoIndicacao(nomeLimpo)
-    const { data: colisao } = await supabaseAdmin
-      .from('prestadoras')
-      .select('id')
-      .eq('codigo_indicacao', tentativa)
-      .maybeSingle()
-    if (!colisao) { codigoIndicacao = tentativa; break }
-  }
-
-  const { data: novaPrestadora, error: insertError } = await supabaseAdmin
-    .from('prestadoras')
-    .insert({
-      user_id: user.id,
-      nome: nomeLimpo,
-      email: emailLimpo,
-      slug: slugLimpo,
-      telefone: telefoneLimpo,
-      plano: 'start',
-      assinatura_ativa: !semTrial,
-      trial_fim: semTrial ? null : trialFim,
-      e_trial: !semTrial,
-      codigo_indicacao: codigoIndicacao,
-      indicado_por: referrerId,
-    })
-    .select('id')
-    .single()
-
-  if (insertError) {
-    const mensagem = insertError.code === '23505'
-      ? 'Esse link já está em uso. Escolha outro.'
-      : insertError.message
-    return NextResponse.json({ error: mensagem }, { status: 400 })
-  }
-
-  // Recompensa de indicação — estágio 1 (+7 dias para quem indicou)
-  if (referrerId && novaPrestadora) {
-    await processarRecompensaCadastro(supabaseAdmin, novaPrestadora.id, nomeLimpo, referrerId)
-  }
-
-  return NextResponse.json({ ok: true, semTrial })
+  return NextResponse.json({ ok: true, semTrial: resultado.semTrial })
 }

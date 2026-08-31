@@ -1,24 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { checarCodigoVerificacao } from '@/lib/twilioVerify'
-import { processarRecompensaCadastro } from '@/lib/indicacao'
+import { sanitizeSlug, criarPrestadoraComTrial } from '@/lib/onboardingPrestadora'
 import { NextRequest, NextResponse } from 'next/server'
-
-function sanitizeSlug(raw: string): string {
-  return String(raw).toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 50)
-}
-
-function generateCodigoIndicacao(nome: string): string {
-  const letters = nome
-    .toUpperCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/[^A-Z]/g, '')
-    .slice(0, 5)
-    .padEnd(2, 'X')
-  const digits = Math.floor(1000 + Math.random() * 9000)
-  return `${letters}${digits}`
-}
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -72,68 +56,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Conta já cadastrada para este usuário.' }, { status: 409 })
   }
 
-  // Checa se telefone já usou trial
-  const { data: telefoneJaUsado } = await admin
-    .from('telefones_usados_trial')
-    .select('id')
-    .eq('telefone', telefoneLimpo)
-    .maybeSingle()
+  // Checa trial/indicação e cria a prestadora — lógica compartilhada com
+  // api/auth/complete-signup (ver onboardingPrestadora.ts).
+  const resultado = await criarPrestadoraComTrial(admin, {
+    userId: user.id,
+    nome: nomeLimpo,
+    email: user.email,
+    slug: slugLimpo,
+    telefone: telefoneLimpo,
+    refCode,
+  })
 
-  const semTrial = Boolean(telefoneJaUsado)
-  const trialFim = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-
-  // Resolve código de indicação do referrer
-  let referrerId: string | null = null
-  if (refCode) {
-    const { data: referrer } = await admin
-      .from('prestadoras')
-      .select('id')
-      .eq('codigo_indicacao', String(refCode).toUpperCase())
-      .maybeSingle()
-    referrerId = referrer?.id ?? null
+  if (!resultado.ok) {
+    return NextResponse.json({ error: resultado.error }, { status: resultado.status })
   }
 
-  // Gera código de indicação único para a nova prestadora
-  let codigoIndicacao: string | null = null
-  for (let i = 0; i < 5; i++) {
-    const tentativa = generateCodigoIndicacao(nomeLimpo)
-    const { data: colisao } = await admin
-      .from('prestadoras')
-      .select('id')
-      .eq('codigo_indicacao', tentativa)
-      .maybeSingle()
-    if (!colisao) { codigoIndicacao = tentativa; break }
-  }
-
-  const { data: novaPrestadora, error: insertError } = await admin
-    .from('prestadoras')
-    .insert({
-      user_id: user.id,
-      nome: nomeLimpo,
-      email: user.email,
-      slug: slugLimpo,
-      telefone: telefoneLimpo,
-      plano: 'start',
-      assinatura_ativa: !semTrial,
-      trial_fim: semTrial ? null : trialFim,
-      e_trial: !semTrial,
-      codigo_indicacao: codigoIndicacao,
-      indicado_por: referrerId,
-    })
-    .select('id')
-    .single()
-
-  if (insertError) {
-    const mensagem = insertError.code === '23505'
-      ? 'Esse link já está em uso. Escolha outro.'
-      : insertError.message
-    return NextResponse.json({ error: mensagem }, { status: 400 })
-  }
-
-  // Recompensa de indicação — estágio 1 (+7 dias para quem indicou)
-  if (referrerId && novaPrestadora) {
-    await processarRecompensaCadastro(admin, novaPrestadora.id, nomeLimpo, referrerId)
-  }
-
-  return NextResponse.json({ ok: true, semTrial })
+  return NextResponse.json({ ok: true, semTrial: resultado.semTrial })
 }

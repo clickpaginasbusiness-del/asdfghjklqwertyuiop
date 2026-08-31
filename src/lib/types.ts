@@ -165,13 +165,6 @@ export type PlanoPrestadora = {
   created_at: string
 }
 
-export type PlanoServico = {
-  id: string
-  plano_id: string
-  servico_id: string
-  quantidade: number
-}
-
 export type PlanoAssinatura = {
   id: string
   plano_id: string
@@ -180,6 +173,7 @@ export type PlanoAssinatura = {
   status: 'ativa' | 'cancelada' | 'suspensa'
   mp_subscription_id: string | null
   mp_metodo: 'cartao' | 'pix' | null
+  mp_pagamento_pendente_id: string | null
   creditos_restantes: number
   creditos_totais: number
   periodo_inicio: string
@@ -188,15 +182,6 @@ export type PlanoAssinatura = {
   created_at: string
 }
 
-export type PlanoUso = {
-  id: string
-  assinatura_id: string
-  agendamento_id: string | null
-  servico_id: string | null
-  tipo: 'automatico' | 'manual'
-  descricao: string | null
-  created_at: string
-}
 
 export type CaixaPrestadora = {
   id: string
@@ -281,22 +266,6 @@ export type Notificacao = {
   created_at: string
 }
 
-export type VisitaPagina = {
-  id: string
-  prestadora_id: string
-  created_at: string
-}
-
-export type PushSubscriptionRow = {
-  id: string
-  prestadora_id: string
-  endpoint: string
-  p256dh: string
-  auth: string
-  user_agent: string | null
-  created_at: string
-}
-
 export type Avaliacao = {
   id: string
   agendamento_id: string
@@ -321,10 +290,3 @@ export type Cupom = {
   created_at: string
 }
 
-export type CupomUso = {
-  id: string
-  cupom_id: string
-  prestadora_id: string
-  cobracas_aplicadas: number
-  created_at: string
-}
