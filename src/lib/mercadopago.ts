@@ -1,5 +1,6 @@
 import { MercadoPagoConfig, PreApproval, PreApprovalPlan, Payment, Preference } from 'mercadopago'
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { PRECOS, NOME_PLANO, PRECO_START_ANTERIOR, percentualDesconto, type Plano, type Ciclo } from './precos'
 
 const mpConfig = new MercadoPagoConfig({ accessToken: process.env.MP_ACCESS_TOKEN! })
 
@@ -8,34 +9,15 @@ export const preApprovalPlan = new PreApprovalPlan(mpConfig)
 export const mpPayment = new Payment(mpConfig)
 export const preference = new Preference(mpConfig)
 
-export type Plano = 'start' | 'pro' | 'studio'
-export type Ciclo = 'mensal' | 'anual'
 export type MetodoPagamento = 'cartao' | 'pix' | 'debito'
 
-/** Preços em reais — únicos "price IDs" que existem são os 3 preapproval_plan
- * de cartão+mensal (ver getOrCreatePlanoMensal); anual é sempre pagamento
- * avulso via Preference, com o preço fixo lido daqui direto. */
-export const PRECOS: Record<Plano, Record<Ciclo, number>> = {
-  start: { mensal: 29, anual: 240 },
-  pro: { mensal: 89, anual: 855 },
-  studio: { mensal: 119, anual: 1142 },
-}
-
-/** Preço de tabela anterior do Start, mantido só pra exibir riscado nas
- * vitrines comparativas (landing, /planos) — não usar pra cobrança. */
-export const PRECO_START_ANTERIOR: Record<Ciclo, number> = { mensal: 49, anual: 470 }
-
-/** Percentual exato de desconto entre dois preços, arredondado pro inteiro
- * mais próximo — usado pro badge "X% off" ao lado do preço riscado. */
-export function percentualDesconto(antigo: number, novo: number): number {
-  return Math.round((1 - novo / antigo) * 100)
-}
-
-export const NOME_PLANO: Record<Plano, string> = {
-  start: 'Start',
-  pro: 'Pro',
-  studio: 'Studio',
-}
+// PRECOS/NOME_PLANO/PRECO_START_ANTERIOR/percentualDesconto vivem em
+// src/lib/precos.ts (módulo puro, sem SDK nem secret) e são reexportados
+// daqui só pra não quebrar os imports de @/lib/mercadopago já espalhados
+// pelo código de servidor — componentes client devem importar direto de
+// @/lib/precos (ver LandingPage.tsx, PlanosClient.tsx, etc).
+export { PRECOS, NOME_PLANO, PRECO_START_ANTERIOR, percentualDesconto }
+export type { Plano, Ciclo }
 
 /**
  * Busca (ou cria, na primeira vez) o preapproval_plan do MP pro plano+mensal

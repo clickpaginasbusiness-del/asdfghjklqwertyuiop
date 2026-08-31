@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { AdminNav } from '@/components/admin/AdminNav'
-import { NOME_PLANO, PRECOS, type Plano } from '@/lib/mercadopago'
+import { NOME_PLANO, type Plano } from '@/lib/precos'
 import toast from 'react-hot-toast'
 
 type PrestadoraDetalhe = {
