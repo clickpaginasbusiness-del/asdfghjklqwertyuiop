@@ -64,53 +64,34 @@ export async function POST(request: NextRequest) {
     if (!prof) return NextResponse.json({ error: 'Profissional não encontrada.' }, { status: 404 })
   }
 
-  // Mesma checagem de sobreposição do agendamento público — impede dois
-  // agendamentos confirmados no mesmo horário/profissional. Diferente do
-  // fluxo público, não bloqueia por dia fechado/bloqueado: agendamento manual
-  // é uma ferramenta de override da própria prestadora sobre a própria agenda.
-  const novoInicio = new Date(dataHora).getTime()
-  const novoFim = novoInicio + servico.duracao_minutos * 60000
-  const inicioDia = new Date(novoInicio)
-  inicioDia.setHours(0, 0, 0, 0)
-  const fimDia = new Date(inicioDia)
-  fimDia.setDate(fimDia.getDate() + 1)
-
-  let conflitosQuery = admin
-    .from('agendamentos')
-    .select('data_hora, servicos(duracao_minutos)')
-    .eq('prestadora_id', prestadora.id)
-    .eq('status', 'confirmado')
-    .gte('data_hora', inicioDia.toISOString())
-    .lt('data_hora', fimDia.toISOString())
-
-  if (profissionalId) {
-    conflitosQuery = conflitosQuery.eq('profissional_id', profissionalId)
-  }
-
-  const { data: conflitos } = await conflitosQuery
-  const sobrepoe = ((conflitos ?? []) as unknown as { data_hora: string; servicos: { duracao_minutos: number } | null }[]).some((a) => {
-    const inicio = new Date(a.data_hora).getTime()
-    const fim = inicio + (a.servicos?.duracao_minutos ?? 30) * 60000
-    return novoInicio < fim && novoFim > inicio
+  // Checagem de sobreposição + insert acontecem atomicamente dentro da
+  // função (lock + checagem + insert numa transação única) — evita a race
+  // condition de duas reservas concorrentes passarem no "select" ao mesmo
+  // tempo (ver 20260829_criar_agendamento_seguro.sql). Diferente do fluxo
+  // público, não bloqueia por dia fechado/bloqueado: agendamento manual é
+  // uma ferramenta de override da própria prestadora sobre a própria agenda.
+  const { data: agendamentoCriado, error: rpcError } = await admin.rpc('criar_agendamento_seguro', {
+    p_prestadora_id: prestadora.id,
+    p_profissional_id: profissionalId,
+    p_servico_id: servicoId,
+    p_cliente_id: clienteId,
+    p_data_hora: dataHora,
+    p_status: 'confirmado',
+    p_agendamento_manual: true,
+    p_cliente_e_prestadora: mesmoTelefone(cliente.telefone, prestadora.telefone),
   })
 
-  if (sobrepoe) {
-    return NextResponse.json({ error: 'Esse horário já foi reservado. Escolha outro.' }, { status: 409 })
+  if (rpcError) {
+    if (rpcError.message.includes('horario_conflitante')) {
+      return NextResponse.json({ error: 'Esse horário já foi reservado. Escolha outro.' }, { status: 409 })
+    }
+    return NextResponse.json({ error: 'Erro ao agendar. Tente novamente.' }, { status: 500 })
   }
 
   const { data: ag, error } = await admin
     .from('agendamentos')
-    .insert({
-      prestadora_id: prestadora.id,
-      profissional_id: profissionalId,
-      servico_id: servicoId,
-      cliente_id: clienteId,
-      data_hora: dataHora,
-      status: 'confirmado',
-      agendamento_manual: true,
-      cliente_e_prestadora: mesmoTelefone(cliente.telefone, prestadora.telefone),
-    })
-    .select('*, servicos(*), clientes(*), profissionais(*)')
+    .select('*, servicos(*), clientes(id, nome, telefone), profissionais(*)')
+    .eq('id', (agendamentoCriado as unknown as { id: string }).id)
     .single()
 
   if (error || !ag) {

@@ -79,54 +79,39 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Esse dia não está disponível para agendamento.' }, { status: 409 })
   }
 
-  const novoInicio = new Date(dataHora).getTime()
-  const novoFim = novoInicio + servico.duracao_minutos * 60000
-  const inicioDia = new Date(novoInicio)
-  inicioDia.setHours(0, 0, 0, 0)
-  const fimDia = new Date(inicioDia)
-  fimDia.setDate(fimDia.getDate() + 1)
-
-  let conflitosQuery = supabaseAdmin
-    .from('agendamentos')
-    .select('data_hora, servicos(duracao_minutos)')
-    .eq('prestadora_id', prestadoraId)
-    .eq('status', 'confirmado')
-    .gte('data_hora', inicioDia.toISOString())
-    .lt('data_hora', fimDia.toISOString())
-
-  if (profissionalId) {
-    conflitosQuery = conflitosQuery.eq('profissional_id', profissionalId)
-  }
-
-  const { data: conflitos } = await conflitosQuery
-  const sobrepoe = ((conflitos ?? []) as unknown as { data_hora: string; servicos: { duracao_minutos: number } | null }[]).some((a) => {
-    const inicio = new Date(a.data_hora).getTime()
-    const fim = inicio + (a.servicos?.duracao_minutos ?? 30) * 60000
-    return novoInicio < fim && novoFim > inicio
-  })
-
-  if (sobrepoe) {
-    return NextResponse.json({ error: 'Esse horário já foi reservado. Escolha outro.' }, { status: 409 })
-  }
-
   // Nunca confia no client sobre ter crédito de plano — reconfere aqui
   // mesmo se usarCreditoPlano vier true no corpo da requisição.
   const assinaturaComCredito = body.usarCreditoPlano
     ? await buscarAssinaturaComCredito(supabaseAdmin, { clienteId: session.clienteId, prestadoraId, servicoId })
     : null
 
+  // Checagem de sobreposição + insert acontecem atomicamente dentro da
+  // função (lock + checagem + insert numa transação única) — evita a race
+  // condition de duas reservas concorrentes passarem no "select" ao mesmo
+  // tempo (ver 20260829_criar_agendamento_seguro.sql).
+  const { data: agendamentoCriado, error: rpcError } = await supabaseAdmin.rpc('criar_agendamento_seguro', {
+    p_prestadora_id: prestadoraId,
+    p_profissional_id: profissionalId,
+    p_servico_id: servicoId,
+    p_cliente_id: session.clienteId,
+    p_data_hora: dataHora,
+    p_status: 'confirmado',
+    p_plano_assinatura_id: assinaturaComCredito?.id ?? null,
+  })
+
+  if (rpcError) {
+    if (rpcError.message.includes('horario_conflitante')) {
+      return NextResponse.json({ error: 'Esse horário já foi reservado. Escolha outro.' }, { status: 409 })
+    }
+    return NextResponse.json({ error: 'Erro ao agendar. Tente novamente.' }, { status: 500 })
+  }
+
+  // A função retorna só as colunas próprias de agendamentos — busca de novo
+  // com os joins que a resposta da API precisa.
   const { data: ag, error } = await supabaseAdmin
     .from('agendamentos')
-    .insert({
-      prestadora_id: prestadoraId,
-      profissional_id: profissionalId,
-      servico_id: servicoId,
-      cliente_id: session.clienteId,
-      data_hora: dataHora,
-      status: 'confirmado',
-      plano_assinatura_id: assinaturaComCredito?.id ?? null,
-    })
-    .select('*, servicos(*), clientes(*), profissionais(*)')
+    .select('*, servicos(*), clientes(id, nome, telefone), profissionais(*)')
+    .eq('id', (agendamentoCriado as unknown as { id: string }).id)
     .single()
 
   if (error || !ag) {
