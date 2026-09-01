@@ -234,8 +234,16 @@ export function FinanceiroTabClient({
     if (!deleteAlvo) return
     setExcluindo(true)
     const supabase = createClient()
-    const { error } = await supabase.from('lancamentos_financeiros').delete().eq('id', deleteAlvo.id)
-    if (error) {
+    // .select() é o que permite detectar exclusão bloqueada silenciosamente
+    // (RLS ou outro motivo) — sem isso, .delete() sozinho retorna sucesso
+    // mesmo quando zero linhas são de fato apagadas.
+    const { data: excluido, error } = await supabase
+      .from('lancamentos_financeiros')
+      .delete()
+      .eq('id', deleteAlvo.id)
+      .select()
+      .maybeSingle()
+    if (error || !excluido) {
       toast.error('Erro ao excluir.')
     } else {
       setItems((prev) => prev.filter((l) => l.id !== deleteAlvo.id))
