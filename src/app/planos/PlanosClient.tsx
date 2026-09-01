@@ -147,7 +147,7 @@ export default function PlanosClient({
     cupomAberto, setCupomAberto,
     cupomInput, onCupomInputChange,
     cupomStatus, aplicarCupom,
-    desconto,
+    cupomErro, desconto,
   } = useCupom()
 
   function assinar(plano: Plano) {
@@ -408,7 +408,7 @@ export default function PlanosClient({
               {cupomStatus === 'erro' && (
                 <p className="flex items-center gap-1.5 text-sm text-red-500">
                   <X className="w-4 h-4" strokeWidth={2.5} />
-                  Cupom inválido ou expirado
+                  {cupomErro}
                 </p>
               )}
             </div>

@@ -25,12 +25,16 @@ export function precoComDesconto(preco: string, desconto: CupomDesconto | null):
   return `R$${final}`
 }
 
+const ERRO_PADRAO = 'Cupom inválido ou expirado'
+const ERRO_RATE_LIMIT = 'Muitas tentativas. Aguarde um minuto e tente de novo.'
+
 export function useCupom() {
   const [cupomAberto, setCupomAberto] = useState(false)
   const [cupomInput, setCupomInput] = useState('')
   const [cupomStatus, setCupomStatus] = useState<CupomStatus>('idle')
   const [cupomAplicado, setCupomAplicado] = useState('')
   const [desconto, setDesconto] = useState<CupomDesconto | null>(null)
+  const [cupomErro, setCupomErro] = useState(ERRO_PADRAO)
 
   function resetCupom() {
     setCupomStatus('idle')
@@ -62,11 +66,16 @@ export function useCupom() {
         setCupomStatus('erro')
         setCupomAplicado('')
         setDesconto(null)
+        // 429 do rate limit não é "cupom inválido" — sem distinguir aqui, testar
+        // o cupom repetidas vezes (ou ter testado login/OTP pouco antes, mesmo
+        // IP) parecia um cupom quebrado quando era só limite de requisições.
+        setCupomErro(res.status === 429 ? ERRO_RATE_LIMIT : ERRO_PADRAO)
       }
     } catch {
       setCupomStatus('erro')
       setCupomAplicado('')
       setDesconto(null)
+      setCupomErro(ERRO_PADRAO)
     }
   }
 
@@ -75,6 +84,7 @@ export function useCupom() {
     setCupomStatus('erro')
     setCupomAplicado('')
     setDesconto(null)
+    setCupomErro(ERRO_PADRAO)
   }
 
   return {
@@ -84,6 +94,7 @@ export function useCupom() {
     onCupomInputChange,
     cupomStatus,
     cupomAplicado,
+    cupomErro,
     desconto,
     aplicarCupom,
     marcarCupomInvalido,

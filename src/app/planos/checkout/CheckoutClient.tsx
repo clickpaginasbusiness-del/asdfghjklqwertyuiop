@@ -55,7 +55,7 @@ export default function CheckoutClient({ plano, ciclo }: { plano: Plano; ciclo: 
 
   const {
     cupomInput, onCupomInputChange,
-    cupomStatus, cupomAplicado, desconto,
+    cupomStatus, cupomAplicado, cupomErro, desconto,
     aplicarCupom, marcarCupomInvalido,
   } = useCupom()
 
@@ -191,7 +191,7 @@ export default function CheckoutClient({ plano, ciclo }: { plano: Plano; ciclo: 
             {cupomStatus === 'erro' && (
               <p className="flex items-center gap-1.5 text-sm text-red-500 mt-2">
                 <X className="w-4 h-4" strokeWidth={2.5} />
-                Cupom inválido ou expirado
+                {cupomErro}
               </p>
             )}
           </div>

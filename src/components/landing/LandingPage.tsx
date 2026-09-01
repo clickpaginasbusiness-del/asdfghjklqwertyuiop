@@ -489,7 +489,7 @@ export default function LandingPage() {
     cupomAberto, setCupomAberto,
     cupomInput, onCupomInputChange,
     cupomStatus, desconto,
-    aplicarCupom,
+    aplicarCupom, cupomErro,
   } = useCupom()
   const [mockupView, setMockupView] = useState<'desktop' | 'mobile'>('desktop')
   const [screenIndex, setScreenIndex] = useState(0)
@@ -1431,7 +1431,7 @@ export default function LandingPage() {
                 {cupomStatus === 'erro' && (
                   <p className="flex items-center gap-1.5 text-sm text-red-500">
                     <X className="w-4 h-4" strokeWidth={2.5} />
-                    Cupom inválido ou expirado
+                    {cupomErro}
                   </p>
                 )}
               </div>

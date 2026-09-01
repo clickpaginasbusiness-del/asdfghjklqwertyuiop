@@ -19,7 +19,6 @@ const SENSITIVE_PATH_PREFIXES = [
   '/api/clientes/auth/finalizar-cadastro',
   '/api/clientes/auth/redefinir-senha',
   '/api/push/send',
-  '/api/mp/validate-coupon',
 ]
 
 function getIp(req: NextRequest): string {
@@ -76,10 +75,17 @@ export async function proxy(request: NextRequest) {
     if (!isInternalCall) {
       const ip = getIp(request)
       const sensivel = SENSITIVE_PATH_PREFIXES.some((p) => pathname.startsWith(p))
+      // validate-coupon tem bucket próprio: mesmo limite de uma rota sensível,
+      // mas sem competir pelo mesmo contador de login/OTP do mesmo IP — testar
+      // um cupom não deveria ficar bloqueado por causa de tentativas de login
+      // recentes (e vice-versa).
+      const isCupom = pathname.startsWith('/api/mp/validate-coupon')
       // Rotas sensíveis: 10 requisições/minuto por IP. Demais rotas de API: 20/minuto.
-      const limited = sensivel
-        ? isRateLimited(`${ip}:sensivel`, 10, 60_000)
-        : isRateLimited(`${ip}:geral`, 20, 60_000)
+      const limited = isCupom
+        ? isRateLimited(`${ip}:cupom`, 10, 60_000)
+        : sensivel
+          ? isRateLimited(`${ip}:sensivel`, 10, 60_000)
+          : isRateLimited(`${ip}:geral`, 20, 60_000)
 
       if (limited) {
         return new NextResponse(
