@@ -45,20 +45,21 @@ const emptyForm: ServicoForm = {
 }
 
 function ToggleComSubtexto({
-  label, subtexto, checked, onChange,
+  label, subtexto, checked, onChange, disabled,
 }: {
   label: string
   subtexto: string
   checked: boolean
   onChange: (v: boolean) => void
+  disabled?: boolean
 }) {
   return (
     <div className="flex items-center justify-between gap-4 py-1">
       <div className="min-w-0">
-        <p className="text-sm font-medium text-gray-700">{label}</p>
+        <p className={cn('text-sm font-medium', disabled ? 'text-gray-400' : 'text-gray-700')}>{label}</p>
         <p className="text-xs text-gray-400 mt-0.5">{subtexto}</p>
       </div>
-      <Switch checked={checked} onChange={onChange} label={label} />
+      <Switch checked={checked} onChange={onChange} disabled={disabled} label={label} />
     </div>
   )
 }
@@ -489,16 +490,18 @@ export default function ServicosClient({
               onChange={(v) => setForm({ ...form, aceitarPagamentoOnline: v })}
             />
 
-            {form.aceitarPagamentoOnline && (
-              <div className="mt-2 pl-3 border-l-2 border-rose-100 space-y-3">
+            <div className="mt-2 pl-3 border-l-2 border-rose-100 space-y-3">
                 <ToggleComSubtexto
                   label="Cobrar sinal obrigatório"
-                  subtexto="O agendamento só é confirmado após o pagamento do sinal"
+                  subtexto={form.aceitarPagamentoOnline
+                    ? 'O agendamento só é confirmado após o pagamento do sinal'
+                    : 'Ative o pagamento online primeiro'}
                   checked={form.sinalObrigatorio}
                   onChange={(v) => setForm({ ...form, sinalObrigatorio: v })}
+                  disabled={!form.aceitarPagamentoOnline}
                 />
 
-                {form.sinalObrigatorio && (
+                {form.aceitarPagamentoOnline && form.sinalObrigatorio && (
                   <div className="space-y-2">
                     <div className="flex gap-2" role="radiogroup" aria-label="Tipo de sinal">
                       {(['fixo', 'percentual'] as const).map((tipo) => (
@@ -532,8 +535,7 @@ export default function ServicosClient({
                     />
                   </div>
                 )}
-              </div>
-            )}
+            </div>
           </div>
 
           <div className="flex gap-3 pt-2">

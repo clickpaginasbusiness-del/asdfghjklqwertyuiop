@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import { salvarRetrospectivaDoMes } from '@/lib/retrospectiva'
+import { salvarRetrospectivaDoMes, RETROSPECTIVAS_ATIVAS } from '@/lib/retrospectiva'
 import { mesAnoAtualSP, mesAnteriorSP } from '@/lib/utils'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -16,6 +16,10 @@ export async function GET(request: NextRequest) {
   const auth = request.headers.get('authorization')
   if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
+  }
+
+  if (!RETROSPECTIVAS_ATIVAS) {
+    return NextResponse.json({ ok: true, skipped: true, motivo: 'Retrospectivas temporariamente desativadas' })
   }
 
   const admin = createAdminClient()

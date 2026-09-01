@@ -1,6 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { formatDateKey, dateKeyToDate, limitesDoMesSP, mesAnteriorSP } from '@/lib/utils'
 
+/** Chave única pra ligar/desligar a feature inteira (acesso no painel + geração
+ * automática mensal via cron) sem apagar nenhuma retrospectiva já gerada.
+ * Reative voltando isso pra `true`. */
+export const RETROSPECTIVAS_ATIVAS = false
+
 export interface DadosRetrospectiva {
   tem_dados: boolean
   total_agendamentos: number
