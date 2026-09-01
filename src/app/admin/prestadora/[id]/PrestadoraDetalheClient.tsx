@@ -298,7 +298,7 @@ export default function PrestadoraDetalheClient({
               <p className="text-sm text-gray-500 mt-1">
                 {prestadora.e_parceira
                   ? `${prestadora.nome} volta pro Plano Start e perde acesso ao relatório de parceira. Comissões já geradas continuam valendo.`
-                  : `${prestadora.nome} ganha Plano Pro grátis (assinatura paga ativa, se houver, será cancelada) e passa a receber comissão sobre as indicadas dela.`}
+                  : `${prestadora.nome} ganha Plano Studio grátis (assinatura paga ativa, se houver, será cancelada) e passa a receber comissão sobre as indicadas dela.`}
               </p>
             </div>
             <div className="flex gap-3">

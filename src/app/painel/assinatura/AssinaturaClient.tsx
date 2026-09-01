@@ -261,7 +261,7 @@ export default function AssinaturaClient({
         </div>
       )}
 
-      {/* Parceira: acesso Pro gratuito por cargo — sem nada de assinatura/cobrança real */}
+      {/* Parceira: acesso Studio gratuito por cargo — sem nada de assinatura/cobrança real */}
       {eParceira ? (
         <Card className="border-rose-200 bg-gradient-to-br from-rose-50 to-pink-50">
           <CardContent className="p-6">
@@ -270,10 +270,11 @@ export default function AssinaturaClient({
                 <Sparkles className="w-5 h-5 text-rose-500" />
               </div>
               <div>
-                <h2 className="font-semibold text-gray-900 mb-1">Você tem acesso Pro como parceira BelleBook</h2>
+                <h2 className="font-semibold text-gray-900 mb-1">Você tem acesso Studio como parceira BelleBook</h2>
                 <p className="text-sm text-gray-600">
-                  Profissionais ilimitadas, galeria de fotos e vídeos e suporte prioritário — liberados como
-                  benefício do programa de parceiras, sem nenhuma cobrança.
+                  Profissionais ilimitadas, galeria de fotos e vídeos sem limite, planos de assinatura pra
+                  clientes e suporte prioritário — liberados como benefício do programa de parceiras, sem
+                  nenhuma cobrança.
                 </p>
               </div>
             </div>

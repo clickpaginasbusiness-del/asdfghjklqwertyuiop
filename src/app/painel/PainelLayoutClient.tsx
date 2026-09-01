@@ -313,7 +313,7 @@ export default function PainelLayoutClient({
           <DowngradeBanner prestadoraId={prestadora.id} />
         )}
 
-        {/* Trial banner — parceira tem Pro vitalício pelo cargo, nunca precisa assinar */}
+        {/* Trial banner — parceira tem Studio vitalício pelo cargo, nunca precisa assinar */}
         {!prestadora.e_parceira && prestadora.e_trial && !prestadora.mp_metodo_pagamento && trialDiasRestantes !== null && (
           <TrialBanner dias={trialDiasRestantes} />
         )}
