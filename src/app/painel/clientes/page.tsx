@@ -65,7 +65,7 @@ export default async function ClientesPage() {
     if (existing) {
       if (isAtivo) {
         existing.total++
-        existing.gasto += (a.servicos as any)?.preco ?? 0
+        existing.gasto += agItem.servicos?.preco ?? 0
         if (a.data_hora > (existing.ultimaVisitaAtiva ?? '')) {
           existing.ultimaVisitaAtiva = a.data_hora
         }
@@ -77,7 +77,7 @@ export default async function ClientesPage() {
       clienteMap.set(c.id, {
         cliente: c,
         total: isAtivo ? 1 : 0,
-        gasto: isAtivo ? ((a.servicos as any)?.preco ?? 0) : 0,
+        gasto: isAtivo ? (agItem.servicos?.preco ?? 0) : 0,
         ultimaVisita: a.data_hora,
         ultimaVisitaAtiva: isAtivo ? a.data_hora : null,
         ehPrestadora: Boolean(a.cliente_e_prestadora),

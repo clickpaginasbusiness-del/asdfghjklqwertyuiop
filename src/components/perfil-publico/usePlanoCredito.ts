@@ -23,6 +23,7 @@ export function usePlanoCredito({
   const [usarCredito, setUsarCredito] = useState(true)
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reseta ao trocar de serviço/cliente, antes de buscar o crédito novo
     setAssinatura(null)
     if (!clienteLogado || !servicoId) return
     const token = localStorage.getItem('clienteToken')

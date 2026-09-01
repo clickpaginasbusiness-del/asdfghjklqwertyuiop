@@ -73,9 +73,13 @@ export default function PerfilPainelClient({
   const [msgLembrete, setMsgLembrete] = useState(initial.mensagem_lembrete ?? MSG_LEMBRETE_DEFAULT)
   const [savingMsgs, setSavingMsgs] = useState(false)
 
+  function updateSlug(value: string) {
+    setSlug(value)
+    setSlugStatus(value === prestadora.slug || value.length < 3 ? 'idle' : 'checking')
+  }
+
   useEffect(() => {
-    if (slug === prestadora.slug || slug.length < 3) { setSlugStatus('idle'); return }
-    setSlugStatus('checking')
+    if (slug === prestadora.slug || slug.length < 3) return
     const timer = setTimeout(async () => {
       const supabase = createClient()
       const { data } = await supabase
@@ -372,7 +376,7 @@ export default function PerfilPainelClient({
               <input
                 type="text"
                 value={slug}
-                onChange={(e) => setSlug(slugify(e.target.value))}
+                onChange={(e) => updateSlug(slugify(e.target.value))}
                 placeholder="seu-nome"
                 className="flex-1 px-3 py-2.5 text-sm focus:outline-none"
               />

@@ -32,6 +32,7 @@ export function RetrospectivasListaModal({
 
   useEffect(() => {
     if (!open) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reseta e inicia o spinner ao abrir o modal, antes de buscar as retrospectivas
     setCarregando(true)
     setSelecionada(null)
     const supabase = createClient()

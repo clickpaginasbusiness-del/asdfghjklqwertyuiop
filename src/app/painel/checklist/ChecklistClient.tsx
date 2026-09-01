@@ -35,6 +35,7 @@ export default function ChecklistClient({
   // "visto uma vez" já usado pelo WelcomeModal via localStorage).
   useEffect(() => {
     if (status.completo && !localStorage.getItem(celebradoKey(prestadoraId))) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage só existe no cliente; celebração só pode ser decidida depois do mount
       setCelebrar(true)
     }
   }, [status.completo, prestadoraId])

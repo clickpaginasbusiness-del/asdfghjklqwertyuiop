@@ -51,6 +51,7 @@ export function FeedbackModal({ prestadoraId, createdAt }: { prestadoraId: strin
 
     const ultimaVez = Number(localStorage.getItem(lastShownKey(prestadoraId)) ?? 0)
     if (Date.now() - ultimaVez >= SEVEN_DAYS_MS) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- decisão depende só de localStorage, que só existe no cliente
       setOpen(true)
     }
   }, [prestadoraId, createdAt])

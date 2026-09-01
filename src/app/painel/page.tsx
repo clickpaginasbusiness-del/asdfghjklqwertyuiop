@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { endOfYear, subDays } from 'date-fns'
 import { getPrestadoraAutenticada } from '@/lib/painelAuth'
-import PainelDashboardClient from './PainelDashboardClient'
+import PainelDashboardClient, { type Ag } from './PainelDashboardClient'
 
 /** Próxima ocorrência do aniversário a partir de hoje (esse ano, ou o
  * próximo se já passou) — só mês/dia importam, o ano de nascimento em si é
@@ -58,7 +58,7 @@ export default async function PainelPage() {
 
   return (
     <PainelDashboardClient
-      agendamentosAno={(agendamentosAno ?? []) as any}
+      agendamentosAno={(agendamentosAno ?? []) as unknown as Ag[]}
       horarioAbertura={prestadora.hora_abertura}
       horarioFechamento={prestadora.hora_fechamento}
       prestadoraId={prestadora.id}

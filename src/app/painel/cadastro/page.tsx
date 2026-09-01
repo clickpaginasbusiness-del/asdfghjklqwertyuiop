@@ -61,12 +61,17 @@ export default function CadastroPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- código de indicação só existe na URL no cliente; banner aparece só depois do mount, de propósito (evita mismatch de hidratação)
     setRefCode(params.get('ref') ?? '')
   }, [])
 
+  function updateSlug(value: string) {
+    setSlug(value)
+    setSlugStatus(value.length < 3 ? 'idle' : 'checking')
+  }
+
   useEffect(() => {
-    if (slug.length < 3) { setSlugStatus('idle'); return }
-    setSlugStatus('checking')
+    if (slug.length < 3) return
     const timer = setTimeout(async () => {
       const supabase = createClient()
       const { data } = await supabase
@@ -81,7 +86,7 @@ export default function CadastroPage() {
 
   function handleNomeChange(value: string) {
     setNome(value)
-    if (!slug || slug === slugify(nome)) setSlug(slugify(value))
+    if (!slug || slug === slugify(nome)) updateSlug(slugify(value))
   }
 
   async function handleEnviarCodigo(e: React.FormEvent) {
@@ -346,7 +351,7 @@ export default function CadastroPage() {
                 <input
                   type="text"
                   value={slug}
-                  onChange={(e) => setSlug(slugify(e.target.value))}
+                  onChange={(e) => updateSlug(slugify(e.target.value))}
                   placeholder="ana-nails"
                   className="flex-1 px-3 py-2.5 text-sm focus:outline-none"
                   required

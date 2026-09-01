@@ -85,6 +85,7 @@ export function RetrospectivaAcoes({
     // Checagem barata só de presença da API — a checagem de verdade se dá
     // conta arquivos de imagem (canShare({ files })) roda no clique, com o
     // Blob já em mãos.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- navigator só existe no cliente; só depois do mount pra evitar mismatch de hidratação
     setCompartilhamentoNativo(typeof navigator !== 'undefined' && typeof navigator.share === 'function')
   }, [])
 

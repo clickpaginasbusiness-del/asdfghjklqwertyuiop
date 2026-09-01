@@ -36,24 +36,24 @@ export default function CompletarCadastroGoogleClient({
   const [step, setStep] = useState<'form' | 'otp'>('form')
 
   const [nome, setNome] = useState(nomeInicial)
-  const [slug, setSlug] = useState('')
+  const [slug, setSlug] = useState(() => (nomeInicial ? slugify(nomeInicial) : ''))
   const [telefone, setTelefone] = useState('')
   const [codigo, setCodigo] = useState('')
   const [phoneFormatted, setPhoneFormatted] = useState('')
   const [aceitouTermos, setAceitouTermos] = useState(false)
 
-  const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle')
+  const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'available' | 'taken'>(() => (slug.length >= 3 ? 'checking' : 'idle'))
   const [phoneError, setPhoneError] = useState<string | null>(null)
   const [loadingOtp, setLoadingOtp] = useState(false)
   const [loadingCreate, setLoadingCreate] = useState(false)
 
-  useEffect(() => {
-    if (nomeInicial && !slug) setSlug(slugify(nomeInicial))
-  }, [nomeInicial]) // eslint-disable-line react-hooks/exhaustive-deps
+  function updateSlug(value: string) {
+    setSlug(value)
+    setSlugStatus(value.length < 3 ? 'idle' : 'checking')
+  }
 
   useEffect(() => {
-    if (slug.length < 3) { setSlugStatus('idle'); return }
-    setSlugStatus('checking')
+    if (slug.length < 3) return
     const timer = setTimeout(async () => {
       const supabase = createClient()
       const { data } = await supabase
@@ -68,7 +68,7 @@ export default function CompletarCadastroGoogleClient({
 
   function handleNomeChange(value: string) {
     setNome(value)
-    if (!slug || slug === slugify(nome)) setSlug(slugify(value))
+    if (!slug || slug === slugify(nome)) updateSlug(slugify(value))
   }
 
   async function handleEnviarSms(e: React.FormEvent) {

@@ -23,7 +23,7 @@ import { renderTemplate, MSG_CONFIRMACAO_DEFAULT, MSG_CANCELAMENTO_DEFAULT, MSG_
 /* ── Types ── */
 type QuickSel = 'hoje' | '7d' | '30d' | null
 
-type Ag = {
+export type Ag = {
   id: string
   data_hora: string
   status: string
@@ -280,6 +280,7 @@ export default function PainelDashboardClient({
 
   /* Evita hydration mismatch de fuso horário no nome do dia */
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- só depois do mount pra evitar mismatch de fuso horário entre server e cliente
     setDataHoje(format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR }))
   }, [])
 
