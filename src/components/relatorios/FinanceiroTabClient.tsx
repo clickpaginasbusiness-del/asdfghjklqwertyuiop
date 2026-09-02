@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Modal } from '@/components/ui/modal'
 import { ToggleComSubtexto } from '@/components/ui/switch'
-import { formatCurrency, cn } from '@/lib/utils'
+import { formatCurrency, cn, startOfTodaySP, formatDateKey } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import {
   Wallet, TrendingDown, TrendingUp, PieChart as PieChartIcon, Plus, Pencil, Trash2,
@@ -21,7 +21,8 @@ import type { Ag, LancamentoFinanceiro } from '@/app/painel/relatorios/Relatorio
 
 const ROSE = '#fb7185'
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
-const CATEGORIAS = ['Aluguel', 'Salario', 'Equipamento', 'Material', 'Outro'] as const
+const CATEGORIAS = ['Aluguel', 'Salario', 'Equipamento', 'Material', 'Comissao', 'Outro'] as const
+const LABEL_CATEGORIA: Record<string, string> = { Salario: 'Salário', Comissao: 'Comissão' }
 type Categoria = typeof CATEGORIAS[number]
 
 /** 'yyyy-MM-dd' -> 'dd/MM/yyyy', sem passar por Date/timezone. */
@@ -69,6 +70,7 @@ export function FinanceiroTabClient({
   const [recorrenciaAte, setRecorrenciaAte] = useState('')
   const [cancelarAlvo, setCancelarAlvo] = useState<LancamentoFinanceiro | null>(null)
   const [cancelando, setCancelando] = useState(false)
+  const [pagandoComissao, setPagandoComissao] = useState<string | null>(null)
 
   const start = useMemo(() => startOfDay(parseISO(dataInicio)), [dataInicio])
   const end = useMemo(() => endOfDay(parseISO(dataFim)), [dataFim])
@@ -98,10 +100,33 @@ export function FinanceiroTabClient({
   const entradasExtras = lancamentosNoPeriodo.filter((l) => l.valor > 0).reduce((acc, l) => acc + l.valor, 0)
   const saldoLancamentos = entradasExtras - despesas
 
+  /* Comissões por profissional — só profissionais com comissao_percentual > 0.
+   * Agrupa por nome (mesma chave que receitaPorProfissional já usa) porque o
+   * agendamento só traz o nome da profissional via join, não o id. */
+  const comissoesPorProfissional = useMemo(() => {
+    return profissionais
+      .filter((p) => p.comissao_percentual > 0)
+      .map((p) => {
+        const agsDaProf = concluidosNoPeriodo.filter((a) => a.profissionais?.nome === p.nome)
+        const faturamento = agsDaProf.reduce((acc, a) => acc + (a.servicos?.preco ?? 0), 0)
+        return {
+          nome: p.nome,
+          totalServicos: agsDaProf.length,
+          faturamento,
+          comissao: faturamento * (p.comissao_percentual / 100),
+        }
+      })
+      .filter((p) => p.totalServicos > 0)
+      .sort((a, b) => b.comissao - a.comissao)
+  }, [profissionais, concluidosNoPeriodo])
+
+  const totalComissoes = comissoesPorProfissional.reduce((acc, p) => acc + p.comissao, 0)
+
   // Lucro conta as entradas extras dos lançamentos também — não é só receita
-  // de serviço menos despesa. saldoLancamentos já é (entradas - despesas), só
-  // soma na receita.
-  const lucro = receita + saldoLancamentos
+  // de serviço menos despesa — e desconta as comissões de profissionais
+  // (estimadas a partir de comissao_percentual, ver comissoesPorProfissional
+  // acima), já que isso também é dinheiro que sai do caixa.
+  const lucro = receita + saldoLancamentos - totalComissoes
   const baseMargem = receita + entradasExtras
   const margem = baseMargem > 0 ? (lucro / baseMargem) * 100 : 0
 
@@ -148,28 +173,6 @@ export function FinanceiroTabClient({
     }
     return Array.from(map.values()).sort((a, b) => b.receita - a.receita)
   }, [concluidosNoPeriodo])
-
-  /* Comissões por profissional — só profissionais com comissao_percentual > 0.
-   * Agrupa por nome (mesma chave que receitaPorProfissional já usa) porque o
-   * agendamento só traz o nome da profissional via join, não o id. */
-  const comissoesPorProfissional = useMemo(() => {
-    return profissionais
-      .filter((p) => p.comissao_percentual > 0)
-      .map((p) => {
-        const agsDaProf = concluidosNoPeriodo.filter((a) => a.profissionais?.nome === p.nome)
-        const faturamento = agsDaProf.reduce((acc, a) => acc + (a.servicos?.preco ?? 0), 0)
-        return {
-          nome: p.nome,
-          totalServicos: agsDaProf.length,
-          faturamento,
-          comissao: faturamento * (p.comissao_percentual / 100),
-        }
-      })
-      .filter((p) => p.totalServicos > 0)
-      .sort((a, b) => b.comissao - a.comissao)
-  }, [profissionais, concluidosNoPeriodo])
-
-  const totalComissoes = comissoesPorProfissional.reduce((acc, p) => acc + p.comissao, 0)
 
   /* Receita por dia da semana */
   const receitaPorDiaSemana = useMemo(() => {
@@ -395,6 +398,36 @@ export function FinanceiroTabClient({
     setCancelando(false)
   }
 
+  /**
+   * Registra a comissão (estimada em comissoesPorProfissional) como paga —
+   * cria um lançamento de despesa pra dar transparência de onde o dinheiro
+   * foi. Ação simples de propósito: sem tabela de "já pago" — mesmo espírito
+   * de editar/excluir lançamento, que também não têm undo. Clicar de novo
+   * pro mesmo período cria outro lançamento; fica a critério da prestadora.
+   */
+  async function marcarComissaoPaga(nomeProfissional: string, valor: number) {
+    setPagandoComissao(nomeProfissional)
+    const supabase = createClient()
+    const { data: criado, error } = await supabase
+      .from('lancamentos_financeiros')
+      .insert({
+        prestadora_id: prestadoraId,
+        descricao: `Comissão paga a ${nomeProfissional}`,
+        valor: -Math.abs(valor),
+        categoria: 'Comissao',
+        data: formatDateKey(startOfTodaySP()),
+      })
+      .select()
+      .single()
+    if (error || !criado) {
+      toast.error('Erro ao registrar comissão paga.')
+    } else {
+      setItems((prev) => [{ ...(criado as LancamentoFinanceiro), recorrencia_ativa: null }, ...prev])
+      toast.success('Comissão registrada como paga!')
+    }
+    setPagandoComissao(null)
+  }
+
   async function confirmarExclusao() {
     if (!deleteAlvo) return
     setExcluindo(true)
@@ -421,7 +454,7 @@ export function FinanceiroTabClient({
   return (
     <div className="space-y-6">
       {/* Resumo do período */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card>
           <CardContent className="p-6">
             <div className="bg-emerald-50 p-2.5 rounded-xl w-fit mb-4">
@@ -429,6 +462,16 @@ export function FinanceiroTabClient({
             </div>
             <p className="text-3xl font-bold text-gray-900">{formatCurrency(receita)}</p>
             <p className="text-sm text-gray-500 mt-1">Receita (serviços concluídos)</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="bg-emerald-50 p-2.5 rounded-xl w-fit mb-4">
+              <TrendingUp className="w-5 h-5 text-emerald-500" />
+            </div>
+            <p className="text-3xl font-bold text-gray-900">{formatCurrency(entradasExtras)}</p>
+            <p className="text-sm text-gray-500 mt-1">Entradas lançadas</p>
           </CardContent>
         </Card>
 
@@ -602,6 +645,15 @@ export function FinanceiroTabClient({
                     </p>
                   </div>
                   <span className="text-sm font-semibold text-rose-500 shrink-0">{formatCurrency(p.comissao)}</span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    loading={pagandoComissao === p.nome}
+                    onClick={() => marcarComissaoPaga(p.nome, p.comissao)}
+                    className="shrink-0"
+                  >
+                    Marcar como paga
+                  </Button>
                 </div>
               ))}
             </div>
@@ -653,7 +705,7 @@ export function FinanceiroTabClient({
                       )}
                     </p>
                     <p className="text-xs text-gray-400">
-                      {l.categoria} · {formatDataKeyBR(l.data)}{l.data_fim ? ` – ${formatDataKeyBR(l.data_fim)}` : ''}
+                      {LABEL_CATEGORIA[l.categoria] ?? l.categoria} · {formatDataKeyBR(l.data)}{l.data_fim ? ` – ${formatDataKeyBR(l.data_fim)}` : ''}
                       {l.recorrencia_id && l.recorrencia_ativa === false && ' · Recorrência cancelada'}
                     </p>
                   </div>
@@ -765,7 +817,7 @@ export function FinanceiroTabClient({
               onChange={(e) => setCategoria(e.target.value as Categoria)}
               className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-300 transition-all"
             >
-              {CATEGORIAS.map((c) => <option key={c} value={c}>{c === 'Salario' ? 'Salário' : c}</option>)}
+              {CATEGORIAS.map((c) => <option key={c} value={c}>{LABEL_CATEGORIA[c] ?? c}</option>)}
             </select>
           </div>
 
