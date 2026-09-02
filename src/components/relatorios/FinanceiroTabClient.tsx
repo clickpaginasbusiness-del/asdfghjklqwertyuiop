@@ -100,6 +100,15 @@ export function FinanceiroTabClient({
   const entradasExtras = lancamentosNoPeriodo.filter((l) => l.valor > 0).reduce((acc, l) => acc + l.valor, 0)
   const saldoLancamentos = entradasExtras - despesas
 
+  // Nomes com comissão já lançada como despesa nesse período (mesmo texto
+  // gravado por marcarComissaoPaga) — evita contar a mesma comissão duas
+  // vezes no lucro: uma vez via despesas (a lançamento em si), outra via o
+  // cálculo direto abaixo (que não tem como saber sozinho que ela já foi paga).
+  const nomesComissaoPagaNoPeriodo = useMemo(
+    () => new Set(lancamentosNoPeriodo.filter((l) => l.categoria === 'Comissao').map((l) => l.descricao)),
+    [lancamentosNoPeriodo]
+  )
+
   /* Comissões por profissional — só profissionais com comissao_percentual > 0.
    * Agrupa por nome (mesma chave que receitaPorProfissional já usa) porque o
    * agendamento só traz o nome da profissional via join, não o id. */
@@ -114,13 +123,17 @@ export function FinanceiroTabClient({
           totalServicos: agsDaProf.length,
           faturamento,
           comissao: faturamento * (p.comissao_percentual / 100),
+          paga: nomesComissaoPagaNoPeriodo.has(`Comissão paga a ${p.nome}`),
         }
       })
       .filter((p) => p.totalServicos > 0)
       .sort((a, b) => b.comissao - a.comissao)
-  }, [profissionais, concluidosNoPeriodo])
+  }, [profissionais, concluidosNoPeriodo, nomesComissaoPagaNoPeriodo])
 
-  const totalComissoes = comissoesPorProfissional.reduce((acc, p) => acc + p.comissao, 0)
+  // Só soma no total (e no desconto do lucro abaixo) quem ainda não tem
+  // lançamento de comissão paga no período — quem já tem está representada
+  // via despesas, contar aqui de novo duplicaria o desconto.
+  const totalComissoes = comissoesPorProfissional.filter((p) => !p.paga).reduce((acc, p) => acc + p.comissao, 0)
 
   // Lucro conta as entradas extras dos lançamentos também — não é só receita
   // de serviço menos despesa — e desconta as comissões de profissionais
@@ -639,21 +652,32 @@ export function FinanceiroTabClient({
               {comissoesPorProfissional.map((p) => (
                 <div key={p.nome} className="flex items-center justify-between gap-3 px-5 py-3.5">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{p.nome}</p>
+                    <p className="text-sm font-medium text-gray-900 truncate flex items-center gap-1.5">
+                      {p.nome}
+                      {p.paga && (
+                        <span className="inline-flex items-center bg-emerald-100 text-emerald-700 rounded-full px-1.5 py-0.5 text-[10px] font-semibold shrink-0">
+                          Paga
+                        </span>
+                      )}
+                    </p>
                     <p className="text-xs text-gray-400">
                       {p.totalServicos} serviço{p.totalServicos !== 1 ? 's' : ''} · faturou {formatCurrency(p.faturamento)}
                     </p>
                   </div>
                   <span className="text-sm font-semibold text-rose-500 shrink-0">{formatCurrency(p.comissao)}</span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    loading={pagandoComissao === p.nome}
-                    onClick={() => marcarComissaoPaga(p.nome, p.comissao)}
-                    className="shrink-0"
-                  >
-                    Marcar como paga
-                  </Button>
+                  {p.paga ? (
+                    <span className="text-xs text-gray-400 shrink-0">Já lançada nesse período</span>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      loading={pagandoComissao === p.nome}
+                      onClick={() => marcarComissaoPaga(p.nome, p.comissao)}
+                      className="shrink-0"
+                    >
+                      Marcar como paga
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>
@@ -663,7 +687,8 @@ export function FinanceiroTabClient({
             <p className="text-base font-bold text-gray-900">{formatCurrency(totalComissoes)}</p>
           </div>
           <p className="text-xs text-gray-400 px-5 pb-4">
-            Valores calculados com base nos agendamentos concluídos no período selecionado.
+            Valores calculados com base nos agendamentos concluídos no período selecionado. Comissões já marcadas
+            como pagas não entram nesse total — elas já aparecem em Despesas lançadas.
           </p>
         </Card>
       )}
