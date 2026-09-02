@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Modal } from '@/components/ui/modal'
-import { Switch } from '@/components/ui/switch'
+import { ToggleComSubtexto } from '@/components/ui/switch'
 import { ImageWithSkeleton } from '@/components/ui/image-with-skeleton'
 import { formatCurrency, cn } from '@/lib/utils'
 import { Plus, Pencil, Trash2, Clock, Scissors, ImageIcon, Check, CreditCard, Lock } from 'lucide-react'
@@ -42,26 +42,6 @@ interface ProfissionalLite {
 const emptyForm: ServicoForm = {
   nome: '', preco: '', duracao_minutos: '', descricao: '', icone: SERVICO_ICONE_PADRAO, fotoGaleriaId: null,
   aceitarPagamentoOnline: false, sinalObrigatorio: false, sinalTipo: 'percentual', sinalValor: '',
-}
-
-function ToggleComSubtexto({
-  label, subtexto, checked, onChange, disabled,
-}: {
-  label: string
-  subtexto: string
-  checked: boolean
-  onChange: (v: boolean) => void
-  disabled?: boolean
-}) {
-  return (
-    <div className="flex items-center justify-between gap-4 py-1">
-      <div className="min-w-0">
-        <p className={cn('text-sm font-medium', disabled ? 'text-gray-400' : 'text-gray-700')}>{label}</p>
-        <p className="text-xs text-gray-400 mt-0.5">{subtexto}</p>
-      </div>
-      <Switch checked={checked} onChange={onChange} disabled={disabled} label={label} />
-    </div>
-  )
 }
 
 function SeletorFotoIcone({

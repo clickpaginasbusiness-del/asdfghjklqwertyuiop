@@ -5,11 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Modal } from '@/components/ui/modal'
+import { ToggleComSubtexto } from '@/components/ui/switch'
 import { formatCurrency, cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import {
   Wallet, TrendingDown, TrendingUp, PieChart as PieChartIcon, Plus, Pencil, Trash2,
-  ArrowUpCircle, ArrowDownCircle, Receipt, Percent,
+  ArrowUpCircle, ArrowDownCircle, Receipt, Percent, Repeat, Ban,
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -27,6 +28,13 @@ type Categoria = typeof CATEGORIAS[number]
 function formatDataKeyBR(dataChave: string): string {
   const [y, m, d] = dataChave.split('-')
   return `${d}/${m}/${y}`
+}
+
+/** Diferença em dias entre duas chaves 'yyyy-MM-dd' — âncora em UTC pra não deslocar por fuso. */
+function diasEntre(inicioKey: string, fimKey: string): number {
+  const inicio = new Date(`${inicioKey}T00:00:00Z`)
+  const fim = new Date(`${fimKey}T00:00:00Z`)
+  return Math.round((fim.getTime() - inicio.getTime()) / 86400000)
 }
 
 interface Props {
@@ -54,6 +62,13 @@ export function FinanceiroTabClient({
   const [tipo, setTipo] = useState<'entrada' | 'saida'>('saida')
   const [categoria, setCategoria] = useState<Categoria>('Outro')
   const [data, setData] = useState(dataFim)
+  const [temPeriodo, setTemPeriodo] = useState(false)
+  const [lancamentoDataFim, setLancamentoDataFim] = useState('')
+  const [temRecorrencia, setTemRecorrencia] = useState(false)
+  const [recorrenciaIntervalo, setRecorrenciaIntervalo] = useState('')
+  const [recorrenciaAte, setRecorrenciaAte] = useState('')
+  const [cancelarAlvo, setCancelarAlvo] = useState<LancamentoFinanceiro | null>(null)
+  const [cancelando, setCancelando] = useState(false)
 
   const start = useMemo(() => startOfDay(parseISO(dataInicio)), [dataInicio])
   const end = useMemo(() => endOfDay(parseISO(dataFim)), [dataFim])
@@ -68,9 +83,14 @@ export function FinanceiroTabClient({
 
   // lançamentos.data é 'yyyy-MM-dd' puro — compara como string, sem Date, pra
   // não arriscar deslocar um dia por causa de fuso (mesmo motivo do
-  // formatDataKeyBR acima).
+  // formatDataKeyBR acima). Lançamento com período (data_fim) conta o valor
+  // inteiro em qualquer relatório cujo intervalo toque o período — sem
+  // rateio proporcional, decisão de produto: a prestadora lança de forma
+  // consistente com o que faz sentido pro caso dela.
   const lancamentosNoPeriodo = useMemo(
-    () => items.filter((l) => l.data >= dataInicio && l.data <= dataFim).sort((a, b) => b.data.localeCompare(a.data)),
+    () => items
+      .filter((l) => l.data <= dataFim && (l.data_fim ?? l.data) >= dataInicio)
+      .sort((a, b) => b.data.localeCompare(a.data)),
     [items, dataInicio, dataFim]
   )
 
@@ -172,6 +192,11 @@ export function FinanceiroTabClient({
     setTipo('saida')
     setCategoria('Outro')
     setData(dataFim)
+    setTemPeriodo(false)
+    setLancamentoDataFim('')
+    setTemRecorrencia(false)
+    setRecorrenciaIntervalo('')
+    setRecorrenciaAte('')
     setModalOpen(true)
   }
 
@@ -182,44 +207,101 @@ export function FinanceiroTabClient({
     setTipo(l.valor < 0 ? 'saida' : 'entrada')
     setCategoria(l.categoria as Categoria)
     setData(l.data)
+    setTemPeriodo(!!l.data_fim)
+    setLancamentoDataFim(l.data_fim ?? '')
+    // Recorrência não é adicionável retroativamente a um lançamento que já
+    // existe — só na criação. Editar uma ocorrência de série usa os botões
+    // dedicados (salvarOcorrenciaDaSerie), não este formulário genérico.
+    setTemRecorrencia(false)
+    setRecorrenciaIntervalo('')
+    setRecorrenciaAte('')
     setModalOpen(true)
+  }
+
+  /** Valida os campos comuns do formulário — usado tanto por salvar() quanto por salvarOcorrenciaDaSerie(). */
+  function validarFormulario(): { valorFinal: number; dataFimFinal: string | null } | null {
+    const valorNumero = parseFloat(valor.replace(',', '.'))
+    if (!descricao.trim()) {
+      toast.error('Informe uma descrição.')
+      return null
+    }
+    if (!valorNumero || valorNumero <= 0) {
+      toast.error('Informe um valor válido.')
+      return null
+    }
+    if (temPeriodo && (!lancamentoDataFim || lancamentoDataFim < data)) {
+      toast.error('A data de término do período deve ser igual ou depois da data inicial.')
+      return null
+    }
+    return {
+      valorFinal: tipo === 'saida' ? -Math.abs(valorNumero) : Math.abs(valorNumero),
+      dataFimFinal: temPeriodo ? lancamentoDataFim : null,
+    }
   }
 
   async function salvar(e: React.FormEvent) {
     e.preventDefault()
-    const valorNumero = parseFloat(valor.replace(',', '.'))
-    if (!descricao.trim()) {
-      toast.error('Informe uma descrição.')
-      return
-    }
-    if (!valorNumero || valorNumero <= 0) {
-      toast.error('Informe um valor válido.')
-      return
+    // Ocorrência de série usa os botões "só esta"/"esta e as futuras" — ver JSX do form.
+    if (editando?.recorrencia_id) return
+
+    const validado = validarFormulario()
+    if (!validado) return
+    const { valorFinal, dataFimFinal } = validado
+
+    let intervalo = 0
+    if (!editando && temRecorrencia) {
+      intervalo = parseInt(recorrenciaIntervalo, 10)
+      if (!intervalo || intervalo <= 0) { toast.error('Informe um intervalo de dias válido.'); return }
+      if (!recorrenciaAte || recorrenciaAte < data) { toast.error('A data final da recorrência deve ser igual ou depois da data inicial.'); return }
     }
 
     setSalvando(true)
     const supabase = createClient()
-    const valorFinal = tipo === 'saida' ? -Math.abs(valorNumero) : Math.abs(valorNumero)
 
     try {
       if (editando) {
         const { data: atualizado, error } = await supabase
           .from('lancamentos_financeiros')
-          .update({ descricao: descricao.trim(), valor: valorFinal, categoria, data })
+          .update({ descricao: descricao.trim(), valor: valorFinal, categoria, data, data_fim: dataFimFinal })
           .eq('id', editando.id)
           .select()
           .single()
         if (error || !atualizado) throw error ?? new Error('sem dados')
-        setItems((prev) => prev.map((l) => l.id === editando.id ? (atualizado as LancamentoFinanceiro) : l))
+        setItems((prev) => prev.map((l) =>
+          l.id === editando.id ? { ...(atualizado as LancamentoFinanceiro), recorrencia_ativa: l.recorrencia_ativa } : l
+        ))
         toast.success('Lançamento atualizado!')
-      } else {
+      } else if (temRecorrencia) {
+        const duracaoDias = dataFimFinal ? diasEntre(data, dataFimFinal) : null
+        const { data: regra, error: erroRegra } = await supabase
+          .from('lancamentos_recorrencias')
+          .insert({
+            prestadora_id: prestadoraId, descricao: descricao.trim(), valor: valorFinal, categoria,
+            intervalo_dias: intervalo, data_inicio: data, ate: recorrenciaAte, duracao_dias: duracaoDias,
+          })
+          .select('id')
+          .single()
+        if (erroRegra || !regra) throw erroRegra ?? new Error('sem dados')
+
         const { data: criado, error } = await supabase
           .from('lancamentos_financeiros')
-          .insert({ prestadora_id: prestadoraId, descricao: descricao.trim(), valor: valorFinal, categoria, data })
+          .insert({
+            prestadora_id: prestadoraId, descricao: descricao.trim(), valor: valorFinal, categoria, data,
+            data_fim: dataFimFinal, recorrencia_id: regra.id,
+          })
           .select()
           .single()
         if (error || !criado) throw error ?? new Error('sem dados')
-        setItems((prev) => [criado as LancamentoFinanceiro, ...prev])
+        setItems((prev) => [{ ...(criado as LancamentoFinanceiro), recorrencia_ativa: true }, ...prev])
+        toast.success('Lançamento recorrente criado!')
+      } else {
+        const { data: criado, error } = await supabase
+          .from('lancamentos_financeiros')
+          .insert({ prestadora_id: prestadoraId, descricao: descricao.trim(), valor: valorFinal, categoria, data, data_fim: dataFimFinal })
+          .select()
+          .single()
+        if (error || !criado) throw error ?? new Error('sem dados')
+        setItems((prev) => [{ ...(criado as LancamentoFinanceiro), recorrencia_ativa: null }, ...prev])
         toast.success('Lançamento adicionado!')
       }
       setModalOpen(false)
@@ -228,6 +310,89 @@ export function FinanceiroTabClient({
     } finally {
       setSalvando(false)
     }
+  }
+
+  /**
+   * Edita uma ocorrência que pertence a uma série (editando.recorrencia_id
+   * != null) — "só esta" atualiza uma linha isolada, sem tocar a regra nem
+   * outras ocorrências; "futuras" também propaga descrição/valor/categoria
+   * pras ocorrências já geradas com data posterior e atualiza a regra, pra
+   * quem ainda vai ser gerado usar os novos valores.
+   */
+  async function salvarOcorrenciaDaSerie(escopo: 'so-esta' | 'futuras') {
+    if (!editando?.recorrencia_id) return
+    const validado = validarFormulario()
+    if (!validado) return
+    const { valorFinal, dataFimFinal } = validado
+    const recorrenciaId = editando.recorrencia_id
+
+    setSalvando(true)
+    const supabase = createClient()
+
+    try {
+      const { data: atualizado, error } = await supabase
+        .from('lancamentos_financeiros')
+        .update({ descricao: descricao.trim(), valor: valorFinal, categoria, data, data_fim: dataFimFinal })
+        .eq('id', editando.id)
+        .select()
+        .single()
+      if (error || !atualizado) throw error ?? new Error('sem dados')
+
+      if (escopo === 'futuras') {
+        const { error: erroFuturas } = await supabase
+          .from('lancamentos_financeiros')
+          .update({ descricao: descricao.trim(), valor: valorFinal, categoria })
+          .eq('recorrencia_id', recorrenciaId)
+          .gt('data', editando.data)
+        if (erroFuturas) throw erroFuturas
+
+        const duracaoDias = dataFimFinal ? diasEntre(data, dataFimFinal) : null
+        const { error: erroRegra } = await supabase
+          .from('lancamentos_recorrencias')
+          .update({ descricao: descricao.trim(), valor: valorFinal, categoria, duracao_dias: duracaoDias })
+          .eq('id', recorrenciaId)
+        if (erroRegra) throw erroRegra
+
+        setItems((prev) => prev.map((l) => {
+          if (l.id === editando.id) return { ...(atualizado as LancamentoFinanceiro), recorrencia_ativa: l.recorrencia_ativa }
+          if (l.recorrencia_id === recorrenciaId && l.data > editando.data) {
+            return { ...l, descricao: descricao.trim(), valor: valorFinal, categoria }
+          }
+          return l
+        }))
+      } else {
+        setItems((prev) => prev.map((l) =>
+          l.id === editando.id ? { ...(atualizado as LancamentoFinanceiro), recorrencia_ativa: l.recorrencia_ativa } : l
+        ))
+      }
+      toast.success('Lançamento atualizado!')
+      setModalOpen(false)
+    } catch {
+      toast.error('Erro ao salvar lançamento.')
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  async function confirmarCancelarRecorrencia() {
+    if (!cancelarAlvo?.recorrencia_id) return
+    setCancelando(true)
+    const supabase = createClient()
+    const { data: atualizada, error } = await supabase
+      .from('lancamentos_recorrencias')
+      .update({ ativo: false })
+      .eq('id', cancelarAlvo.recorrencia_id)
+      .select('id')
+      .maybeSingle()
+    if (error || !atualizada) {
+      toast.error('Erro ao cancelar recorrência.')
+    } else {
+      const recorrenciaId = cancelarAlvo.recorrencia_id
+      setItems((prev) => prev.map((l) => l.recorrencia_id === recorrenciaId ? { ...l, recorrencia_ativa: false } : l))
+      toast.success('Recorrência cancelada — os lançamentos já gerados continuam no histórico.')
+      setCancelarAlvo(null)
+    }
+    setCancelando(false)
   }
 
   async function confirmarExclusao() {
@@ -478,8 +643,19 @@ export function FinanceiroTabClient({
                     <ArrowUpCircle className="w-5 h-5 text-emerald-400 shrink-0" />
                   )}
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-900 truncate">{l.descricao}</p>
-                    <p className="text-xs text-gray-400">{l.categoria} · {formatDataKeyBR(l.data)}</p>
+                    <p className="text-sm font-medium text-gray-900 truncate flex items-center gap-1.5">
+                      {l.descricao}
+                      {l.recorrencia_id && (
+                        <Repeat
+                          className={cn('w-3 h-3 shrink-0', l.recorrencia_ativa ? 'text-rose-400' : 'text-gray-300')}
+                          aria-label={l.recorrencia_ativa ? 'Recorrente' : 'Recorrência cancelada'}
+                        />
+                      )}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {l.categoria} · {formatDataKeyBR(l.data)}{l.data_fim ? ` – ${formatDataKeyBR(l.data_fim)}` : ''}
+                      {l.recorrencia_id && l.recorrencia_ativa === false && ' · Recorrência cancelada'}
+                    </p>
                   </div>
                   <span className={cn('text-sm font-semibold shrink-0', l.valor < 0 ? 'text-red-500' : 'text-emerald-600')}>
                     {l.valor < 0 ? '-' : '+'}{formatCurrency(Math.abs(l.valor))}
@@ -493,11 +669,21 @@ export function FinanceiroTabClient({
                     >
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
+                    {l.recorrencia_id && l.recorrencia_ativa && (
+                      <button
+                        type="button"
+                        onClick={() => setCancelarAlvo(l)}
+                        className="p-1.5 text-gray-300 hover:text-amber-500 transition-colors"
+                        title="Cancelar recorrência"
+                      >
+                        <Ban className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => setDeleteAlvo(l)}
                       className="p-1.5 text-gray-300 hover:text-red-500 transition-colors"
-                      title="Excluir"
+                      title={l.recorrencia_id ? 'Excluir esta ocorrência' : 'Excluir'}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -591,29 +777,122 @@ export function FinanceiroTabClient({
             required
           />
 
-          <div className="flex gap-3 pt-2">
-            <Button type="button" variant="outline" onClick={() => setModalOpen(false)} className="flex-1">
-              Cancelar
-            </Button>
-            <Button type="submit" loading={salvando} className="flex-1">
-              {editando ? 'Salvar' : 'Adicionar'}
-            </Button>
+          <div className="border-t border-gray-100 pt-4 space-y-3">
+            <ToggleComSubtexto
+              label="Este lançamento tem um período"
+              subtexto="Representa um intervalo (ex.: faturamento de um mês) em vez de um dia só"
+              checked={temPeriodo}
+              onChange={setTemPeriodo}
+            />
+            {temPeriodo && (
+              <Input
+                label="Até"
+                type="date"
+                min={data}
+                value={lancamentoDataFim}
+                onChange={(e) => setLancamentoDataFim(e.target.value)}
+                required
+              />
+            )}
           </div>
+
+          {!editando && (
+            <div className="border-t border-gray-100 pt-4 space-y-3">
+              <ToggleComSubtexto
+                label="Repetir automaticamente"
+                subtexto="Gera um novo lançamento a cada X dias, até uma data final"
+                checked={temRecorrencia}
+                onChange={setTemRecorrencia}
+              />
+              {temRecorrencia && (
+                <div className="space-y-3">
+                  <Input
+                    label="Repetir a cada quantos dias"
+                    type="number"
+                    min="1"
+                    step="1"
+                    placeholder="Ex.: 30 (mensal), 10 (a cada 10 dias)"
+                    value={recorrenciaIntervalo}
+                    onChange={(e) => setRecorrenciaIntervalo(e.target.value)}
+                    required
+                  />
+                  <Input
+                    label="Repetir até"
+                    type="date"
+                    min={data}
+                    value={recorrenciaAte}
+                    onChange={(e) => setRecorrenciaAte(e.target.value)}
+                    required
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {editando?.recorrencia_id ? (
+            <div className="flex flex-col gap-2 pt-2">
+              <p className="text-xs text-gray-400">Este lançamento faz parte de uma recorrência — escolha o alcance da edição:</p>
+              <div className="flex gap-3">
+                <Button type="button" variant="outline" loading={salvando} onClick={() => salvarOcorrenciaDaSerie('so-esta')} className="flex-1">
+                  Salvar só esta
+                </Button>
+                <Button type="button" loading={salvando} onClick={() => salvarOcorrenciaDaSerie('futuras')} className="flex-1">
+                  Salvar esta e as futuras
+                </Button>
+              </div>
+              <Button type="button" variant="outline" onClick={() => setModalOpen(false)} className="w-full">
+                Cancelar
+              </Button>
+            </div>
+          ) : (
+            <div className="flex gap-3 pt-2">
+              <Button type="button" variant="outline" onClick={() => setModalOpen(false)} className="flex-1">
+                Cancelar
+              </Button>
+              <Button type="submit" loading={salvando} className="flex-1">
+                {editando ? 'Salvar' : 'Adicionar'}
+              </Button>
+            </div>
+          )}
         </form>
       </Modal>
 
       {/* Modal: confirmar exclusão */}
-      <Modal open={!!deleteAlvo} onClose={() => setDeleteAlvo(null)} title="Excluir lançamento">
+      <Modal open={!!deleteAlvo} onClose={() => setDeleteAlvo(null)} title={deleteAlvo?.recorrencia_id ? 'Excluir esta ocorrência' : 'Excluir lançamento'}>
         <div className="p-6 space-y-4">
           <p className="text-sm text-gray-600">
-            Tem certeza que quer excluir <span className="font-semibold text-gray-900">{deleteAlvo?.descricao}</span>?
+            Tem certeza que quer excluir <span className="font-semibold text-gray-900">{deleteAlvo?.descricao}</span>
+            {deleteAlvo?.recorrencia_id ? ` de ${formatDataKeyBR(deleteAlvo.data)}` : ''}?
           </p>
+          {deleteAlvo?.recorrencia_id && (
+            <p className="text-xs text-gray-400">A recorrência continua gerando os próximos lançamentos normalmente.</p>
+          )}
           <div className="flex gap-3 pt-2">
             <Button type="button" variant="outline" onClick={() => setDeleteAlvo(null)} className="flex-1">
               Cancelar
             </Button>
             <Button type="button" variant="danger" loading={excluindo} onClick={confirmarExclusao} className="flex-1">
               Excluir
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal: confirmar cancelamento de recorrência */}
+      <Modal open={!!cancelarAlvo} onClose={() => setCancelarAlvo(null)} title="Cancelar recorrência">
+        <div className="p-6 space-y-4">
+          <p className="text-sm text-gray-600">
+            Cancelar a recorrência de <span className="font-semibold text-gray-900">{cancelarAlvo?.descricao}</span>?
+          </p>
+          <p className="text-xs text-gray-400">
+            Os lançamentos já gerados continuam no histórico — nenhum novo será criado a partir de hoje.
+          </p>
+          <div className="flex gap-3 pt-2">
+            <Button type="button" variant="outline" onClick={() => setCancelarAlvo(null)} className="flex-1">
+              Voltar
+            </Button>
+            <Button type="button" variant="danger" loading={cancelando} onClick={confirmarCancelarRecorrencia} className="flex-1">
+              Cancelar recorrência
             </Button>
           </div>
         </div>

@@ -50,10 +50,18 @@ export default async function RelatoriosPage() {
       .order('created_at', { ascending: false }),
     supabase
       .from('lancamentos_financeiros')
-      .select('id, descricao, valor, categoria, data, created_at')
+      .select('id, descricao, valor, categoria, data, data_fim, recorrencia_id, created_at, lancamentos_recorrencias(ativo)')
       .eq('prestadora_id', prestadora.id)
       .order('data', { ascending: false }),
   ])
+
+  type LancamentoBruto = Omit<LancamentoFinanceiro, 'recorrencia_ativa'> & {
+    lancamentos_recorrencias: { ativo: boolean } | null
+  }
+  const lancamentosComRecorrencia: LancamentoFinanceiro[] = ((lancamentos ?? []) as unknown as LancamentoBruto[]).map((l) => {
+    const { lancamentos_recorrencias, ...resto } = l
+    return { ...resto, recorrencia_ativa: lancamentos_recorrencias?.ativo ?? null }
+  })
 
   return (
     <RelatoriosClient
@@ -62,7 +70,7 @@ export default async function RelatoriosPage() {
       profissionais={profissionais ?? []}
       visitas={visitas ?? []}
       avaliacoes={(avaliacoes ?? []) as unknown as AvaliacaoRel[]}
-      lancamentos={(lancamentos ?? []) as unknown as LancamentoFinanceiro[]}
+      lancamentos={lancamentosComRecorrencia}
       horaAbertura={prestadora.hora_abertura}
       horaFechamento={prestadora.hora_fechamento}
       eParceira={prestadora.e_parceira}
