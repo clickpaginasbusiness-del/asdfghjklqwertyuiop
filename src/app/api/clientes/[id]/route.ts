@@ -66,35 +66,56 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
   }
 
-  // Data de nascimento e notas: qualquer cliente com histórico com essa
-  // prestadora, manual ou não — são anotações/dados de acompanhamento da
-  // prestadora sobre a cliente, não identidade que a cliente controla.
+  // Data de nascimento e notas são anotações da PRESTADORA sobre a cliente —
+  // ficam em clientes_prestadora_dados (uma ficha por prestadora+cliente),
+  // nunca na tabela clientes, que é compartilhada por toda a plataforma.
+  const dadosPrestadora: { notas?: string | null; data_nascimento?: string | null } = {}
   if (body.data_nascimento !== undefined) {
-    updates.data_nascimento = body.data_nascimento || null
+    dadosPrestadora.data_nascimento = body.data_nascimento || null
   }
   if (body.notas !== undefined) {
-    updates.notas = body.notas?.trim() || null
+    dadosPrestadora.notas = body.notas?.trim() || null
   }
 
-  if (Object.keys(updates).length === 0) {
+  if (Object.keys(updates).length === 0 && Object.keys(dadosPrestadora).length === 0) {
     return NextResponse.json({ error: 'Nada para atualizar.' }, { status: 400 })
   }
 
-  const { data, error } = await admin
-    .from('clientes')
-    .update(updates)
-    .eq('id', id)
-    .select('id, nome, telefone, cliente_manual, verificado_em, data_nascimento, notas, created_at')
-    .single()
-
-  if (error) {
-    if (error.code === '23505') {
-      return NextResponse.json({ error: 'Já existe uma cliente com esse telefone.' }, { status: 409 })
+  if (Object.keys(updates).length > 0) {
+    const { error } = await admin.from('clientes').update(updates).eq('id', id)
+    if (error) {
+      if (error.code === '23505') {
+        return NextResponse.json({ error: 'Já existe uma cliente com esse telefone.' }, { status: 409 })
+      }
+      return NextResponse.json({ error: 'Erro ao editar cliente.' }, { status: 500 })
     }
+  }
+
+  if (Object.keys(dadosPrestadora).length > 0) {
+    const { error } = await admin
+      .from('clientes_prestadora_dados')
+      .upsert({ cliente_id: id, prestadora_id: prestadora.id, ...dadosPrestadora }, { onConflict: 'cliente_id,prestadora_id' })
+    if (error) {
+      return NextResponse.json({ error: 'Erro ao editar cliente.' }, { status: 500 })
+    }
+  }
+
+  const [{ data: clienteAtualizado, error: erroCliente }, { data: dadosAtuais }] = await Promise.all([
+    admin.from('clientes').select('id, nome, telefone, cliente_manual, verificado_em, created_at').eq('id', id).single(),
+    admin.from('clientes_prestadora_dados').select('notas, data_nascimento').eq('cliente_id', id).eq('prestadora_id', prestadora.id).maybeSingle(),
+  ])
+
+  if (erroCliente || !clienteAtualizado) {
     return NextResponse.json({ error: 'Erro ao editar cliente.' }, { status: 500 })
   }
 
-  return NextResponse.json({ cliente: data })
+  return NextResponse.json({
+    cliente: {
+      ...clienteAtualizado,
+      notas: dadosAtuais?.notas ?? null,
+      data_nascimento: dadosAtuais?.data_nascimento ?? null,
+    },
+  })
 }
 
 export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {

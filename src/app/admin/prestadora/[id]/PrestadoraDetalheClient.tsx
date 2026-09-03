@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { AdminNav } from '@/components/admin/AdminNav'
-import { NOME_PLANO, PRECOS, type Plano } from '@/lib/mercadopago'
+import { NOME_PLANO, type Plano } from '@/lib/precos'
 import toast from 'react-hot-toast'
 
 type PrestadoraDetalhe = {
@@ -298,7 +298,7 @@ export default function PrestadoraDetalheClient({
               <p className="text-sm text-gray-500 mt-1">
                 {prestadora.e_parceira
                   ? `${prestadora.nome} volta pro Plano Start e perde acesso ao relatório de parceira. Comissões já geradas continuam valendo.`
-                  : `${prestadora.nome} ganha Plano Pro grátis (assinatura paga ativa, se houver, será cancelada) e passa a receber comissão sobre as indicadas dela.`}
+                  : `${prestadora.nome} ganha Plano Studio grátis (assinatura paga ativa, se houver, será cancelada) e passa a receber comissão sobre as indicadas dela.`}
               </p>
             </div>
             <div className="flex gap-3">

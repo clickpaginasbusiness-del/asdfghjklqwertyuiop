@@ -82,36 +82,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Esse dia não está disponível para agendamento.' }, { status: 409 })
   }
 
-  const novoInicio = new Date(dataHora).getTime()
-  const novoFim = novoInicio + servico.duracao_minutos * 60000
-  const inicioDia = new Date(novoInicio)
-  inicioDia.setHours(0, 0, 0, 0)
-  const fimDia = new Date(inicioDia)
-  fimDia.setDate(fimDia.getDate() + 1)
-
-  let conflitosQuery = supabaseAdmin
-    .from('agendamentos')
-    .select('data_hora, servicos(duracao_minutos)')
-    .eq('prestadora_id', prestadoraId)
-    .eq('status', 'confirmado')
-    .gte('data_hora', inicioDia.toISOString())
-    .lt('data_hora', fimDia.toISOString())
-
-  if (profissionalId) {
-    conflitosQuery = conflitosQuery.eq('profissional_id', profissionalId)
-  }
-
-  const { data: conflitos } = await conflitosQuery
-  const sobrepoe = ((conflitos ?? []) as unknown as { data_hora: string; servicos: { duracao_minutos: number } | null }[]).some((a) => {
-    const inicio = new Date(a.data_hora).getTime()
-    const fim = inicio + (a.servicos?.duracao_minutos ?? 30) * 60000
-    return novoInicio < fim && novoFim > inicio
-  })
-
-  if (sobrepoe) {
-    return NextResponse.json({ error: 'Esse horário já foi reservado. Escolha outro.' }, { status: 409 })
-  }
-
   // Guarda a intenção de usar crédito (reconferida aqui, nunca confia no
   // client) — o crédito só é debitado de verdade quando o pagamento é
   // confirmado pelo webhook do MP (ver processarPagamentoAgendamento em
@@ -128,24 +98,28 @@ export async function POST(request: NextRequest) {
     ? 'completo'
     : body.modoPagamento === 'completo' ? 'completo' : 'sinal'
 
-  const { data: ag, error } = await supabaseAdmin
-    .from('agendamentos')
-    .insert({
-      prestadora_id: prestadoraId,
-      profissional_id: profissionalId,
-      servico_id: servicoId,
-      cliente_id: session.clienteId,
-      data_hora: dataHora,
-      status: 'aguardando_pagamento',
-      plano_assinatura_id: assinaturaComCredito?.id ?? null,
-      tipo_pagamento: tipoPagamento,
-    })
-    .select('id')
-    .single()
+  // Checagem de sobreposição + insert acontecem atomicamente dentro da
+  // função (lock + checagem + insert numa transação única) — evita a race
+  // condition de duas reservas concorrentes passarem no "select" ao mesmo
+  // tempo (ver 20260829_criar_agendamento_seguro.sql). Considera tanto
+  // 'confirmado' quanto 'aguardando_pagamento' como bloqueio.
+  const { data: ag, error } = await supabaseAdmin.rpc('criar_agendamento_seguro', {
+    p_prestadora_id: prestadoraId,
+    p_profissional_id: profissionalId,
+    p_servico_id: servicoId,
+    p_cliente_id: session.clienteId,
+    p_data_hora: dataHora,
+    p_status: 'aguardando_pagamento',
+    p_plano_assinatura_id: assinaturaComCredito?.id ?? null,
+    p_tipo_pagamento: tipoPagamento,
+  })
 
-  if (error || !ag) {
+  if (error) {
+    if (error.message.includes('horario_conflitante')) {
+      return NextResponse.json({ error: 'Esse horário já foi reservado. Escolha outro.' }, { status: 409 })
+    }
     return NextResponse.json({ error: 'Erro ao agendar. Tente novamente.' }, { status: 500 })
   }
 
-  return NextResponse.json({ agendamentoId: ag.id })
+  return NextResponse.json({ agendamentoId: (ag as unknown as { id: string }).id })
 }

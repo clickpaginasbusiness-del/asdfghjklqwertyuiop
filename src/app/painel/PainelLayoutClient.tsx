@@ -16,6 +16,7 @@ import { PaymentSoundListener } from '@/components/painel/PaymentSoundListener'
 import { InstallPwaModal } from '@/components/painel/InstallPwaModal'
 import { FeedbackModal } from '@/components/painel/FeedbackModal'
 import { RetrospectivaAutoModal } from '@/components/retrospectiva/RetrospectivaAutoModal'
+import { RETROSPECTIVAS_ATIVAS } from '@/lib/retrospectiva'
 import { cn } from '@/lib/utils'
 import { planoEfetivo, ehStudio } from '@/lib/plano'
 import { getTema } from '@/lib/theme'
@@ -313,7 +314,7 @@ export default function PainelLayoutClient({
           <DowngradeBanner prestadoraId={prestadora.id} />
         )}
 
-        {/* Trial banner — parceira tem Pro vitalício pelo cargo, nunca precisa assinar */}
+        {/* Trial banner — parceira tem Studio vitalício pelo cargo, nunca precisa assinar */}
         {!prestadora.e_parceira && prestadora.e_trial && !prestadora.mp_metodo_pagamento && trialDiasRestantes !== null && (
           <TrialBanner dias={trialDiasRestantes} />
         )}
@@ -338,13 +339,15 @@ export default function PainelLayoutClient({
             onOpenSidebar={() => setSidebarOpen(true)}
             onCloseSidebar={() => setSidebarOpen(false)}
           />
-          <RetrospectivaAutoModal
-            prestadoraId={prestadora.id}
-            mostrarProfissionalDestaque={ehStudio(planoEfetivo(prestadora))}
-            prestadoraNome={prestadora.nome}
-            fotoUrl={prestadora.foto_url}
-            tema={getTema(prestadora.cor_tema)}
-          />
+          {RETROSPECTIVAS_ATIVAS && (
+            <RetrospectivaAutoModal
+              prestadoraId={prestadora.id}
+              mostrarProfissionalDestaque={ehStudio(planoEfetivo(prestadora))}
+              prestadoraNome={prestadora.nome}
+              fotoUrl={prestadora.foto_url}
+              tema={getTema(prestadora.cor_tema)}
+            />
+          )}
         </>
       )}
 

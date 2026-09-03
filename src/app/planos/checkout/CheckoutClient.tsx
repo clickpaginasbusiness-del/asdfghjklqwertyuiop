@@ -9,22 +9,11 @@ import { Browser } from '@capacitor/browser'
 import { Button } from '@/components/ui/button'
 import { useCupom } from '@/hooks/use-cupom'
 import { formatCurrency, cn } from '@/lib/utils'
-import type { Plano } from '@/lib/mercadopago'
+import { PRECOS, NOME_PLANO, type Plano } from '@/lib/precos'
 import toast from 'react-hot-toast'
 
 type Ciclo = 'mensal' | 'anual'
 type Metodo = 'cartao' | 'pix' | 'debito'
-
-// Mesmos preços mostrados em /planos — mantidos aqui (não importados de
-// src/lib/mercadopago.ts) porque aquele módulo inicializa o client do MP com
-// a access token e não pode ser importado em código de cliente.
-const PRECOS: Record<Plano, Record<Ciclo, number>> = {
-  start: { mensal: 29, anual: 240 },
-  pro: { mensal: 89, anual: 855 },
-  studio: { mensal: 119, anual: 1142 },
-}
-
-const NOME_PLANO: Record<Plano, string> = { start: 'Start', pro: 'Pro', studio: 'Studio' }
 
 const METODOS: {
   valor: Metodo
@@ -66,7 +55,7 @@ export default function CheckoutClient({ plano, ciclo }: { plano: Plano; ciclo: 
 
   const {
     cupomInput, onCupomInputChange,
-    cupomStatus, cupomAplicado, desconto,
+    cupomStatus, cupomAplicado, cupomErro, desconto,
     aplicarCupom, marcarCupomInvalido,
   } = useCupom()
 
@@ -202,7 +191,7 @@ export default function CheckoutClient({ plano, ciclo }: { plano: Plano; ciclo: 
             {cupomStatus === 'erro' && (
               <p className="flex items-center gap-1.5 text-sm text-red-500 mt-2">
                 <X className="w-4 h-4" strokeWidth={2.5} />
-                Cupom inválido ou expirado
+                {cupomErro}
               </p>
             )}
           </div>

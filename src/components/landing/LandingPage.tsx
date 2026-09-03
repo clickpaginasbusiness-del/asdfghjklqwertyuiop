@@ -16,6 +16,10 @@ import { InstallAppSection } from './InstallAppSection'
 import { FeaturesGridSection } from './FeaturesGridSection'
 import { TestimonialsMarqueeSection } from './TestimonialsMarqueeSection'
 import { useCupom, precoComDesconto } from '@/hooks/use-cupom'
+import {
+  PRECOS, PRECO_START_ANTERIOR as PRECO_START_ANTERIOR_NUMERICO, percentualDesconto,
+  formatarPrecoInteiro, mensalEquivalenteFormatado,
+} from '@/lib/precos'
 import Lenis from 'lenis'
 
 /* ─── Types ─────────────────────────────────── */
@@ -93,13 +97,18 @@ const SIDEBAR_ITEMS = [
   { icon: Headset,         label: 'Suporte',       active: false },
 ]
 
-// Preço de tabela anterior do Start, só pra exibir riscado — a mudança pra
-// R$29/R$240 é definitiva, não promoção temporária (ver PRECO_START_ANTERIOR
-// em src/lib/mercadopago.ts, fonte da verdade pro valor cobrado de fato).
-const PRECO_START_ANTERIOR = { mensal: 'R$49', anual: 'R$470' }
+// Preço de tabela anterior do Start, só pra exibir riscado — a mudança é
+// definitiva, não promoção temporária (ver PRECO_START_ANTERIOR em
+// src/lib/precos.ts, fonte da verdade pro valor cobrado de fato). Nunca
+// duplicar os números aqui de novo — foi exatamente essa duplicação, em 5
+// arquivos diferentes, que causou o preço do Start divergir antes.
+const PRECO_START_ANTERIOR = {
+  mensal: formatarPrecoInteiro(PRECO_START_ANTERIOR_NUMERICO.mensal),
+  anual: formatarPrecoInteiro(PRECO_START_ANTERIOR_NUMERICO.anual),
+}
 const START_DESCONTO = {
-  mensal: Math.round((1 - 29 / 49) * 100),
-  anual: Math.round((1 - 240 / 470) * 100),
+  mensal: percentualDesconto(PRECO_START_ANTERIOR_NUMERICO.mensal, PRECOS.start.mensal),
+  anual: percentualDesconto(PRECO_START_ANTERIOR_NUMERICO.anual, PRECOS.start.anual),
 }
 
 const MOCKUP_METRICS = [
@@ -480,7 +489,7 @@ export default function LandingPage() {
     cupomAberto, setCupomAberto,
     cupomInput, onCupomInputChange,
     cupomStatus, desconto,
-    aplicarCupom,
+    aplicarCupom, cupomErro,
   } = useCupom()
   const [mockupView, setMockupView] = useState<'desktop' | 'mobile'>('desktop')
   const [screenIndex, setScreenIndex] = useState(0)
@@ -1210,22 +1219,22 @@ export default function LandingPage() {
                   <div>
                     <div className="flex items-baseline gap-1.5">
                       <span className="text-lg font-semibold text-gray-300 line-through">{PRECO_START_ANTERIOR.mensal}</span>
-                      <span className="text-4xl font-bold text-emerald-600">{desconto ? precoComDesconto('R$29', desconto) : 'R$29'}</span>
+                      <span className="text-4xl font-bold text-emerald-600">{desconto ? precoComDesconto(formatarPrecoInteiro(PRECOS.start.mensal), desconto) : formatarPrecoInteiro(PRECOS.start.mensal)}</span>
                       <span className="text-gray-400 text-sm">/mês</span>
                       <span className="text-[11px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">{START_DESCONTO.mensal}% off</span>
                     </div>
-                    <p className="text-sm text-emerald-600 font-medium mt-1">30 dias grátis, depois R$29/mês</p>
+                    <p className="text-sm text-emerald-600 font-medium mt-1">30 dias grátis, depois {formatarPrecoInteiro(PRECOS.start.mensal)}/mês</p>
                   </div>
                 ) : (
                   <div>
                     <div className="flex items-baseline gap-2">
                       <span className="text-lg font-semibold text-gray-300 line-through">{PRECO_START_ANTERIOR.anual}</span>
-                      <span className="text-4xl font-bold text-emerald-600">{desconto ? precoComDesconto('R$240', desconto) : 'R$240'}</span>
+                      <span className="text-4xl font-bold text-emerald-600">{desconto ? precoComDesconto(formatarPrecoInteiro(PRECOS.start.anual), desconto) : formatarPrecoInteiro(PRECOS.start.anual)}</span>
                       <span className="text-gray-400 text-sm">/ano</span>
                       <span className="text-[11px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">{START_DESCONTO.anual}% off</span>
                     </div>
-                    <p className="text-sm text-emerald-600 font-medium mt-1">30 dias grátis, depois R$240/ano</p>
-                    <p className="text-xs text-gray-400 mt-0.5">R$20/mês equivalente</p>
+                    <p className="text-sm text-emerald-600 font-medium mt-1">30 dias grátis, depois {formatarPrecoInteiro(PRECOS.start.anual)}/ano</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{mensalEquivalenteFormatado(PRECOS.start.anual)}/mês equivalente</p>
                   </div>
                 )}
                 <p className="text-sm text-gray-500 mt-1">Ideal para quem está começando</p>
@@ -1269,32 +1278,32 @@ export default function LandingPage() {
                     <div className="flex items-baseline gap-1.5">
                       {desconto ? (
                         <>
-                          <span className="text-lg font-semibold text-white/50 line-through">R$89</span>
-                          <span className="text-4xl font-bold text-white">{precoComDesconto('R$89', desconto)}</span>
+                          <span className="text-lg font-semibold text-white/50 line-through">{formatarPrecoInteiro(PRECOS.pro.mensal)}</span>
+                          <span className="text-4xl font-bold text-white">{precoComDesconto(formatarPrecoInteiro(PRECOS.pro.mensal), desconto)}</span>
                         </>
                       ) : (
-                        <span className="text-4xl font-bold text-white">R$89</span>
+                        <span className="text-4xl font-bold text-white">{formatarPrecoInteiro(PRECOS.pro.mensal)}</span>
                       )}
                       <span className="text-white/70 text-sm">/mês</span>
                     </div>
-                    <p className="text-sm text-white/60 mt-1">Sem trial · R$89/mês</p>
+                    <p className="text-sm text-white/60 mt-1">Sem trial · {formatarPrecoInteiro(PRECOS.pro.mensal)}/mês</p>
                   </div>
                 ) : (
                   <div>
                     <div className="flex items-baseline gap-2">
                       {desconto ? (
                         <>
-                          <span className="text-lg font-semibold text-white/50 line-through">R$855</span>
-                          <span className="text-4xl font-bold text-white">{precoComDesconto('R$855', desconto)}</span>
+                          <span className="text-lg font-semibold text-white/50 line-through">{formatarPrecoInteiro(PRECOS.pro.anual)}</span>
+                          <span className="text-4xl font-bold text-white">{precoComDesconto(formatarPrecoInteiro(PRECOS.pro.anual), desconto)}</span>
                         </>
                       ) : (
-                        <span className="text-4xl font-bold text-white">R$855</span>
+                        <span className="text-4xl font-bold text-white">{formatarPrecoInteiro(PRECOS.pro.anual)}</span>
                       )}
                       <span className="text-white/70 text-sm">/ano</span>
-                      <span className="text-[11px] font-bold bg-white/25 text-white px-1.5 py-0.5 rounded-full">20% off</span>
+                      <span className="text-[11px] font-bold bg-white/25 text-white px-1.5 py-0.5 rounded-full">{percentualDesconto(PRECOS.pro.mensal * 12, PRECOS.pro.anual)}% off</span>
                     </div>
-                    <p className="text-sm text-white/60 mt-1">Sem trial · R$855/ano</p>
-                    <p className="text-xs text-white/50 mt-0.5">R$71/mês equivalente</p>
+                    <p className="text-sm text-white/60 mt-1">Sem trial · {formatarPrecoInteiro(PRECOS.pro.anual)}/ano</p>
+                    <p className="text-xs text-white/50 mt-0.5">{mensalEquivalenteFormatado(PRECOS.pro.anual)}/mês equivalente</p>
                   </div>
                 )}
                 <p className="text-sm text-white/75 mt-1">Para quem já tem uma agenda cheia</p>
@@ -1333,32 +1342,32 @@ export default function LandingPage() {
                     <div className="flex items-baseline gap-1.5">
                       {desconto ? (
                         <>
-                          <span className="text-lg font-semibold text-gray-300 line-through">R$119</span>
-                          <span className="text-4xl font-bold text-emerald-600">{precoComDesconto('R$119', desconto)}</span>
+                          <span className="text-lg font-semibold text-gray-300 line-through">{formatarPrecoInteiro(PRECOS.studio.mensal)}</span>
+                          <span className="text-4xl font-bold text-emerald-600">{precoComDesconto(formatarPrecoInteiro(PRECOS.studio.mensal), desconto)}</span>
                         </>
                       ) : (
-                        <span className="text-4xl font-bold text-gray-900">R$119</span>
+                        <span className="text-4xl font-bold text-gray-900">{formatarPrecoInteiro(PRECOS.studio.mensal)}</span>
                       )}
                       <span className="text-gray-400 text-sm">/mês</span>
                     </div>
-                    <p className="text-sm text-gray-500 font-medium mt-1">Sem trial · R$119/mês</p>
+                    <p className="text-sm text-gray-500 font-medium mt-1">Sem trial · {formatarPrecoInteiro(PRECOS.studio.mensal)}/mês</p>
                   </div>
                 ) : (
                   <div>
                     <div className="flex items-baseline gap-2">
                       {desconto ? (
                         <>
-                          <span className="text-lg font-semibold text-gray-300 line-through">R$1.142</span>
-                          <span className="text-4xl font-bold text-emerald-600">{precoComDesconto('R$1.142', desconto)}</span>
+                          <span className="text-lg font-semibold text-gray-300 line-through">{formatarPrecoInteiro(PRECOS.studio.anual)}</span>
+                          <span className="text-4xl font-bold text-emerald-600">{precoComDesconto(formatarPrecoInteiro(PRECOS.studio.anual), desconto)}</span>
                         </>
                       ) : (
-                        <span className="text-4xl font-bold text-gray-900">R$1.142</span>
+                        <span className="text-4xl font-bold text-gray-900">{formatarPrecoInteiro(PRECOS.studio.anual)}</span>
                       )}
                       <span className="text-gray-400 text-sm">/ano</span>
-                      <span className="text-[11px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">20% off</span>
+                      <span className="text-[11px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">{percentualDesconto(PRECOS.studio.mensal * 12, PRECOS.studio.anual)}% off</span>
                     </div>
-                    <p className="text-sm text-gray-500 font-medium mt-1">Sem trial · R$1.142/ano</p>
-                    <p className="text-xs text-gray-400 mt-0.5">R$95/mês equivalente</p>
+                    <p className="text-sm text-gray-500 font-medium mt-1">Sem trial · {formatarPrecoInteiro(PRECOS.studio.anual)}/ano</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{mensalEquivalenteFormatado(PRECOS.studio.anual)}/mês equivalente</p>
                   </div>
                 )}
                 <p className="text-sm text-gray-500 mt-1">Para estúdios em crescimento, sem limites</p>
@@ -1422,7 +1431,7 @@ export default function LandingPage() {
                 {cupomStatus === 'erro' && (
                   <p className="flex items-center gap-1.5 text-sm text-red-500">
                     <X className="w-4 h-4" strokeWidth={2.5} />
-                    Cupom inválido ou expirado
+                    {cupomErro}
                   </p>
                 )}
               </div>

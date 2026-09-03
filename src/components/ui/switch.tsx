@@ -32,3 +32,24 @@ export function Switch({ checked, onChange, disabled, label }: SwitchProps) {
     </button>
   )
 }
+
+/** Switch com rótulo + texto explicativo ao lado — usado em qualquer formulário com toggles de feature. */
+export function ToggleComSubtexto({
+  label, subtexto, checked, onChange, disabled,
+}: {
+  label: string
+  subtexto: string
+  checked: boolean
+  onChange: (v: boolean) => void
+  disabled?: boolean
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 py-1">
+      <div className="min-w-0">
+        <p className={cn('text-sm font-medium', disabled ? 'text-gray-400' : 'text-gray-700')}>{label}</p>
+        <p className="text-xs text-gray-400 mt-0.5">{subtexto}</p>
+      </div>
+      <Switch checked={checked} onChange={onChange} disabled={disabled} label={label} />
+    </div>
+  )
+}

@@ -6,7 +6,10 @@ import { useRouter } from 'next/navigation'
 import { Check, X, Sparkles, Zap, Tag, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useCupom, precoComDesconto } from '@/hooks/use-cupom'
-import type { Plano } from '@/lib/mercadopago'
+import {
+  PRECOS as PRECOS_NUMERICOS, PRECO_START_ANTERIOR as PRECO_START_ANTERIOR_NUMERICO, NOME_PLANO,
+  percentualDesconto, formatarPrecoInteiro, mensalEquivalenteFormatado, type Plano,
+} from '@/lib/precos'
 
 type Ciclo = 'mensal' | 'anual'
 
@@ -43,22 +46,40 @@ const FEATURES: Record<Plano, Feature[]> = {
   ],
 }
 
+// Preços formatados pra exibição, derivados dos números reais em
+// @/lib/precos — nunca duplicar o valor aqui de novo (foi exatamente essa
+// duplicação, em 5 arquivos diferentes, que causou o preço do Start
+// divergir antes de ser centralizado).
 const PRECOS: Record<Plano, { mensal: string; anual: string; mensal_equiv: string }> = {
-  start: { mensal: 'R$29', anual: 'R$240', mensal_equiv: 'R$20' },
-  pro: { mensal: 'R$89', anual: 'R$855', mensal_equiv: 'R$71' },
-  studio: { mensal: 'R$119', anual: 'R$1.142', mensal_equiv: 'R$95' },
+  start: {
+    mensal: formatarPrecoInteiro(PRECOS_NUMERICOS.start.mensal),
+    anual: formatarPrecoInteiro(PRECOS_NUMERICOS.start.anual),
+    mensal_equiv: mensalEquivalenteFormatado(PRECOS_NUMERICOS.start.anual),
+  },
+  pro: {
+    mensal: formatarPrecoInteiro(PRECOS_NUMERICOS.pro.mensal),
+    anual: formatarPrecoInteiro(PRECOS_NUMERICOS.pro.anual),
+    mensal_equiv: mensalEquivalenteFormatado(PRECOS_NUMERICOS.pro.anual),
+  },
+  studio: {
+    mensal: formatarPrecoInteiro(PRECOS_NUMERICOS.studio.mensal),
+    anual: formatarPrecoInteiro(PRECOS_NUMERICOS.studio.anual),
+    mensal_equiv: mensalEquivalenteFormatado(PRECOS_NUMERICOS.studio.anual),
+  },
 }
 
-// Preço de tabela anterior do Start, só pra exibir riscado — a mudança pra
-// R$29/R$240 é definitiva, não promoção temporária (ver PRECO_START_ANTERIOR
-// em src/lib/mercadopago.ts, fonte da verdade pro valor cobrado de fato).
-const PRECO_START_ANTERIOR: Record<Ciclo, string> = { mensal: 'R$49', anual: 'R$470' }
+// Preço de tabela anterior do Start, só pra exibir riscado — a mudança é
+// definitiva, não promoção temporária (ver PRECO_START_ANTERIOR em
+// src/lib/precos.ts, fonte da verdade pro valor cobrado de fato).
+const PRECO_START_ANTERIOR: Record<Ciclo, string> = {
+  mensal: formatarPrecoInteiro(PRECO_START_ANTERIOR_NUMERICO.mensal),
+  anual: formatarPrecoInteiro(PRECO_START_ANTERIOR_NUMERICO.anual),
+}
 const START_DESCONTO: Record<Ciclo, number> = {
-  mensal: Math.round((1 - 29 / 49) * 100),
-  anual: Math.round((1 - 240 / 470) * 100),
+  mensal: percentualDesconto(PRECO_START_ANTERIOR_NUMERICO.mensal, PRECOS_NUMERICOS.start.mensal),
+  anual: percentualDesconto(PRECO_START_ANTERIOR_NUMERICO.anual, PRECOS_NUMERICOS.start.anual),
 }
 
-const NOME_PLANO: Record<Plano, string> = { start: 'Start', pro: 'Pro', studio: 'Studio' }
 const SUBTITULO_PLANO: Record<Plano, string> = {
   start: 'Ideal para quem está começando',
   pro: 'Para quem já tem uma agenda cheia',
@@ -126,7 +147,7 @@ export default function PlanosClient({
     cupomAberto, setCupomAberto,
     cupomInput, onCupomInputChange,
     cupomStatus, aplicarCupom,
-    desconto,
+    cupomErro, desconto,
   } = useCupom()
 
   function assinar(plano: Plano) {
@@ -387,7 +408,7 @@ export default function PlanosClient({
               {cupomStatus === 'erro' && (
                 <p className="flex items-center gap-1.5 text-sm text-red-500">
                   <X className="w-4 h-4" strokeWidth={2.5} />
-                  Cupom inválido ou expirado
+                  {cupomErro}
                 </p>
               )}
             </div>

@@ -122,13 +122,15 @@ export async function POST(request: NextRequest) {
 
 async function processarPayment(paymentId: string) {
   const pago = await mpPayment.get({ id: paymentId })
+  // payer.email de propósito fora do log — mesmo cuidado já tomado em
+  // enviar-codigo/route.ts pro telefone: não expor dado pessoal em log de
+  // servidor além do necessário pra depuração.
   console.log('[mp webhook][payment] detalhes do pagamento', {
     paymentId,
     status: pago.status,
     statusDetail: pago.status_detail,
     externalReference: pago.external_reference,
     transactionAmount: pago.transaction_amount,
-    payerEmail: pago.payer?.email,
   })
 
   if (pago.status === 'refunded' || pago.status === 'cancelled') {
@@ -197,7 +199,7 @@ async function processarPayment(paymentId: string) {
     // assinatura por cartão já é feita inteiramente por processarPreapproval
     // (evento subscription_preapproval) — aqui só falta tratar a comissão de
     // parceira e reverter um desconto de 1 ciclo que o cron tenha aplicado.
-    console.log('[mp webhook][payment] sem checkout — tratando como cobrança recorrente de cartão', { paymentId, payerEmail: pago.payer?.email })
+    console.log('[mp webhook][payment] sem checkout — tratando como cobrança recorrente de cartão', { paymentId })
     await processarCobrancaRecorrenteCartao(pago)
     return
   }
@@ -636,7 +638,7 @@ async function processarPreapproval(preapprovalId: string) {
     }
 
     if (!prestadoraId || !plano) {
-      console.error('[mp webhook] preapproval autorizado sem correlação encontrada', preapprovalId, sub.payer_email, preapprovalPlanId)
+      console.error('[mp webhook] preapproval autorizado sem correlação encontrada', preapprovalId, preapprovalPlanId)
       return
     }
 

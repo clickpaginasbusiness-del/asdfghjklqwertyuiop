@@ -19,6 +19,7 @@ import { TEMPLATE_VARS, MSG_CONFIRMACAO_DEFAULT, MSG_CANCELAMENTO_DEFAULT, MSG_L
 import { PersonalizarPaginaModal } from './PersonalizarPaginaModal'
 import { CodigoIndicacaoCard } from '@/components/painel/CodigoIndicacaoCard'
 import { RetrospectivasListaModal } from '@/components/retrospectiva/RetrospectivasListaModal'
+import { RETROSPECTIVAS_ATIVAS } from '@/lib/retrospectiva'
 import { ADMIN_EMAIL } from '@/lib/admin'
 import { planoEfetivo, ehStudio } from '@/lib/plano'
 import { getTema } from '@/lib/theme'
@@ -73,9 +74,13 @@ export default function PerfilPainelClient({
   const [msgLembrete, setMsgLembrete] = useState(initial.mensagem_lembrete ?? MSG_LEMBRETE_DEFAULT)
   const [savingMsgs, setSavingMsgs] = useState(false)
 
+  function updateSlug(value: string) {
+    setSlug(value)
+    setSlugStatus(value === prestadora.slug || value.length < 3 ? 'idle' : 'checking')
+  }
+
   useEffect(() => {
-    if (slug === prestadora.slug || slug.length < 3) { setSlugStatus('idle'); return }
-    setSlugStatus('checking')
+    if (slug === prestadora.slug || slug.length < 3) return
     const timer = setTimeout(async () => {
       const supabase = createClient()
       const { data } = await supabase
@@ -372,7 +377,7 @@ export default function PerfilPainelClient({
               <input
                 type="text"
                 value={slug}
-                onChange={(e) => setSlug(slugify(e.target.value))}
+                onChange={(e) => updateSlug(slugify(e.target.value))}
                 placeholder="seu-nome"
                 className="flex-1 px-3 py-2.5 text-sm focus:outline-none"
               />
@@ -516,24 +521,26 @@ export default function PerfilPainelClient({
         </CardContent>
       </Card>
 
-      {/* Minhas Retrospectivas */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-rose-400" />
-            Minhas Retrospectivas
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-gray-500 mb-4">
-            Todo início de mês, um resumo automático do seu negócio no mês anterior — no estilo Stories, pra baixar e compartilhar.
-          </p>
-          <Button variant="outline" onClick={() => setRetrospectivasOpen(true)}>
-            <Sparkles className="w-4 h-4" />
-            Ver Retrospectivas
-          </Button>
-        </CardContent>
-      </Card>
+      {/* Minhas Retrospectivas — temporariamente fora do ar, ver RETROSPECTIVAS_ATIVAS */}
+      {RETROSPECTIVAS_ATIVAS && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-rose-400" />
+              Minhas Retrospectivas
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-gray-500 mb-4">
+              Todo início de mês, um resumo automático do seu negócio no mês anterior — no estilo Stories, pra baixar e compartilhar.
+            </p>
+            <Button variant="outline" onClick={() => setRetrospectivasOpen(true)}>
+              <Sparkles className="w-4 h-4" />
+              Ver Retrospectivas
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <p className="text-xs text-gray-400 text-center">
         Para excluir sua conta, acesse{' '}

@@ -7,10 +7,10 @@ export default async function ClientesPage() {
   if (!prestadora) redirect('/painel/login')
 
   // Busca todos os agendamentos com joins — sem filtro de status para ter histórico completo
-  const [{ data: agendamentos }, { data: assinaturasAtivas }] = await Promise.all([
+  const [{ data: agendamentos }, { data: assinaturasAtivas }, { data: dadosPrestadora }] = await Promise.all([
     supabase
       .from('agendamentos')
-      .select('id, data_hora, status, cliente_e_prestadora, servicos(nome, preco), clientes(id, nome, telefone, cliente_manual, data_nascimento, notas)')
+      .select('id, data_hora, status, cliente_e_prestadora, servicos(nome, preco), clientes(id, nome, telefone, cliente_manual)')
       .eq('prestadora_id', prestadora.id)
       .order('data_hora', { ascending: false }),
     supabase
@@ -18,9 +18,16 @@ export default async function ClientesPage() {
       .select('cliente_id')
       .eq('prestadora_id', prestadora.id)
       .eq('status', 'ativa'),
+    // notas/data_nascimento são por prestadora+cliente, não uma coluna global
+    // em clientes — busca separada, filtrada pela própria prestadora.
+    supabase
+      .from('clientes_prestadora_dados')
+      .select('cliente_id, notas, data_nascimento')
+      .eq('prestadora_id', prestadora.id),
   ])
 
   const clientesComPlanoAtivo = new Set((assinaturasAtivas ?? []).map((a) => a.cliente_id))
+  const dadosPorCliente = new Map((dadosPrestadora ?? []).map((d) => [d.cliente_id, d]))
 
   // Agrupa por cliente
   type AgItem = {
@@ -42,8 +49,10 @@ export default async function ClientesPage() {
   const clienteMap = new Map<string, ClienteEntry>()
 
   agendamentos?.forEach((a) => {
-    const c = a.clientes as unknown as { id: string; nome: string; telefone: string | null; cliente_manual: boolean; data_nascimento: string | null; notas: string | null } | null
-    if (!c) return
+    const cBase = a.clientes as unknown as { id: string; nome: string; telefone: string | null; cliente_manual: boolean } | null
+    if (!cBase) return
+    const dados = dadosPorCliente.get(cBase.id)
+    const c = { ...cBase, data_nascimento: dados?.data_nascimento ?? null, notas: dados?.notas ?? null }
     const isAtivo = a.status === 'confirmado' || a.status === 'concluido'
     const agItem: AgItem = {
       id: a.id,
@@ -56,7 +65,7 @@ export default async function ClientesPage() {
     if (existing) {
       if (isAtivo) {
         existing.total++
-        existing.gasto += (a.servicos as any)?.preco ?? 0
+        existing.gasto += agItem.servicos?.preco ?? 0
         if (a.data_hora > (existing.ultimaVisitaAtiva ?? '')) {
           existing.ultimaVisitaAtiva = a.data_hora
         }
@@ -68,7 +77,7 @@ export default async function ClientesPage() {
       clienteMap.set(c.id, {
         cliente: c,
         total: isAtivo ? 1 : 0,
-        gasto: isAtivo ? ((a.servicos as any)?.preco ?? 0) : 0,
+        gasto: isAtivo ? (agItem.servicos?.preco ?? 0) : 0,
         ultimaVisita: a.data_hora,
         ultimaVisitaAtiva: isAtivo ? a.data_hora : null,
         ehPrestadora: Boolean(a.cliente_e_prestadora),

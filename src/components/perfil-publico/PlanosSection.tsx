@@ -71,6 +71,7 @@ export function PlanosSection({ planos, corTema, dark, clienteLogado, onRequireL
   useEffect(() => {
     if (!clienteLogado || !aguardandoLoginId) return
     const plano = planos.find((p) => p.id === aguardandoLoginId)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reage à transição de login (evento externo), não computável durante o render
     setAguardandoLoginId(null)
     if (plano) {
       setModalPlano(plano)

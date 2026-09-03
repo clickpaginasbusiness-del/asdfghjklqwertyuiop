@@ -49,8 +49,11 @@ export type LancamentoFinanceiro = {
   id: string
   descricao: string
   valor: number
-  categoria: 'Aluguel' | 'Salario' | 'Equipamento' | 'Material' | 'Outro'
+  categoria: 'Aluguel' | 'Salario' | 'Equipamento' | 'Material' | 'Comissao' | 'Outro'
   data: string
+  data_fim: string | null
+  recorrencia_id: string | null
+  recorrencia_ativa: boolean | null
   created_at: string
 }
 

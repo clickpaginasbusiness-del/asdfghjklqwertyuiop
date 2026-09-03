@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
 import { AdminNav } from '@/components/admin/AdminNav'
 import { cn } from '@/lib/utils'
-import { NOME_PLANO, PRECOS, type Plano } from '@/lib/mercadopago'
+import { NOME_PLANO, PRECOS, type Plano } from '@/lib/precos'
 import toast from 'react-hot-toast'
 
 type PrestadoraRow = {

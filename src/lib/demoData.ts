@@ -299,10 +299,10 @@ export const DEMO_VISITAS_PAGINA: { id: string; prestadora_id: string; created_a
 export function getDemoLancamentos(agora: Date): LancamentoFinanceiro[] {
   const dataStr = (offset: number) => dataRelativa(agora, offset, 12, 0).slice(0, 10)
   return [
-    { id: 'demo-lanc-1', descricao: 'Aluguel do salão', valor: -1200, categoria: 'Aluguel', data: dataStr(-20), created_at: dataRelativa(agora, -20, 12, 0) },
-    { id: 'demo-lanc-2', descricao: 'Esmaltes e materiais', valor: -800, categoria: 'Material', data: dataStr(-15), created_at: dataRelativa(agora, -15, 12, 0) },
-    { id: 'demo-lanc-3', descricao: 'Lima elétrica nova', valor: -600, categoria: 'Equipamento', data: dataStr(-10), created_at: dataRelativa(agora, -10, 12, 0) },
-    { id: 'demo-lanc-4', descricao: 'Internet e energia', valor: -600, categoria: 'Outro', data: dataStr(-5), created_at: dataRelativa(agora, -5, 12, 0) },
+    { id: 'demo-lanc-1', descricao: 'Aluguel do salão', valor: -1200, categoria: 'Aluguel', data: dataStr(-20), data_fim: null, recorrencia_id: null, recorrencia_ativa: null, created_at: dataRelativa(agora, -20, 12, 0) },
+    { id: 'demo-lanc-2', descricao: 'Esmaltes e materiais', valor: -800, categoria: 'Material', data: dataStr(-15), data_fim: null, recorrencia_id: null, recorrencia_ativa: null, created_at: dataRelativa(agora, -15, 12, 0) },
+    { id: 'demo-lanc-3', descricao: 'Lima elétrica nova', valor: -600, categoria: 'Equipamento', data: dataStr(-10), data_fim: null, recorrencia_id: null, recorrencia_ativa: null, created_at: dataRelativa(agora, -10, 12, 0) },
+    { id: 'demo-lanc-4', descricao: 'Internet e energia', valor: -600, categoria: 'Outro', data: dataStr(-5), data_fim: null, recorrencia_id: null, recorrencia_ativa: null, created_at: dataRelativa(agora, -5, 12, 0) },
   ]
 }
 

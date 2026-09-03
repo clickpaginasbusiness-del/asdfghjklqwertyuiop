@@ -20,6 +20,7 @@ export function WelcomeModal({ prestadoraId }: { prestadoraId: string }) {
   // de começar, garantindo que só um overlay apareça por vez.
   useEffect(() => {
     if (localStorage.getItem(welcomeKey(prestadoraId))) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- decisão depende só de localStorage, que só existe no cliente
     setOpen(true)
   }, [prestadoraId])
 

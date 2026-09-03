@@ -25,7 +25,7 @@ export default async function PainelLayout({ children }: { children: React.React
 
   // Sem assinatura ativa → página de planos
   // Trial gratuito expirado (sem pagamento real via Mercado Pago) → página de planos
-  // Parceira nunca é redirecionada aqui — ela tem Pro liberado pelo cargo,
+  // Parceira nunca é redirecionada aqui — ela tem Studio liberado pelo cargo,
   // sem cobrança por trás, independente do que assinatura_ativa/plano digam.
   const isExpiredTrial = Boolean(
     prestadora.e_trial &&

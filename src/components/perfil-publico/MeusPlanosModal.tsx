@@ -45,6 +45,7 @@ export function MeusPlanosModal({ open, onClose, prestadoraId, corTema }: Props)
     if (!open) return
     const token = localStorage.getItem('clienteToken')
     if (!token) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- inicia o spinner antes do fetch de dados do cliente (token só existe no localStorage do cliente)
     setCarregando(true)
     fetch('/api/planos/meus', {
       method: 'POST',

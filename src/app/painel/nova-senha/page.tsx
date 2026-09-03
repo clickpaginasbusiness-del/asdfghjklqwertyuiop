@@ -18,6 +18,7 @@ export default function NovaSenhaPage() {
     const params = new URLSearchParams(window.location.search)
     const errorParam = params.get('error')
     if (errorParam) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- parâmetro de erro só existe na URL no cliente, checagem de sessão só pode rodar depois do mount
       setErro('Link inválido ou expirado. Solicite um novo.')
       return
     }

@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import type { Plano } from '@/lib/mercadopago'
+import { PRECOS, formatarPrecoInteiro, mensalEquivalenteFormatado, type Plano } from '@/lib/precos'
 import { ehStudio } from '@/lib/plano'
 import toast from 'react-hot-toast'
 import { format, parseISO } from 'date-fns'
@@ -17,10 +17,17 @@ import { ptBR } from 'date-fns/locale'
 type Ciclo = 'mensal' | 'anual'
 type Metodo = 'cartao' | 'pix' | 'debito'
 
+// Preços derivados de @/lib/precos, nunca duplicados aqui de novo (mesma
+// causa da divergência que já aconteceu com o preço do Start antes de
+// centralizar a fonte).
+function precoAnualLabel(plano: Plano): string {
+  return `${formatarPrecoInteiro(PRECOS[plano].anual)}/ano · ${mensalEquivalenteFormatado(PRECOS[plano].anual)}/mês`
+}
+
 const PLANO_INFO: Record<Plano, { nome: string; precos: Record<Ciclo, string>; icon: typeof Zap; features: string[] }> = {
   start: {
     nome: 'Plano Start',
-    precos: { mensal: 'R$29/mês', anual: 'R$240/ano · R$20/mês' },
+    precos: { mensal: `${formatarPrecoInteiro(PRECOS.start.mensal)}/mês`, anual: precoAnualLabel('start') },
     icon: Zap,
     features: [
       'Agendamentos ilimitados',
@@ -33,7 +40,7 @@ const PLANO_INFO: Record<Plano, { nome: string; precos: Record<Ciclo, string>; i
   },
   pro: {
     nome: 'Plano Pro',
-    precos: { mensal: 'R$89/mês', anual: 'R$855/ano · R$71/mês' },
+    precos: { mensal: `${formatarPrecoInteiro(PRECOS.pro.mensal)}/mês`, anual: precoAnualLabel('pro') },
     icon: Sparkles,
     features: [
       'Tudo do Plano Start',
@@ -45,7 +52,7 @@ const PLANO_INFO: Record<Plano, { nome: string; precos: Record<Ciclo, string>; i
   },
   studio: {
     nome: 'Plano Studio',
-    precos: { mensal: 'R$119/mês', anual: 'R$1.142/ano · R$95/mês' },
+    precos: { mensal: `${formatarPrecoInteiro(PRECOS.studio.mensal)}/mês`, anual: precoAnualLabel('studio') },
     icon: Sparkles,
     features: [
       'Tudo do Plano Pro',
@@ -254,7 +261,7 @@ export default function AssinaturaClient({
         </div>
       )}
 
-      {/* Parceira: acesso Pro gratuito por cargo — sem nada de assinatura/cobrança real */}
+      {/* Parceira: acesso Studio gratuito por cargo — sem nada de assinatura/cobrança real */}
       {eParceira ? (
         <Card className="border-rose-200 bg-gradient-to-br from-rose-50 to-pink-50">
           <CardContent className="p-6">
@@ -263,10 +270,11 @@ export default function AssinaturaClient({
                 <Sparkles className="w-5 h-5 text-rose-500" />
               </div>
               <div>
-                <h2 className="font-semibold text-gray-900 mb-1">Você tem acesso Pro como parceira BelleBook</h2>
+                <h2 className="font-semibold text-gray-900 mb-1">Você tem acesso Studio como parceira BelleBook</h2>
                 <p className="text-sm text-gray-600">
-                  Profissionais ilimitadas, galeria de fotos e vídeos e suporte prioritário — liberados como
-                  benefício do programa de parceiras, sem nenhuma cobrança.
+                  Profissionais ilimitadas, galeria de fotos e vídeos sem limite, planos de assinatura pra
+                  clientes e suporte prioritário — liberados como benefício do programa de parceiras, sem
+                  nenhuma cobrança.
                 </p>
               </div>
             </div>

@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import { endOfYear, subDays } from 'date-fns'
 import { getPrestadoraAutenticada } from '@/lib/painelAuth'
-import PainelDashboardClient from './PainelDashboardClient'
+import PainelDashboardClient, { type Ag } from './PainelDashboardClient'
 
 /** Próxima ocorrência do aniversário a partir de hoje (esse ano, ou o
  * próximo se já passou) — só mês/dia importam, o ano de nascimento em si é
@@ -21,7 +21,7 @@ export default async function PainelPage() {
 
   const hoje = new Date()
 
-  const [{ data: agendamentosAno }, { data: agendamentosComNascimento }] = await Promise.all([
+  const [{ data: agendamentosAno }, { data: dadosNascimento }] = await Promise.all([
     // 60 dias atrás → cobre filtros "30 dias" + resto do ano
     supabase
       .from('agendamentos')
@@ -31,20 +31,23 @@ export default async function PainelPage() {
       .gte('data_hora', subDays(hoje, 60).toISOString())
       .lte('data_hora', endOfYear(hoje).toISOString())
       .order('data_hora'),
-    // Aniversariantes: só clientes com histórico com ESSA prestadora (não
-    // qualquer cliente da base global) — daí o !inner pra filtrar direto no
-    // join em vez de trazer tudo e filtrar depois.
+    // Aniversariantes: data_nascimento é por prestadora+cliente (não coluna
+    // global em clientes), então a própria existência de uma linha em
+    // clientes_prestadora_dados pra essa prestadora já garante a relação —
+    // sem precisar passar por agendamentos aqui.
     supabase
-      .from('agendamentos')
-      .select('clientes!inner(id, nome, telefone, data_nascimento)')
+      .from('clientes_prestadora_dados')
+      .select('data_nascimento, clientes(id, nome, telefone)')
       .eq('prestadora_id', prestadora.id)
-      .not('clientes.data_nascimento', 'is', null),
+      .not('data_nascimento', 'is', null),
   ])
 
   const hojeZerado = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate())
   const clientesUnicos = new Map<string, { id: string; nome: string; telefone: string | null; data_nascimento: string }>()
-  for (const row of (agendamentosComNascimento ?? []) as unknown as { clientes: { id: string; nome: string; telefone: string | null; data_nascimento: string } | null }[]) {
-    if (row.clientes && !clientesUnicos.has(row.clientes.id)) clientesUnicos.set(row.clientes.id, row.clientes)
+  for (const row of (dadosNascimento ?? []) as unknown as { data_nascimento: string; clientes: { id: string; nome: string; telefone: string | null } | null }[]) {
+    if (row.clientes && !clientesUnicos.has(row.clientes.id)) {
+      clientesUnicos.set(row.clientes.id, { ...row.clientes, data_nascimento: row.data_nascimento })
+    }
   }
 
   const aniversariantes = Array.from(clientesUnicos.values())
@@ -55,7 +58,7 @@ export default async function PainelPage() {
 
   return (
     <PainelDashboardClient
-      agendamentosAno={(agendamentosAno ?? []) as any}
+      agendamentosAno={(agendamentosAno ?? []) as unknown as Ag[]}
       horarioAbertura={prestadora.hora_abertura}
       horarioFechamento={prestadora.hora_fechamento}
       prestadoraId={prestadora.id}

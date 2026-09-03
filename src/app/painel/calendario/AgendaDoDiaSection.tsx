@@ -115,6 +115,7 @@ export function AgendaDoDiaSection({
     const padrao = gerarSlots(abertura, fechamentoGrade)
     const horariosAgendados = agendamentosDoDia.map((a) => formatTime(a.data_hora))
     return Array.from(new Set([...padrao, ...horariosAgendados])).sort()
+    // eslint-disable-next-line react-hooks/preserve-manual-memoization -- ativo/abertura derivam de .find() em horariosFuncionamento; Compiler não consegue provar estabilidade da referência, mas o useMemo manual já recalcula corretamente a cada mudança real
   }, [ativo, abertura, fechamentoGrade, agendamentosDoDia])
 
   const colunas: ProfissionalLite[] = profissionais.length > 0

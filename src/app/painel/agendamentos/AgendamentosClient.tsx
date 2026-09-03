@@ -362,7 +362,7 @@ export default function AgendamentosClient({
               )}
             >
               {p.foto_url && (
-                <Image src={p.foto_url} alt={p.nome} width={18} height={18} className="rounded-full object-cover" />
+                <Image src={p.foto_url} alt={p.nome} width={18} height={18} className="w-[18px] h-[18px] rounded-full object-cover shrink-0" />
               )}
               {p.nome}
             </button>
@@ -405,7 +405,7 @@ export default function AgendamentosClient({
                             alt={a.profissionais.nome}
                             width={36}
                             height={36}
-                            className="rounded-full object-cover border border-rose-100"
+                            className="w-9 h-9 rounded-full object-cover border border-rose-100"
                           />
                         ) : (
                           <div className="w-9 h-9 rounded-full bg-rose-100 text-rose-400 font-bold text-sm flex items-center justify-center">

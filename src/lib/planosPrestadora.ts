@@ -403,6 +403,9 @@ export async function criarOuRenovarAssinatura(
     periodo_inicio: new Date().toISOString(),
     periodo_fim: periodoFim,
     cancelado_em: null,
+    // Pagamento confirmado pra esse ciclo — libera o cron de
+    // mp-renovacoes pra gerar a próxima cobrança Pix quando o ciclo vencer.
+    mp_pagamento_pendente_id: null,
   }
 
   const { data: assinatura, error } = existente

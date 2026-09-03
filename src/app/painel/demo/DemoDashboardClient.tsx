@@ -154,6 +154,7 @@ export default function DemoDashboardClient({
 
   /* Evita hydration mismatch de fuso horário no nome do dia */
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- só depois do mount pra evitar mismatch de fuso horário entre server e cliente
     setDataHoje(format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR }))
   }, [])
 

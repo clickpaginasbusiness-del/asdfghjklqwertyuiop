@@ -1,6 +1,7 @@
 {
   "crons": [
     { "path": "/api/cron/mp-renovacoes", "schedule": "0 12 * * *" },
-    { "path": "/api/cron/retrospectivas", "schedule": "0 12 1 * *" }
+    { "path": "/api/cron/retrospectivas", "schedule": "0 12 1 * *" },
+    { "path": "/api/cron/lancamentos-recorrentes", "schedule": "30 12 * * *" }
   ]
 }

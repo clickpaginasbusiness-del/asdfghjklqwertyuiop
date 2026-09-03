@@ -36,7 +36,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 
   if (body.acao === 'dar') {
-    // Ela vai ter Pro grátis — cancela qualquer assinatura por cartão ativa,
+    // Ela vai ter Studio grátis — cancela qualquer assinatura por cartão ativa,
     // não faz sentido continuar cobrando quem virou parceira.
     if (prestadora.mp_subscription_id) {
       try {
@@ -46,12 +46,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       }
     }
 
-    // Reativa todas as profissionais (mesmo efeito de um upgrade real pra Pro).
+    // Reativa todas as profissionais (mesmo efeito de um upgrade real pra Studio).
     await admin.from('profissionais').update({ ativa: true }).eq('prestadora_id', id)
 
     const { error } = await admin.from('prestadoras').update({
       e_parceira: true,
-      plano: 'pro',
+      plano: 'studio',
       assinatura_ativa: true,
       e_trial: false,
       trial_fim: null,

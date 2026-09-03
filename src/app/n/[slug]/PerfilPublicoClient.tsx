@@ -720,6 +720,7 @@ export default function PerfilPublicoClient({
       return
     }
 
+    // eslint-disable-next-line react-hooks/immutability -- navegação de página inteira de propósito (checkout), não é mutação de estado do componente
     window.location.href = `/agendamento/checkout?agendamento_temp=${data.agendamentoId}`
   }
 
